@@ -85,14 +85,14 @@
 <script>
 var RAW = 'https://raw.githubusercontent.com/minhdv-zz/team-skills/main';
 var LOCAL = 'http://127.0.0.1:47653';
-var PLUGIN_SRC = 'https://github.com/minhdv-zz/team-skills.git';
+var PLUGIN_SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
 var INSTALL = '& ([scriptblock]::Create((irm ' + RAW + '/install.ps1)))';
 var SKILLS = [];       // from skills.json
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
 
 document.getElementById('pluginSrc').textContent = PLUGIN_SRC;
-document.getElementById('pluginCmd').textContent = 'paseo plugin install ' + PLUGIN_SRC + ' --path paseo-plugin';
+document.getElementById('pluginCmd').textContent = 'paseo plugin install ' + PLUGIN_SRC;
 
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
