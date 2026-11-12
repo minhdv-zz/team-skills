@@ -1,0 +1,7 @@
+{
+  "id": "team-skills",
+  "name": "Team Skills",
+  "requirements": {
+    "paseo": ">=0.15.1"
+  }
+}
