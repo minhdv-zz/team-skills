@@ -1,0 +1,8 @@
+{
+  "name": "fixsung-hoidz",
+  "description": "Quy trình trọn gói cho súng skin mới (pirate-wars) - (1) Blender - tạo mesh nòng cannon_tXXX_g từ thân cannon_tXXX (cắt gọn, giữ chi tiết phía đầu nòng, bỏ chi tiết phía",
+  "version": "1.0.0",
+  "author": {
+    "name": "hoidz"
+  }
+}

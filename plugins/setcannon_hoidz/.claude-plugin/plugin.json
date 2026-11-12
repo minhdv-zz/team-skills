@@ -1,0 +1,8 @@
+{
+  "name": "setcannon-hoidz",
+  "description": "Setup cannon skin prefab trong Unity (project pirate-wars) bằng UnityMCP - tạo Prefab Variant từ CannonSkinBase hoặc thay mesh FBX trong prefab c_XXXX có sẵn, gán material, đặt Muzzle P",
+  "version": "1.0.0",
+  "author": {
+    "name": "hoidz"
+  }
+}
