@@ -380,3 +380,26 @@ export async function missingAddons(version: string): Promise<string[]> {
 export async function allAddonNames(): Promise<string[]> {
   return (await listAddons()).addons.map((a) => a.name);
 }
+
+/** Folders where the user's Blender addons live: the running Blender's first, then each installed version. */
+export async function addonRoots(): Promise<string[]> {
+  const live = await liveBlender();
+  const roots = live ? [live.addonsPath] : [];
+  for (const v of blenderVersions()) roots.push(addonsDir(v));
+  return [...new Set(roots)];
+}
+
+/** Names already published in the team lists (empty sets if the site cannot be reached). */
+export async function teamNames(): Promise<{ skills: Set<string>; addons: Set<string> }> {
+  const out = { skills: new Set<string>(), addons: new Set<string>() };
+  try {
+    for (const s of await fetchJson<SkillEntry[]>("skills.json")) out.skills.add(s.name);
+    for (const a of await fetchJson<AddonEntry[]>("addons.json")) {
+      out.addons.add(a.name);
+      if (a.folder) out.addons.add(a.folder);
+    }
+  } catch {
+    /* offline: report everything as not yet shared */
+  }
+  return out;
+}

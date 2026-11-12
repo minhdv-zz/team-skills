@@ -93,6 +93,17 @@
       <b>Ai cũng đóng góp được.</b> Cần một tài khoản GitHub, và phải ghi <b>tên tác giả</b> (<code>author:</code> trong SKILL.md, hoặc <code>bl_info</code> của addon) để mọi người biết skill/addon đó của ai. Người không có quyền ghi vào repo sẽ được GitHub tự tạo bản sao (fork) và gửi đề xuất (Pull Request). Mọi đóng góp đều được chủ repo duyệt trước khi xuất hiện trên trang này.
     </div>
 
+    <div class="card" style="margin-bottom:16px;border-color:var(--acc)">
+      <h3>Cách nhanh nhất: nhờ Claude trong Paseo làm giúp</h3>
+      <p>Cần plugin Paseo đã cài và cập nhật (<code>paseo plugin update team-skills</code>). Mở một cuộc chat <b>mới</b> trong Paseo rồi nhắn, ví dụ:</p>
+      <pre id="chatSample">Hãy đóng góp skill tên-skill-của-bạn lên Team Skills</pre>
+      <div><button onclick="copy(chatSample.textContent,this)">Copy câu mẫu</button></div>
+      <p style="color:var(--mut);margin-top:10px">
+        Claude sẽ: kiểm tra skill hoặc addon của bạn và <b>tự sửa các lỗi nhỏ</b> (ví dụ thêm dòng tác giả) sau khi hỏi bạn → hỏi bạn có đồng ý công khai không → <b>mở trang đăng nhập GitHub</b> nếu bạn chưa đăng nhập (nhập mã hiện ra rồi bấm Authorize) → tự tạo Pull Request và gửi link cho bạn.
+        Tên người đóng góp là tài khoản GitHub bạn đăng nhập, nên không thể giả mạo. Bạn vẫn cần có tài khoản GitHub. Chủ repo duyệt rồi mới gộp.
+      </p>
+    </div>
+
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">
       <div class="card">
         <h3>Đóng góp một skill</h3>

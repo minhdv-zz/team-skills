@@ -2,7 +2,17 @@
 
 Ai cũng đóng góp được, cần một tài khoản GitHub. Mọi đóng góp đi qua **Pull Request** và được chủ repo duyệt trước khi gộp.
 
-## Cách nhanh nhất (trên trang web)
+## Cách nhanh nhất: nhờ Claude trong Paseo
+
+1. Cài và cập nhật plugin: `paseo plugin update team-skills`.
+2. Mở một cuộc chat **mới** trong Paseo và nhắn, ví dụ: `Hãy đóng góp skill tên-skill-của-bạn lên Team Skills` (hoặc `đóng góp addon <tên> ...`).
+3. Claude dùng các công cụ của plugin (`team_skills_list_local`, `team_skills_contribute`, `team_skills_logout`): kiểm tra, tự sửa lỗi nhỏ sau khi hỏi bạn, hỏi bạn đồng ý công khai, rồi gửi.
+4. Chưa đăng nhập GitHub thì plugin mở trang `github.com/login/device`. Nhập mã hiện ra, bấm **Authorize**. Token chỉ nằm trong bộ nhớ, hết hạn sau khoảng 8 giờ. Thu hồi: https://github.com/settings/applications
+5. Plugin tự tạo bản sao (nếu bạn chưa có quyền ghi), nhánh, commit và Pull Request, rồi báo link.
+
+Tên người đóng góp là tài khoản GitHub bạn đăng nhập. Vẫn cần tài khoản GitHub, và chủ repo duyệt từng Pull Request.
+
+## Cách thủ công (trên trang web)
 
 Mở https://minhdv-zz.github.io/team-skills/ → tab **Đóng góp** → nhập tên skill → bấm **Tạo SKILL.md trên GitHub**.
 
