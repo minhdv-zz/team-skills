@@ -1,0 +1,11 @@
+{
+  "name": "team-skills-marketplace",
+  "owner": { "name": "hoidz" },
+  "plugins": [
+    {
+      "name": "team-skills",
+      "source": "./",
+      "description": "Bộ skill dùng chung của team (Blender/Unity pipeline cho pirate-wars)."
+    }
+  ]
+}

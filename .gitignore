@@ -1,0 +1,5 @@
+.trash/
+*.bak*
+*.zip
+Thumbs.db
+.DS_Store
