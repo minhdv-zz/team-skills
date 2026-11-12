@@ -165,7 +165,7 @@ function render(){
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
       + '<p>'+esc(s.desc)+'</p>'
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
-      + '<div>' + (s.link
+      + '<div>' + (s.link && !(STATE && s.zip)
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">Tải về (nội bộ)</a>'
           : '<button class="pri" '+((BUSY||noBlender)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
   }).join('');
