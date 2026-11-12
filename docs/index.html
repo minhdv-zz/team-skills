@@ -79,6 +79,7 @@
     <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
     <p>Hoặc dùng dòng lệnh: <code id="pluginCmd"></code></p>
     <p>Sau khi plugin chạy, tải lại trang này. Chấm tròn ở trên sẽ chuyển sang xanh.</p>
+    <p>Đã cài plugin từ trước mà nút Cài addon không bấm được? Plugin được ghim theo phiên bản, hãy cập nhật: <code>paseo plugin update team-skills</code></p>
   </details>
 
   <div class="grid" id="grid"></div>
@@ -153,7 +154,9 @@ function render(){
   $('version').innerHTML = vs.map(function(v){return '<option value="'+v+'">'+v+'</option>'}).join('');
   if(vs.indexOf(cur)>=0) $('version').value = cur;
 
-  var noBlender = !isSk && STATE && vs.length===0;
+  var outdated = !!STATE && !STATE.blender;           // old plugin: /status has no addon info
+  var noBlender = !isSk && !!STATE && !outdated && vs.length===0;
+  var blocked = !isSk && (outdated || noBlender);
   $('grid').innerHTML = list.map(function(s,i){
     var inst = installedOf(s.name);
     var label = STATE ? (inst ? 'Cài lại' : 'Cài') : 'Cài';
@@ -167,15 +170,16 @@ function render(){
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
       + '<div>' + (s.link && !(STATE && s.zip)
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">Tải về (nội bộ)</a>'
-          : '<button class="pri" '+((BUSY||noBlender)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
+          : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
   }).join('');
 
   var on = !!STATE;
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
   $('status').textContent = !on ? 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).'
-    : noBlender ? 'Đã kết nối Paseo, nhưng không tìm thấy Blender trên máy này.'
+    : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills'
+    : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
     : 'Đã kết nối plugin Paseo trên máy này.';
-  var can = on && !noBlender && !BUSY;
+  var can = on && !blocked && !BUSY;
   $('btnAll').disabled = !can; $('btnMissing').disabled = !can;
   $('help').open = !on;
 }
