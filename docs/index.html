@@ -5,47 +5,65 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Team Skills</title>
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--text:#e6edf3;--mut:#8b949e;--acc:#7c5cff;--ok:#3fb950}
+  :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--text:#e6edf3;--mut:#8b949e;--acc:#7c5cff;--ok:#3fb950;--err:#f85149}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif}
   .wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}
-  h1{margin:0 0 4px;font-size:28px} .sub{color:var(--mut);margin:0 0 24px}
-  .setup{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:24px}
-  .setup summary{cursor:pointer;font-weight:600}
-  .setup p{color:var(--mut);margin:10px 0 8px}
-  code,pre{font-family:Consolas,monospace;font-size:13px}
-  pre{background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;margin:6px 0;white-space:pre-wrap;word-break:break-all}
+  h1{margin:0 0 4px;font-size:28px} .sub{color:var(--mut);margin:0 0 20px}
+  .bar{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--mut);flex:none}
+  .dot.on{background:var(--ok)} .dot.off{background:var(--err)}
+  .bar .st{flex:1;min-width:200px}
+  select{font:inherit;background:#21262d;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  details.help{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:20px}
+  details.help summary{cursor:pointer;font-weight:600}
+  details.help p{color:var(--mut);margin:10px 0 6px}
+  pre{font-family:Consolas,monospace;font-size:13px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;margin:6px 0;white-space:pre-wrap;word-break:break-all}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
-  .card h3{margin:0;font-size:16px} .card .id{color:var(--mut);font-family:Consolas,monospace;font-size:12px}
+  .card h3{margin:0;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .card .id{color:var(--mut);font-family:Consolas,monospace;font-size:12px}
   .card p{margin:0;color:#c9d1d9;flex:1}
   .tags{display:flex;flex-wrap:wrap;gap:6px}
   .tag{font-size:11px;border:1px solid var(--line);color:var(--mut);border-radius:999px;padding:1px 8px}
+  .badge{font-size:11px;border-radius:999px;padding:1px 8px;background:#12261a;color:var(--ok);border:1px solid #1f4a2b}
   button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:#21262d;color:var(--text);padding:7px 14px}
   button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-  button:hover{filter:brightness(1.12)}
+  button:hover:not(:disabled){filter:brightness(1.12)} button:disabled{opacity:.55;cursor:default}
   .overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
   .overlay.on{display:flex}
-  .modal{background:var(--card);border:1px solid var(--line);border-radius:12px;width:min(520px,100%);padding:20px}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:12px;width:min(560px,100%);padding:20px}
   .modal h2{margin:0 0 4px;font-size:18px} .modal .id{color:var(--mut)}
-  label.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;cursor:pointer}
-  label.opt small{color:var(--mut);display:block}
   .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-  .msg{color:var(--ok);font-size:13px;min-height:18px;margin-top:6px}
-  .err{color:#f85149}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#21262d;border:1px solid var(--line);border-radius:8px;padding:10px 16px;display:none;max-width:90vw}
+  #toast.ok{border-color:var(--ok)} #toast.err{border-color:var(--err)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Team Skills</h1>
-  <p class="sub">Bấm <b>Cài</b> ở skill cần dùng. Cài xong mở lại Claude Code để nhận skill.</p>
+  <p class="sub">Chọn skill rồi bấm <b>Cài</b>. Cài xong mở lại Claude Code để nhận skill.</p>
 
-  <details class="setup" id="setup">
-    <summary>Lần đầu trên máy này? Chạy một dòng thiết lập (chỉ cần làm một lần)</summary>
-    <p>Dán vào PowerShell. Sau đó nút <b>Cài tự động</b> sẽ hoạt động. Không cần quyền admin.</p>
-    <pre id="setupCmd"></pre>
-    <button onclick="copy(setupCmd.textContent,this)">Copy lệnh thiết lập</button>
-    <p>Chưa muốn thiết lập thì dùng nút <b>Copy lệnh</b> trong hộp cài đặt, dán vào PowerShell là cài được ngay.</p>
+  <div class="bar">
+    <span class="dot" id="dot"></span>
+    <span class="st" id="status">Đang kiểm tra plugin Paseo...</span>
+    <label>Cài vào
+      <select id="target">
+        <option value="claude">Claude Code (~/.claude/skills)</option>
+        <option value="claude-api">Hồ sơ Claude API (~/.claude-api/skills)</option>
+      </select>
+    </label>
+    <button id="btnMissing" disabled onclick="bulk('missing')">Cài còn thiếu</button>
+    <button id="btnAll" class="pri" disabled onclick="bulk('all')">Cài tất cả</button>
+  </div>
+
+  <details class="help" id="help" open>
+    <summary>Chưa kết nối Paseo? Cài plugin một lần</summary>
+    <p>Mở Paseo, vào <b>Settings → Plugins</b>, dán nguồn plugin vào ô <b>Plugin source</b> rồi bấm <b>Install plugin</b>:</p>
+    <pre id="pluginSrc"></pre>
+    <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
+    <p>Hoặc dùng dòng lệnh: <code id="pluginCmd"></code></p>
+    <p>Sau khi plugin chạy, tải lại trang này. Chấm tròn ở trên sẽ chuyển sang xanh.</p>
   </details>
 
   <div class="grid" id="grid"></div>
@@ -54,61 +72,94 @@
 <div class="overlay" id="ov" onclick="if(event.target===this)closeM()">
   <div class="modal">
     <h2 id="mTitle"></h2><div class="id" id="mId"></div>
-    <p style="margin:10px 0 4px">Cài vào đâu?</p>
-    <label class="opt"><input type="radio" name="t" value="claude" checked>
-      <span>Claude Code<small>%USERPROFILE%\.claude\skills</small></span></label>
-    <label class="opt"><input type="radio" name="t" value="claude-api">
-      <span>Hồ sơ Claude API (dùng trong Paseo nếu chạy qua hồ sơ này)<small>%USERPROFILE%\.claude-api\skills</small></span></label>
-    <div class="msg" id="msg"></div>
+    <p style="margin:10px 0 4px">Chưa kết nối plugin Paseo. Dán lệnh này vào PowerShell để cài skill:</p>
+    <pre id="mCmd"></pre>
     <div class="row">
       <button onclick="closeM()">Đóng</button>
-      <button onclick="doCopy(this)">Copy lệnh</button>
-      <button class="pri" onclick="doInstall()">Cài tự động</button>
+      <button class="pri" onclick="copy(mCmd.textContent,this)">Copy lệnh</button>
     </div>
   </div>
 </div>
+<div id="toast"></div>
 
 <script>
-const RAW = 'https://raw.githubusercontent.com/minhdv-zz/team-skills/main';
-const INSTALL = '& ([scriptblock]::Create((irm ' + RAW + '/install.ps1)))';
-document.getElementById('setupCmd').textContent = '& ([scriptblock]::Create((irm ' + RAW + '/setup-protocol.ps1)))';
-let cur = null;
-let SKILLS = [];
+var RAW = 'https://raw.githubusercontent.com/minhdv-zz/team-skills/main';
+var LOCAL = 'http://127.0.0.1:47653';
+var PLUGIN_SRC = 'https://github.com/minhdv-zz/team-skills.git';
+var INSTALL = '& ([scriptblock]::Create((irm ' + RAW + '/install.ps1)))';
+var SKILLS = [];       // from skills.json
+var STATE = null;      // from plugin /status (null = not connected)
+var BUSY = false;
 
+document.getElementById('pluginSrc').textContent = PLUGIN_SRC;
+document.getElementById('pluginCmd').textContent = 'paseo plugin install ' + PLUGIN_SRC + ' --path paseo-plugin';
+
+function $(id){return document.getElementById(id)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function target(){return $('target').value}
+function toast(msg, ok){
+  var t=$('toast'); t.textContent=msg; t.className=ok?'ok':'err'; t.style.display='block';
+  clearTimeout(toast._t); toast._t=setTimeout(function(){t.style.display='none'},5000);
+}
 function copy(text, btn){
   navigator.clipboard.writeText(text).then(function(){
     var o=btn.textContent; btn.textContent='Đã copy'; setTimeout(function(){btn.textContent=o},1500);
   });
 }
-function target(){return document.querySelector('input[name=t]:checked').value}
-function openM(i){
-  cur = SKILLS[i];
-  mTitle.textContent = cur.title; mId.textContent = cur.name; msg.textContent=''; msg.className='msg';
-  ov.classList.add('on');
-}
-function closeM(){ov.classList.remove('on')}
-function cmd(){
-  var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : '';
-  return INSTALL + ' ' + cur.name + dest;
-}
-function doCopy(btn){copy(cmd(),btn)}
-function doInstall(){
-  msg.className='msg';
-  msg.textContent='Đang mở trình cài đặt... Nếu trình duyệt hỏi mở TeamSkills thì bấm Cho phép. Không thấy gì xảy ra thì chạy dòng thiết lập ở đầu trang trước.';
-  location.href = 'teamskills://install?skill=' + encodeURIComponent(cur.name) + '&target=' + target();
+function installedOf(name){
+  if(!STATE) return false;
+  for(var i=0;i<STATE.skills.length;i++) if(STATE.skills[i].name===name) return STATE.skills[i].installed[target()];
+  return false;
 }
 
-fetch('skills.json').then(function(r){return r.json()}).then(function(list){
-  SKILLS = list;
-  grid.innerHTML = list.map(function(s,i){
+function render(){
+  $('grid').innerHTML = SKILLS.map(function(s,i){
+    var inst = installedOf(s.name);
+    var label = STATE ? (inst ? 'Cài lại' : 'Cài') : 'Cài';
     return '<div class="card">'
-      + '<h3>'+esc(s.title)+'</h3><div class="id">'+esc(s.name)+'</div>'
+      + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
       + '<p>'+esc(s.desc)+'</p>'
       + '<div class="tags">'+(s.needs||[]).map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
-      + '<div><button class="pri" onclick="openM('+i+')">Cài</button></div></div>';
+      + '<div><button class="pri" '+(BUSY?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button></div></div>';
   }).join('');
-}).catch(function(){grid.innerHTML='<p class="err">Không tải được danh sách skill.</p>'});
+  var on = !!STATE;
+  $('dot').className = 'dot ' + (on ? 'on' : 'off');
+  $('status').textContent = on ? 'Đã kết nối plugin Paseo trên máy này.' : 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).';
+  $('btnAll').disabled = !on || BUSY; $('btnMissing').disabled = !on || BUSY;
+  $('help').open = !on;
+}
+
+function post(body){
+  BUSY = true; render();
+  return fetch(LOCAL + '/install', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; })})
+    .finally(function(){ BUSY=false; });
+}
+function installOne(i){
+  var s = SKILLS[i];
+  if(!STATE){ $('mTitle').textContent=s.title; $('mId').textContent=s.name;
+    var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : '';
+    $('mCmd').textContent = INSTALL + ' ' + s.name + dest; $('ov').classList.add('on'); return; }
+  post({names:[s.name], target:target()}).then(function(){
+    toast('Đã cài ' + s.name + '. Mở lại Claude Code để nhận skill.', true); return refresh();
+  }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+}
+function bulk(mode){
+  post({mode:mode, target:target()}).then(function(j){
+    toast(j.installed.length ? 'Đã cài ' + j.installed.length + ' skill. Mở lại Claude Code để nhận skill.' : 'Không có skill nào cần cài.', true);
+    return refresh();
+  }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+}
+function closeM(){ $('ov').classList.remove('on') }
+
+function refresh(){
+  return fetch(LOCAL + '/status').then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
+    .then(function(j){ STATE = j; }).catch(function(){ STATE = null; }).then(render);
+}
+$('target').addEventListener('change', render);
+
+fetch('skills.json').then(function(r){return r.json()}).then(function(list){ SKILLS = list; render(); return refresh(); })
+  .catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách skill.</p>' });
 </script>
 </body>
 </html>

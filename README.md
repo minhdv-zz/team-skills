@@ -42,6 +42,12 @@ Dán vào PowerShell, thay `copymau-hoidz` bằng tên skill cần cài:
 - Skill được chép vào `%USERPROFILE%\.claude\skills`. Mở lại Claude Code để nhận skill mới.
 - Cập nhật skill: chạy lại đúng dòng đó.
 
+### Cách 3: trang web + plugin Paseo (chọn trên web, plugin cài hộ)
+1. Cài plugin Paseo một lần (Settings → Plugins → Plugin source): `https://github.com/minhdv-zz/team-skills.git`, thư mục plugin là `paseo-plugin`.
+2. Mở https://minhdv-zz.github.io/team-skills/ . Khi chấm tròn xanh, bấm **Cài** ở từng skill, hoặc **Cài còn thiếu** / **Cài tất cả**.
+3. Plugin chỉ nghe ở `127.0.0.1:47653`, chỉ nhận yêu cầu từ trang web trên, chỉ cài skill có trong `docs/skills.json`.
+4. Thêm skill mới: thêm plugin trong `plugins/` và một dòng trong `docs/skills.json`.
+
 ## Yêu cầu môi trường
 - Skill Blender cần Blender MCP; skill Unity cần Unity MCP (`com.coplaydev.unity-mcp`).
 - Một số skill ghi sẵn đường dẫn dự án `D:\Horus\pirate-wars\...`. Máy khác để project ở chỗ khác thì sửa đường dẫn tương ứng.
