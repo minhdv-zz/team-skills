@@ -43,6 +43,10 @@
   #toast.ok{border-color:var(--ok)} #toast.err{border-color:var(--err)}
   input{font:inherit;background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
   code{background:#0b0f14;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+  ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:16px}
+  ol.steps>li{counter-increment:s;position:relative;padding-left:44px}
+  ol.steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--acc);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
+  ul.check{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
   .tabs{display:flex;gap:8px;margin-bottom:16px}
   .tab{padding:8px 18px;border-radius:999px}
   .tab.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
@@ -89,56 +93,65 @@
   <div class="grid" id="grid"></div>
   </div>
   <div id="contrib" style="display:none">
-    <div class="bar" style="display:block">
-      <b>Ai cũng đóng góp được.</b> Cần một tài khoản GitHub, và phải ghi <b>tên tác giả</b> (<code>author:</code> trong SKILL.md, hoặc <code>bl_info</code> của addon) để mọi người biết skill/addon đó của ai. Người không có quyền ghi vào repo sẽ được GitHub tự tạo bản sao (fork) và gửi đề xuất (Pull Request). Mọi đóng góp đều được chủ repo duyệt trước khi xuất hiện trên trang này.
+    <div class="card" style="border-color:var(--acc);gap:14px">
+      <h3 style="font-size:20px">Đóng góp skill hoặc addon của bạn</h3>
+      <div style="color:var(--mut)">Gửi lên kho chung cho cả team dùng. Chủ repo duyệt rồi mới hiện. Cần một tài khoản GitHub.</div>
+
+      <ol class="steps">
+        <li>
+          <b>Cập nhật plugin Paseo</b> (làm một lần)
+          <pre id="cmdUpdate">paseo plugin update team-skills</pre>
+          <button onclick="copy(cmdUpdate.textContent,this)">Copy lệnh</button>
+        </li>
+        <li>
+          <b>Mở một cuộc chat mới trong Paseo</b> và nhắn Claude
+          <pre id="chatSkill">Hãy đóng góp skill tên-skill-của-bạn lên Team Skills</pre>
+          <button onclick="copy(chatSkill.textContent,this)">Copy câu mẫu (skill)</button>
+          <pre id="chatAddon" style="margin-top:10px">Hãy đóng góp addon Blender tên-addon-của-bạn lên Team Skills</pre>
+          <button onclick="copy(chatAddon.textContent,this)">Copy câu mẫu (addon)</button>
+        </li>
+        <li>
+          <b>Claude kiểm tra giúp bạn</b>, tự sửa lỗi nhỏ (ví dụ thêm tên tác giả) và hỏi bạn có đồng ý công khai không. Chỉ cần trả lời.
+        </li>
+        <li>
+          <b>Đăng nhập GitHub khi được mở trang:</b> nhập mã hiện ra rồi bấm <i>Authorize</i>. Xong Claude gửi cho bạn <b>link Pull Request</b>. Việc còn lại là chờ chủ repo duyệt.
+        </li>
+      </ol>
     </div>
 
-    <div class="card" style="margin-bottom:16px;border-color:var(--acc)">
-      <h3>Cách nhanh nhất: nhờ Claude trong Paseo làm giúp</h3>
-      <p>Cần plugin Paseo đã cài và cập nhật (<code>paseo plugin update team-skills</code>). Mở một cuộc chat <b>mới</b> trong Paseo rồi nhắn, ví dụ:</p>
-      <pre id="chatSample">Hãy đóng góp skill tên-skill-của-bạn lên Team Skills</pre>
-      <div><button onclick="copy(chatSample.textContent,this)">Copy câu mẫu</button></div>
-      <p style="color:var(--mut);margin-top:10px">
-        Claude sẽ: kiểm tra skill hoặc addon của bạn và <b>tự sửa các lỗi nhỏ</b> (ví dụ thêm dòng tác giả) sau khi hỏi bạn → hỏi bạn có đồng ý công khai không → <b>mở trang đăng nhập GitHub</b> nếu bạn chưa đăng nhập (nhập mã hiện ra rồi bấm Authorize) → tự tạo Pull Request và gửi link cho bạn.
-        Tên người đóng góp là tài khoản GitHub bạn đăng nhập, nên không thể giả mạo. Bạn vẫn cần có tài khoản GitHub. Chủ repo duyệt rồi mới gộp.
-      </p>
+    <div class="card" style="margin-top:14px">
+      <h3>Trước khi gửi, kiểm tra nhanh</h3>
+      <ul class="check">
+        <li>Có <b>tên tác giả</b>: dòng <code>author:</code> trong <code>SKILL.md</code>, hoặc <code>author</code> trong <code>bl_info</code> của addon.</li>
+        <li>Addon phải <b>miễn phí và được phép chia sẻ lại</b>, kèm file giấy phép. Addon trả phí thì không đưa lên.</li>
+        <li>Không có <b>khóa, token, mật khẩu</b> hay file <code>.exe</code>/<code>.dll</code> trong skill. Hệ thống tự quét và từ chối.</li>
+      </ul>
     </div>
 
-    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">
-      <div class="card">
-        <h3>Đóng góp một skill</h3>
-        <p>Skill là một thư mục có file <code>SKILL.md</code> (kèm tiêu đề <code>name</code> và <code>description</code> ở đầu file).</p>
-        <label>Tên skill (chữ thường, số, <code>-</code> hoặc <code>_</code>)<br>
-          <input id="cSkill" value="ten-skill-moi" style="width:100%;margin-top:6px"></label>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn pri" id="cSkillNew" target="_blank" rel="noopener noreferrer">1. Tạo SKILL.md trên GitHub</a>
-          <a class="btn" id="cSkillUp" target="_blank" rel="noopener noreferrer">2. Thêm file kèm theo</a>
+    <details class="help" style="margin-top:14px">
+      <summary>Không dùng Paseo? Gửi thủ công trên GitHub</summary>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(360px,1fr));margin-top:12px">
+        <div class="card">
+          <h3>Skill</h3>
+          <label>Tên skill (chữ thường, số, <code>-</code> hoặc <code>_</code>)<br>
+            <input id="cSkill" value="ten-skill-moi" style="width:100%;margin-top:6px"></label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn pri" id="cSkillNew" target="_blank" rel="noopener noreferrer">1. Tạo SKILL.md trên GitHub</a>
+            <a class="btn" id="cSkillUp" target="_blank" rel="noopener noreferrer">2. Thêm file kèm theo</a>
+          </div>
+          <div style="color:var(--mut);font-size:13px">Bước 1 mở trang tạo file có sẵn mẫu, chỉnh rồi bấm <b>Propose new file</b>. Bước 2 chỉ cần khi skill có thêm file, làm sau khi bước 1 được gộp.</div>
         </div>
-        <p style="color:var(--mut);margin-top:10px">Bước 1 mở sẵn trang tạo file với mẫu nội dung, bạn chỉnh rồi bấm <b>Propose new file</b> (hoặc <b>Commit</b>). Bước 2 chỉ cần khi skill có thêm script hoặc tài liệu, làm sau khi bước 1 đã được gộp.</p>
-      </div>
-
-      <div class="card">
-        <h3>Đóng góp một addon Blender</h3>
-        <p>Addon là một thư mục có <code>__init__.py</code> hoặc <code>blender_manifest.toml</code>, kèm file giấy phép (miễn phí, được phép chia sẻ lại).</p>
-        <label>Tên thư mục addon<br>
-          <input id="cAddon" value="ten_addon_moi" style="width:100%;margin-top:6px"></label>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn pri" id="cAddonUp" target="_blank" rel="noopener noreferrer">Tải addon lên GitHub</a>
+        <div class="card">
+          <h3>Addon Blender</h3>
+          <label>Tên thư mục addon<br>
+            <input id="cAddon" value="ten_addon_moi" style="width:100%;margin-top:6px"></label>
+          <div>
+            <a class="btn pri" id="cAddonUp" target="_blank" rel="noopener noreferrer">Tải addon lên GitHub</a>
+          </div>
+          <div style="color:var(--mut);font-size:13px">Kéo thả nguyên thư mục addon vào trang vừa mở rồi bấm <b>Propose changes</b>.</div>
         </div>
-        <p style="color:var(--mut);margin-top:10px">Trang tải lên của GitHub mở đúng thư mục <code>addons/</code>. Kéo thả nguyên thư mục addon vào đó, rồi bấm <b>Propose changes</b>.</p>
       </div>
-    </div>
-
-    <details class="help" open style="margin-top:20px">
-      <summary>Quy tắc để được duyệt</summary>
-      <p>
-        • Không đưa khóa, token, mật khẩu. Hệ thống tự quét và từ chối.<br>
-        • Không đưa file cài đặt hoặc chương trình chạy (<code>.exe</code>, <code>.dll</code>, <code>.bat</code>...) vào skill.<br>
-        • Addon trả phí hoặc không có giấy phép cho phép chia sẻ thì <b>không</b> đưa lên.<br>
-        • Skill nên ghi rõ cần gì (Blender MCP, Unity MCP...) và không để đường dẫn riêng như <code>C:\Users\ten</code>.<br>
-        • Skill và addon là mã chạy trên máy người cài, nên chủ repo sẽ đọc kỹ trước khi gộp.
-      </p>
-      <p>Sau khi gộp, một bot tự cập nhật danh sách trên trang này trong vài phút. Hướng dẫn đầy đủ: <a href="https://github.com/minhdv-zz/team-skills/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" style="color:#9d8cff">CONTRIBUTING.md</a></p>
+      <p style="color:var(--mut);margin-top:12px">Chưa có quyền ghi vào repo thì GitHub tự tạo bản sao cho bạn. Hướng dẫn đầy đủ: <a href="https://github.com/minhdv-zz/team-skills/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" style="color:#9d8cff">CONTRIBUTING.md</a></p>
     </details>
   </div>
 </div>
@@ -189,7 +202,7 @@ function setTab(t){
   $('tab-contrib').className='tab'+(t==='contrib'?' on':'');
   $('main').style.display = t==='contrib' ? 'none' : '';
   $('contrib').style.display = t==='contrib' ? '' : 'none';
-  if(t==='contrib'){ $('sub').innerHTML='Gửi skill hoặc addon của bạn lên kho chung. Chủ repo duyệt rồi mới hiện trên trang.'; updateContribLinks(); return; }
+  if(t==='contrib'){ $('sub').innerHTML=''; updateContribLinks(); return; }
   render();
 }
 var SKILL_TEMPLATE = '---\nname: NAME\ndescription: Mô tả ngắn skill làm gì và khi nào dùng\nauthor: Tên của bạn\n---\n\n# NAME\n\nHướng dẫn cho Claude: các bước, công cụ cần dùng, điều cần hỏi người dùng.\n';
