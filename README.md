@@ -19,7 +19,7 @@ Skill dùng chung của team (pipeline Blender → Unity cho pirate-wars).
 
 ### Cách 1: plugin của Claude Code (khuyên dùng)
 ```
-/plugin marketplace add <owner>/<repo>
+/plugin marketplace add minhdv-zz/team-skills
 /plugin install team-skills@team-skills-marketplace
 ```
 Cập nhật khi có bản mới: `/plugin` → update.
@@ -27,7 +27,7 @@ Cập nhật khi có bản mới: `/plugin` → update.
 
 ### Cách 2: script (dự phòng)
 ```
-git clone <url-repo> && cd team-skills
+git clone https://github.com/minhdv-zz/team-skills.git && cd team-skills
 .\install.ps1 -Link     # junction: sau này chỉ cần git pull
 .\install.ps1           # hoặc copy
 ```
