@@ -163,7 +163,7 @@ function refresh(){
 }
 $('target').addEventListener('change', render);
 
-fetch('skills.json').then(function(r){return r.json()}).then(function(list){ SKILLS = list; render(); return refresh(); })
+fetch('skills.json?t=' + Date.now()).then(function(r){return r.json()}).then(function(list){ SKILLS = list; render(); return refresh(); })
   .catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách skill.</p>' });
 </script>
 </body>
