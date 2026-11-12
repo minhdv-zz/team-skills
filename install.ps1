@@ -14,6 +14,8 @@ param(
     [string]$Ref  = 'main'
 )
 $ErrorActionPreference = 'Stop'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = 'SilentlyContinue'
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("team-skills-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
