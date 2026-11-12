@@ -9,15 +9,6 @@
     "img": "img/copymau-hoidz.jpg"
   },
   {
-    "name": "copysize_hoidz",
-    "title": "Chỉnh size ô súng",
-    "desc": "Chỉnh khung ô súng osungXXX trên thân thuyền cho vừa cannon_tXXX_g, kiểm tra lẹm.",
-    "needs": [
-      "Blender MCP"
-    ],
-    "img": "img/copysize_hoidz.jpg"
-  },
-  {
     "name": "export_hoidz",
     "title": "Xuất FBX sang Unity",
     "desc": "Xuất mesh từ Blender sang Unity bằng add-on ACT với cài đặt cố định.",
@@ -28,48 +19,6 @@
     "img": "img/export_hoidz.jpg"
   },
   {
-    "name": "fixship_hoidz",
-    "title": "Fix ship skin mới",
-    "desc": "Quy trình trọn gói: chỉnh khung súng, xuất FBX, setup prefab thuyền trong Unity.",
-    "needs": [
-      "Blender MCP",
-      "Unity MCP",
-      "Addon ACT",
-      "Cài kèm export_hoidz"
-    ],
-    "img": "img/fixship_hoidz.jpg"
-  },
-  {
-    "name": "fixsung_hoidz",
-    "title": "Fix súng skin mới",
-    "desc": "Quy trình trọn gói: tạo mesh nòng _g, xuất FBX, setup prefab súng trong Unity.",
-    "needs": [
-      "Blender MCP",
-      "Unity MCP",
-      "Addon ACT",
-      "Cài kèm export_hoidz"
-    ],
-    "img": "img/fixsung_hoidz.jpg"
-  },
-  {
-    "name": "setcannon_hoidz",
-    "title": "Setup cannon prefab",
-    "desc": "Thay mesh FBX, gán material và đặt Muzzle Point cho prefab cannon trong Unity.",
-    "needs": [
-      "Unity MCP"
-    ],
-    "img": "img/setcannon_hoidz.jpg"
-  },
-  {
-    "name": "setship_hoidz",
-    "title": "Setup ô súng thuyền",
-    "desc": "Đặt CannonSlot cho ship bản _new và clone sang các bản mirror trong Unity.",
-    "needs": [
-      "Unity MCP"
-    ],
-    "img": "img/setship_hoidz.jpg"
-  },
-  {
     "name": "tb-hoidz",
     "title": "Texture bằng palette",
     "desc": "Tô texture model Blender bằng palette-strip gradient UV từ ảnh concept.",
@@ -77,14 +26,5 @@
       "Blender MCP"
     ],
     "img": "img/tb-hoidz.jpg"
-  },
-  {
-    "name": "thoidz",
-    "title": "Texture bằng palette (bản t)",
-    "desc": "Tô texture model Blender bằng palette-strip gradient UV từ ảnh concept.",
-    "needs": [
-      "Blender MCP"
-    ],
-    "img": "img/thoidz.jpg"
   }
 ]
