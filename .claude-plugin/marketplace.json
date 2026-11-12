@@ -10,44 +10,14 @@
       "description": "Copy colors between Blender models or selected parts, especially palette-texture models whose colors are controlled by UVs. Use for /copymau-hoidz, \"copy màu hoidz\", or copying wheel, rim, hub, and o"
     },
     {
-      "name": "copysize-hoidz",
-      "source": "./plugins/copysize_hoidz",
-      "description": "Chỉnh khung ô súng (osungXXX / osungXXX.001, đôi khi tên base.00x) trên thân thuyền Blender cho vừa cannon_tXXX_g, bằng thông số đã chốt (margin, mép trên cố định, căn tÃ"
-    },
-    {
       "name": "export-hoidz",
       "source": "./plugins/export_hoidz",
       "description": "Xuất mesh từ Blender sang Unity dạng FBX bằng add-on ACT (Import/Export Tools → Export FBX to Unity), điều khiển qua Blender MCP. Người dùng đưa tên mesh hoặc ảnh có mũi tÃ"
     },
     {
-      "name": "fixship-hoidz",
-      "source": "./plugins/fixship_hoidz",
-      "description": "Quy trình trọn gói cho ship skin mới (pirate-wars) - (1) Blender - chỉnh size khung ô súng osungXXX theo cannon_tXXX_g, kiểm tra lẹm bằng BVH; (2) xuất FBX sang Unity bằng ACT; (3)"
-    },
-    {
-      "name": "fixsung-hoidz",
-      "source": "./plugins/fixsung_hoidz",
-      "description": "Quy trình trọn gói cho súng skin mới (pirate-wars) - (1) Blender - tạo mesh nòng cannon_tXXX_g từ thân cannon_tXXX (cắt gọn, giữ chi tiết phía đầu nòng, bỏ chi tiết phía"
-    },
-    {
-      "name": "setcannon-hoidz",
-      "source": "./plugins/setcannon_hoidz",
-      "description": "Setup cannon skin prefab trong Unity (project pirate-wars) bằng UnityMCP - tạo Prefab Variant từ CannonSkinBase hoặc thay mesh FBX trong prefab c_XXXX có sẵn, gán material, đặt Muzzle P"
-    },
-    {
-      "name": "setship-hoidz",
-      "source": "./plugins/setship_hoidz",
-      "description": "Setup CannonSlot cho ship skin bản _new trong Unity (project pirate-wars) bằng UnityMCP - đặt CannonSlot làm con của mesh osung gốc, clone mesh osung + slot sang các bản mirror (scale -"
-    },
-    {
       "name": "tb-hoidz",
       "source": "./plugins/tb-hoidz",
       "description": "Texture existing Blender game models with palette-strip gradient UV mapping from a concept image. Use only when the user explicitly invokes /tb-hoidz, $tb-hoidz or tb-hoidz. Do not trigger for generic"
-    },
-    {
-      "name": "thoidz",
-      "source": "./plugins/thoidz",
-      "description": "Texture existing Blender game models with palette-strip gradient UV mapping from a concept image. Use only when the user explicitly invokes /thoidz, /t hoidz, $thoidz or thoidz. Do not trigger for gen"
     }
   ]
 }

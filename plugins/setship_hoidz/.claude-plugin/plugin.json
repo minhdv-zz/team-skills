@@ -1,8 +1,0 @@
-{
-  "name": "setship-hoidz",
-  "description": "Setup CannonSlot cho ship skin bản _new trong Unity (project pirate-wars) bằng UnityMCP - đặt CannonSlot làm con của mesh osung gốc, clone mesh osung + slot sang các bản mirror (scale -",
-  "version": "1.0.0",
-  "author": {
-    "name": "hoidz"
-  }
-}

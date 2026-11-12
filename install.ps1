@@ -1,7 +1,7 @@
 # Install team skills, no git needed.
 #
 #   One skill:      & ([scriptblock]::Create((irm https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.ps1))) copymau-hoidz
-#   Several:         ... copymau-hoidz thoidz
+#   Several:         ... copymau-hoidz tb-hoidz
 #   All:            ... -All
 #   List:        ... -List
 #   Other dir:   ... copymau-hoidz -Dest C:\temp\skills

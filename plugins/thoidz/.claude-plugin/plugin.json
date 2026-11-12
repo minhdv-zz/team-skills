@@ -1,8 +1,0 @@
-{
-  "name": "thoidz",
-  "description": "Texture existing Blender game models with palette-strip gradient UV mapping from a concept image. Use only when the user explicitly invokes /thoidz, /t hoidz, $thoidz or thoidz. Do not trigger for gen",
-  "version": "1.0.0",
-  "author": {
-    "name": "hoidz"
-  }
-}

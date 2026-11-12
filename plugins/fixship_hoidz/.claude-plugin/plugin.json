@@ -1,8 +1,0 @@
-{
-  "name": "fixship-hoidz",
-  "description": "Quy trình trọn gói cho ship skin mới (pirate-wars) - (1) Blender - chỉnh size khung ô súng osungXXX theo cannon_tXXX_g, kiểm tra lẹm bằng BVH; (2) xuất FBX sang Unity bằng ACT; (3)",
-  "version": "1.0.0",
-  "author": {
-    "name": "hoidz"
-  }
-}

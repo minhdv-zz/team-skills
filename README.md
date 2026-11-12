@@ -7,13 +7,8 @@ Skill dùng chung của team (pipeline Blender → Unity cho pirate-wars).
 | Skill | Việc |
 |---|---|
 | `copymau-hoidz` | Copy màu giữa các model Blender (palette/UV) |
-| `copysize_hoidz` | Chỉnh khung ô súng osungXXX cho vừa cannon_tXXX_g |
 | `export_hoidz` | Xuất mesh Blender sang Unity (FBX, add-on ACT) |
-| `fixship_hoidz` | Quy trình trọn gói ship skin mới |
-| `fixsung_hoidz` | Quy trình trọn gói súng skin mới |
-| `setcannon_hoidz` | Setup cannon prefab trong Unity |
-| `setship_hoidz` | Setup CannonSlot cho ship `_new` |
-| `tb-hoidz`, `thoidz` | Texture model bằng palette-strip gradient UV |
+| `tb-hoidz` | Texture model bằng palette-strip gradient UV |
 
 ## Cài đặt
 
@@ -24,11 +19,10 @@ Thêm kho một lần:
 ```
 Rồi chỉ cài skill cần dùng (tên plugin viết gạch ngang):
 ```
-/plugin install fixship-hoidz@team-skills-marketplace
-/plugin install setship-hoidz@team-skills-marketplace
+/plugin install copymau-hoidz@team-skills-marketplace
+/plugin install export-hoidz@team-skills-marketplace
 ```
-Các plugin: `copymau-hoidz`, `copysize-hoidz`, `export-hoidz`, `fixship-hoidz`, `fixsung-hoidz`, `setcannon-hoidz`, `setship-hoidz`, `tb-hoidz`, `thoidz`.
-Lưu ý: `fixship-hoidz` và `fixsung-hoidz` có bước xuất FBX, nên cài kèm `export-hoidz`.
+Các plugin: `copymau-hoidz`, `export-hoidz`, `tb-hoidz`.
 Cập nhật khi có bản mới: `/plugin` → update.
 (Repo private thì máy phải đăng nhập Git có quyền đọc repo.)
 
@@ -37,7 +31,7 @@ Dán vào PowerShell, thay `copymau-hoidz` bằng tên skill cần cài:
 ```
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.ps1))) copymau-hoidz
 ```
-- Cài nhiều skill: thêm tên phía sau (`... copymau-hoidz thoidz`).
+- Cài nhiều skill: thêm tên phía sau (`... copymau-hoidz tb-hoidz`).
 - Cài tất cả: thêm `-All`. Xem danh sách: thêm `-List`.
 - Skill được chép vào `%USERPROFILE%\.claude\skills`. Mở lại Claude Code để nhận skill mới.
 - Cập nhật skill: chạy lại đúng dòng đó.
