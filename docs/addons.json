@@ -47,31 +47,37 @@
   {
     "name": "hardops",
     "title": "Hard Ops 26.1.7",
-    "desc": "Bộ công cụ model hard-surface nhanh: cắt, bevel, tạo chi tiết cơ khí. Tải file zip từ Drive nội bộ, cài bằng Edit → Preferences → Add-ons → Install from Disk.",
+    "desc": "Bộ công cụ model hard-surface nhanh: cắt, bevel, tạo chi tiết cơ khí. Cài tự động qua plugin Paseo, hoặc tải zip thủ công từ Drive nội bộ rồi Install from Disk.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym"
+    "link": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym",
+    "zip": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym/download",
+    "folder": "HOps"
   },
   {
     "name": "uvpackmaster4",
     "title": "UVPackmaster 4.1.3",
-    "desc": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Tải file zip từ Drive nội bộ, cài bằng Install from Disk. Cần engine và kích hoạt theo giấy phép của hãng.",
+    "desc": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Cài tự động qua plugin Paseo, hoặc tải zip thủ công từ Drive nội bộ rồi Install from Disk. Cần engine và kích hoạt theo giấy phép của hãng.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/s/72wDsoqNdCdo973"
+    "link": "https://drive.horusvn.com/s/72wDsoqNdCdo973",
+    "zip": "https://drive.horusvn.com/s/72wDsoqNdCdo973/download",
+    "folder": "uvpackmaster4"
   },
   {
     "name": "pie_menu_editor_fork",
     "title": "Pie Menu Editor Fork 1.19.52",
-    "desc": "Tạo và chỉnh pie menu, phím tắt và macro tùy biến trong Blender. Tải file zip từ Drive nội bộ, cài bằng Install from Disk.",
+    "desc": "Tạo và chỉnh pie menu, phím tắt và macro tùy biến trong Blender. Cài tự động qua plugin Paseo, hoặc tải zip thủ công từ Drive nội bộ rồi Install from Disk.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/s/5W659cSZdZgg8Np"
+    "link": "https://drive.horusvn.com/s/5W659cSZdZgg8Np",
+    "zip": "https://drive.horusvn.com/s/5W659cSZdZgg8Np/download",
+    "folder": "pie_menu_editor"
   }
 ]

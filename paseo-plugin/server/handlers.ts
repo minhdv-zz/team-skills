@@ -7,6 +7,7 @@ import { installSkillRpc } from "../shared/rpc";
 
 const SITE = "https://minhdv-zz.github.io/team-skills";
 const SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
+const ZIP_HOSTS = new Set(["drive.horusvn.com"]);
 const ADDONS_ZIP = "https://codeload.github.com/minhdv-zz/team-blender-addons/zip/refs/heads/main";
 
 export type Target = "claude" | "claude-api";
@@ -26,8 +27,12 @@ interface AddonEntry {
   desc: string;
   license?: string;
   needs?: string[];
-  /** External download page. Such entries are shown on the site but never installed by the plugin. */
+  /** External download page shown on the site (manual download). */
   link?: string;
+  /** Direct zip URL the plugin may download and install. Host must be in ZIP_HOSTS. */
+  zip?: string;
+  /** Top-level folder inside the zip (and name of the folder created in scripts/addons). Defaults to name. */
+  folder?: string;
 }
 
 function skillsDir(target: Target): string {
@@ -146,9 +151,16 @@ function addonsDir(version: string): string {
   return join(blenderRoot(), version, "scripts", "addons");
 }
 
+/** Entries the plugin can install: repo addons, or link entries that also publish a direct zip. */
+async function installableAddons(): Promise<AddonEntry[]> {
+  return (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link || a.zip);
+}
+
+const folderOf = (a: AddonEntry) => a.folder ?? a.name;
+
 export async function listAddons() {
   const versions = blenderVersions();
-  const list = (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link);
+  const list = await installableAddons();
   return {
     versions,
     addons: list.map((a) => ({
@@ -157,29 +169,61 @@ export async function listAddons() {
       desc: a.desc,
       license: a.license ?? "",
       needs: a.needs ?? [],
-      installed: Object.fromEntries(versions.map((v) => [v, existsSync(join(addonsDir(v), a.name))])),
+      installed: Object.fromEntries(versions.map((v) => [v, existsSync(join(addonsDir(v), folderOf(a)))])),
     })),
   };
+}
+
+/** Download a zip from an allowed host and extract it, checking the listing is safe. Returns the extract folder. */
+async function fetchZip(url: string, folder: string, tmp: string): Promise<string> {
+  const u = new URL(url);
+  if (u.protocol !== "https:" || !ZIP_HOSTS.has(u.hostname)) throw new Error("Download host not allowed: " + u.hostname);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
+  const zipPath = join(tmp, folder + ".zip");
+  writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
+  const tar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+  const listing = execFileSync(tar, ["-tf", zipPath], { maxBuffer: 64 * 1024 * 1024 })
+    .toString("utf8")
+    .split(/\r?\n/)
+    .filter(Boolean);
+  for (const entry of listing) {
+    const norm = entry.split("\\").join("/");
+    if (norm.startsWith("/") || /^[A-Za-z]:/.test(norm) || norm.split("/").includes("..")) throw new Error("Unsafe path in zip: " + entry);
+    if (norm.split("/")[0] !== folder) throw new Error("Zip must contain only the folder '" + folder + "' (found '" + entry + "')");
+  }
+  const out = join(tmp, "z-" + folder);
+  mkdirSync(out);
+  execFileSync(tar, ["-xf", zipPath, "-C", out]);
+  return out;
 }
 
 /** Copy addons into scripts/addons of the given Blender version. Enable them in Preferences afterwards. */
 export async function installAddons(names: string[], version: string): Promise<string[]> {
   if (!blenderVersions().includes(version)) throw new Error("Blender " + version + " not found on this machine");
-  const list = (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link);
-  const allowed = new Set(list.map((a) => a.name));
-  for (const n of names) if (!allowed.has(n)) throw new Error("Unknown addon: " + n);
+  const list = await installableAddons();
+  const byName = new Map(list.map((a) => [a.name, a]));
+  for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
   if (names.length === 0) return [];
 
   const tmp = mkdtempSync(join(tmpdir(), "team-addons-"));
   try {
-    const root = await fetchRepo(ADDONS_ZIP, tmp);
     const destRoot = addonsDir(version);
     mkdirSync(destRoot, { recursive: true });
+    let repoRoot: string | null = null;
     const done: string[] = [];
     for (const name of names) {
-      const src = join(root, "addons", name);
-      if (!existsSync(src)) throw new Error("Addon folder not found in repository: " + name);
-      const dest = join(destRoot, name);
+      const entry = byName.get(name)!;
+      const folder = folderOf(entry);
+      let src: string;
+      if (entry.zip) {
+        src = join(await fetchZip(entry.zip, folder, tmp), folder);
+      } else {
+        repoRoot ??= await fetchRepo(ADDONS_ZIP, tmp);
+        src = join(repoRoot, "addons", name);
+      }
+      if (!existsSync(src)) throw new Error("Addon folder not found: " + name);
+      const dest = join(destRoot, folder);
       rmSync(dest, { recursive: true, force: true });
       cpSync(src, dest, { recursive: true });
       done.push(dest);
