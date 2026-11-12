@@ -31,6 +31,8 @@
   .badge{font-size:11px;border-radius:999px;padding:1px 8px;background:#12261a;color:var(--ok);border:1px solid #1f4a2b}
   button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:#21262d;color:var(--text);padding:7px 14px}
   button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  a.btn{display:inline-block;text-decoration:none;border-radius:8px;border:1px solid var(--line);padding:7px 14px;color:var(--text);background:#21262d}
+  a.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
   button:hover:not(:disabled){filter:brightness(1.12)} button:disabled{opacity:.55;cursor:default}
   .overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
   .overlay.on{display:flex}
@@ -163,7 +165,9 @@ function render(){
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
       + '<p>'+esc(s.desc)+'</p>'
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
-      + '<div><button class="pri" '+((BUSY||noBlender)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button></div></div>';
+      + '<div>' + (s.link
+          ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">Tải về (nội bộ)</a>'
+          : '<button class="pri" '+((BUSY||noBlender)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
   }).join('');
 
   var on = !!STATE;
