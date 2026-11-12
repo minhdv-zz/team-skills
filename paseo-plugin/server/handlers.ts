@@ -57,7 +57,7 @@ export async function installSkill({ name, target }: RpcInput<typeof installSkil
     writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
     const out = join(tmp, "x");
     mkdirSync(out);
-    if (process.platform === "win32") execFileSync(process.env.SystemRoot + "\System32\tar.exe", ["-xf", zipPath, "-C", out]);
+    if (process.platform === "win32") execFileSync(join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe"), ["-xf", zipPath, "-C", out]);
     else execFileSync("unzip", ["-q", zipPath, "-d", out]);
 
     const root = readdirSync(out)[0];
