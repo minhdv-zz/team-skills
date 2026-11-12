@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RpcInput } from "@getpaseo/plugin";
@@ -7,8 +8,10 @@ import { installSkillRpc } from "../shared/rpc";
 
 const SITE = "https://minhdv-zz.github.io/team-skills";
 const SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
-const ZIP_HOSTS = new Set(["drive.horusvn.com"]);
 const ADDONS_ZIP = "https://codeload.github.com/minhdv-zz/team-blender-addons/zip/refs/heads/main";
+const ZIP_HOSTS = new Set(["drive.horusvn.com"]);
+/** Default port of the "MCP for Blender" addon's local socket server. */
+const BLENDER_PORT = 9876;
 
 export type Target = "claude" | "claude-api";
 export const TARGETS: readonly Target[] = ["claude", "claude-api"];
@@ -45,6 +48,10 @@ async function fetchJson<T>(file: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+function winTar(): string {
+  return join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+}
+
 /** Download a repository zip and extract it into tmp. Returns the extracted repo root folder. */
 async function fetchRepo(url: string, tmp: string): Promise<string> {
   const res = await fetch(url);
@@ -54,7 +61,7 @@ async function fetchRepo(url: string, tmp: string): Promise<string> {
   const out = join(tmp, "x");
   mkdirSync(out);
   if (process.platform === "win32") {
-    execFileSync(join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe"), ["-xf", zipPath, "-C", out]);
+    execFileSync(winTar(), ["-xf", zipPath, "-C", out]);
   } else {
     execFileSync("unzip", ["-q", zipPath, "-d", out]);
   }
@@ -125,6 +132,114 @@ export async function allSkillNames(): Promise<string[]> {
   return (await listSkills()).skills.map((s) => s.name);
 }
 
+// ---------------------------------------------------------------- talking to a running Blender
+
+/** One JSON command to the MCP for Blender addon's local socket. Rejects if Blender is not reachable. */
+function blenderCall(type: string, params: Record<string, unknown>, timeoutMs: number): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const sock = createConnection({ host: "127.0.0.1", port: BLENDER_PORT });
+    let buf = "";
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      sock.destroy();
+      fn();
+    };
+    const timer = setTimeout(() => finish(() => reject(new Error("Blender did not answer in time"))), timeoutMs);
+    sock.on("connect", () => sock.write(JSON.stringify({ type, params })));
+    sock.on("data", (d) => {
+      buf += d.toString("utf8");
+      try {
+        const msg = JSON.parse(buf);
+        finish(() => resolve(msg));
+      } catch {
+        /* wait for more data */
+      }
+    });
+    sock.on("error", (e) => finish(() => reject(e)));
+  });
+}
+
+/** Run python in the running Blender and return what it printed. */
+async function blenderRun(code: string, timeoutMs = 30000): Promise<string> {
+  const r = await blenderCall("execute_code", { code }, timeoutMs);
+  if (r.status !== "success") throw new Error("Blender: " + String(r.message ?? "error").slice(0, 400));
+  return String(r.result?.result ?? "");
+}
+
+interface LiveBlender {
+  version: string;
+  addonsPath: string;
+  dirs: string[];
+}
+
+/** Ask the running Blender where its user addons folder is and what is already in it. Null if not reachable. */
+async function liveBlender(): Promise<LiveBlender | null> {
+  try {
+    const ping = await blenderCall("ping", {}, 1500);
+    if (ping.status !== "success") return null;
+    const out = await blenderRun(
+      [
+        "import bpy, os, json",
+        "p = bpy.utils.user_resource('SCRIPTS', path='addons', create=True)",
+        "print(json.dumps({'version': '%d.%d' % tuple(bpy.app.version[:2]), 'path': p, 'dirs': sorted(os.listdir(p))}))",
+      ].join("\n"),
+      8000,
+    );
+    const j = JSON.parse(out.trim().split("\n").pop() ?? "{}");
+    return { version: String(j.version), addonsPath: String(j.path), dirs: (j.dirs as string[]) ?? [] };
+  } catch {
+    return null;
+  }
+}
+
+interface EnableResult {
+  enabled: boolean;
+  note: string;
+}
+
+/** Enable an addon folder in the running Blender unless an addon with the same display name is already enabled. */
+async function enableInBlender(folder: string): Promise<EnableResult> {
+  const code = [
+    "import bpy, addon_utils, json",
+    "folder = " + JSON.stringify(folder),
+    "res = {'enabled': False, 'note': ''}",
+    "try:",
+    "    mods = {m.__name__: m for m in addon_utils.modules(refresh=True)}",
+    "    mod = mods.get(folder)",
+    "    active = set(bpy.context.preferences.addons.keys())",
+    "    if mod is None:",
+    "        res['note'] = 'Blender did not find the addon after copying'",
+    "    elif folder in active:",
+    "        res['enabled'] = True; res['note'] = 'already enabled'",
+    "    else:",
+    "        disp = getattr(mod, 'bl_info', {}).get('name')",
+    "        dup = [n for n, m in mods.items() if n != folder and n in active and disp and getattr(m, 'bl_info', {}).get('name') == disp]",
+    "        if dup:",
+    "            res['note'] = 'not enabled: an addon with the same name is already enabled (' + dup[0] + ')'",
+    "        else:",
+    "            addon_utils.enable(folder, default_set=True, persistent=True)",
+    "            res['enabled'] = folder in set(bpy.context.preferences.addons.keys())",
+    "            res['note'] = '' if res['enabled'] else 'enable failed, see the Blender console'",
+    "            try:",
+    "                bpy.ops.wm.save_userpref()",
+    "            except Exception:",
+    "                pass",
+    "except Exception as e:",
+    "    res['note'] = 'error: ' + str(e)[:200]",
+    "print(json.dumps(res))",
+  ].join("\n");
+  try {
+    const out = await blenderRun(code);
+    const j = JSON.parse(out.trim().split("\n").pop() ?? "{}");
+    return { enabled: Boolean(j.enabled), note: String(j.note ?? "") };
+  } catch (e) {
+    return { enabled: false, note: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 // ---------------------------------------------------------------- blender addons
 
 function blenderRoot(): string {
@@ -159,9 +274,12 @@ async function installableAddons(): Promise<AddonEntry[]> {
 const folderOf = (a: AddonEntry) => a.folder ?? a.name;
 
 export async function listAddons() {
-  const versions = blenderVersions();
+  const live = await liveBlender();
+  const versions = live ? [live.version] : blenderVersions();
   const list = await installableAddons();
   return {
+    /** True when a running Blender answered on the MCP socket; installs then go through it. */
+    live: live !== null,
     versions,
     addons: list.map((a) => ({
       name: a.name,
@@ -169,7 +287,9 @@ export async function listAddons() {
       desc: a.desc,
       license: a.license ?? "",
       needs: a.needs ?? [],
-      installed: Object.fromEntries(versions.map((v) => [v, existsSync(join(addonsDir(v), folderOf(a)))])),
+      installed: Object.fromEntries(
+        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync(join(addonsDir(v), folderOf(a)))]),
+      ),
     })),
   };
 }
@@ -182,7 +302,7 @@ async function fetchZip(url: string, folder: string, tmp: string): Promise<strin
   if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
   const zipPath = join(tmp, folder + ".zip");
   writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
-  const tar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+  const tar = winTar();
   const listing = execFileSync(tar, ["-tf", zipPath], { maxBuffer: 64 * 1024 * 1024 })
     .toString("utf8")
     .split(/\r?\n/)
@@ -198,20 +318,34 @@ async function fetchZip(url: string, folder: string, tmp: string): Promise<strin
   return out;
 }
 
-/** Copy addons into scripts/addons of the given Blender version. Enable them in Preferences afterwards. */
-export async function installAddons(names: string[], version: string): Promise<string[]> {
-  if (!blenderVersions().includes(version)) throw new Error("Blender " + version + " not found on this machine");
+export interface AddonInstallResult {
+  paths: string[];
+  /** "blender" when installed through the running Blender (and enabled), else "files". */
+  via: "blender" | "files";
+  notes: { name: string; enabled: boolean; note: string }[];
+}
+
+/**
+ * Install addons. If a Blender with the MCP socket is running, copy into its real addons folder and
+ * enable them there; otherwise copy into scripts/addons of the given Blender version (enable by hand).
+ */
+export async function installAddons(names: string[], version: string): Promise<AddonInstallResult> {
+  const live = await liveBlender();
+  if (live ? version !== live.version : !blenderVersions().includes(version)) {
+    throw new Error("Blender " + version + " not found on this machine");
+  }
   const list = await installableAddons();
   const byName = new Map(list.map((a) => [a.name, a]));
   for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
-  if (names.length === 0) return [];
+  if (names.length === 0) return { paths: [], via: live ? "blender" : "files", notes: [] };
 
   const tmp = mkdtempSync(join(tmpdir(), "team-addons-"));
   try {
-    const destRoot = addonsDir(version);
+    const destRoot = live ? live.addonsPath : addonsDir(version);
     mkdirSync(destRoot, { recursive: true });
     let repoRoot: string | null = null;
-    const done: string[] = [];
+    const paths: string[] = [];
+    const notes: AddonInstallResult["notes"] = [];
     for (const name of names) {
       const entry = byName.get(name)!;
       const folder = folderOf(entry);
@@ -226,9 +360,13 @@ export async function installAddons(names: string[], version: string): Promise<s
       const dest = join(destRoot, folder);
       rmSync(dest, { recursive: true, force: true });
       cpSync(src, dest, { recursive: true });
-      done.push(dest);
+      paths.push(dest);
+      if (live) {
+        const r = await enableInBlender(folder);
+        notes.push({ name, enabled: r.enabled, note: r.note });
+      }
     }
-    return done;
+    return { paths, via: live ? "blender" : "files", notes };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

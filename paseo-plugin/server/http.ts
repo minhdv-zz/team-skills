@@ -76,7 +76,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.method === "GET" && path === "/status") {
     const { skills } = await listSkills();
     // Addons are optional: a failure here must not break the skills tab.
-    let blender: Awaited<ReturnType<typeof listAddons>> = { versions: [], addons: [] };
+    let blender: Awaited<ReturnType<typeof listAddons>> = { live: false, versions: [], addons: [] };
     try {
       blender = await listAddons();
     } catch {
@@ -99,8 +99,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     } else {
       return send(res, 400, { error: "Provide names or mode" });
     }
-    const paths = await installAddons(names, version);
-    return send(res, 200, { ok: true, installed: names, paths });
+    const result = await installAddons(names, version);
+    return send(res, 200, { ok: true, installed: names, ...result });
   }
 
   if (req.method === "POST" && path === "/install") {
