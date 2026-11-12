@@ -56,13 +56,13 @@
   },
   {
     "name": "uvpackmaster4",
-    "title": "UVPackmaster 4",
-    "desc": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Tải thủ công từ Drive nội bộ, cần kích hoạt theo giấy phép.",
+    "title": "UVPackmaster 4.1.3",
+    "desc": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Tải file zip từ Drive nội bộ, cài bằng Install from Disk. Cần engine và kích hoạt theo giấy phép của hãng.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/apps/files/?dir=/minh/Add%20on&fileid=6806572"
+    "link": "https://drive.horusvn.com/s/72wDsoqNdCdo973"
   },
   {
     "name": "pie_menu_editor_fork",
