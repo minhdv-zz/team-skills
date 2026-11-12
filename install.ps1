@@ -1,10 +1,11 @@
-# Cài skill của team, không cần git.
+# Install team skills, no git needed.
 #
-#   Cài 1 skill:   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.ps1))) copymau-hoidz
-#   Cài nhiều:     ... copymau-hoidz thoidz
-#   Cài tất cả:    ... -All
-#   Xem danh sách: ... -List
-#   Thử vào thư mục khác: ... copymau-hoidz -Dest C:\temp\skills
+#   One skill:      & ([scriptblock]::Create((irm https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.ps1))) copymau-hoidz
+#   Several:         ... copymau-hoidz thoidz
+#   All:            ... -All
+#   List:        ... -List
+#   Other dir:   ... copymau-hoidz -Dest C:\temp\skills
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [Parameter(ValueFromRemainingArguments = $true)][string[]]$Skill,
     [switch]$All,
@@ -27,15 +28,15 @@ try {
         ForEach-Object { Get-ChildItem (Join-Path $_.FullName 'skills') -Directory }
 
     if ($List -or (-not $All -and -not $Skill)) {
-        Write-Host 'Skill có sẵn:'; $available | ForEach-Object { Write-Host "  $($_.Name)" }
-        if (-not $List) { Write-Host 'Chọn skill: thêm tên skill phía sau, hoặc -All để cài hết.' }
+        Write-Host 'Available skills:'; $available | ForEach-Object { Write-Host "  $($_.Name)" }
+        if (-not $List) { Write-Host 'Pick a skill: add its name after the command, or use -All.' }
         return
     }
     $pick = if ($All) { $available } else {
         $Skill | ForEach-Object {
             $n = $_
             $m = $available | Where-Object { $_.Name -eq $n -or $_.Name -eq ($n -replace '-', '_') -or ($_.Name -replace '_', '-') -eq $n }
-            if (-not $m) { throw "Không có skill '$n'. Chạy với -List để xem danh sách." }
+            if (-not $m) { throw "No skill named '$n'. Run with -List to see the list." }
             $m
         }
     }
@@ -44,9 +45,9 @@ try {
         $target = Join-Path $Dest $s.Name
         if (Test-Path $target) { Remove-Item $target -Recurse -Force }
         Copy-Item $s.FullName $target -Recurse
-        Write-Host "Đã cài $($s.Name) -> $target"
+        Write-Host "Installed $($s.Name) -> $target"
     }
-    Write-Host 'Xong. Mở lại Claude Code để nhận skill mới.'
+    Write-Host 'Done. Restart Claude Code to load the new skills.'
 } finally {
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
