@@ -26,6 +26,8 @@ interface AddonEntry {
   desc: string;
   license?: string;
   needs?: string[];
+  /** External download page. Such entries are shown on the site but never installed by the plugin. */
+  link?: string;
 }
 
 function skillsDir(target: Target): string {
@@ -146,7 +148,7 @@ function addonsDir(version: string): string {
 
 export async function listAddons() {
   const versions = blenderVersions();
-  const list = await fetchJson<AddonEntry[]>("addons.json");
+  const list = (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link);
   return {
     versions,
     addons: list.map((a) => ({
@@ -163,7 +165,7 @@ export async function listAddons() {
 /** Copy addons into scripts/addons of the given Blender version. Enable them in Preferences afterwards. */
 export async function installAddons(names: string[], version: string): Promise<string[]> {
   if (!blenderVersions().includes(version)) throw new Error("Blender " + version + " not found on this machine");
-  const list = await fetchJson<AddonEntry[]>("addons.json");
+  const list = (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link);
   const allowed = new Set(list.map((a) => a.name));
   for (const n of names) if (!allowed.has(n)) throw new Error("Unknown addon: " + n);
   if (names.length === 0) return [];
