@@ -21,6 +21,8 @@
   pre{font-family:Consolas,monospace;font-size:13px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;margin:6px 0;white-space:pre-wrap;word-break:break-all}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
+  .thumb{aspect-ratio:16/9;border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#ffffffcc;margin:-4px -4px 4px}
+  .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .card h3{margin:0;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .card .id{color:var(--mut);font-family:Consolas,monospace;font-size:12px}
   .card p{margin:0;color:#c9d1d9;flex:1}
@@ -116,7 +118,10 @@ function render(){
   $('grid').innerHTML = SKILLS.map(function(s,i){
     var inst = installedOf(s.name);
     var label = STATE ? (inst ? 'Cài lại' : 'Cài') : 'Cài';
-    return '<div class="card">'
+    var hue = (i*47+250)%360;
+    var thumb = '<div class="thumb" style="background:linear-gradient(135deg,hsl('+hue+',55%,32%),hsl('+((hue+40)%360)+',60%,18%))">'
+      + esc(s.title.charAt(0)) + (s.img ? '<img src="'+esc(s.img)+'" alt="" loading="lazy" onerror="this.remove()">' : '') + '</div>';
+    return '<div class="card">' + thumb
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
       + '<p>'+esc(s.desc)+'</p>'
       + '<div class="tags">'+(s.needs||[]).map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
