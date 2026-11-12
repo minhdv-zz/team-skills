@@ -46,13 +46,13 @@
   },
   {
     "name": "hardops",
-    "title": "Hard Ops 26",
-    "desc": "Bộ công cụ model hard-surface nhanh: cắt, bevel, tạo chi tiết cơ khí. Tải thủ công từ Drive nội bộ, giải nén rồi cài trong Preferences.",
+    "title": "Hard Ops 26.1.7",
+    "desc": "Bộ công cụ model hard-surface nhanh: cắt, bevel, tạo chi tiết cơ khí. Tải file zip từ Drive nội bộ, cài bằng Edit → Preferences → Add-ons → Install from Disk.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/apps/files/?dir=/minh/Add%20on&fileid=6806572"
+    "link": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym"
   },
   {
     "name": "uvpackmaster4",
@@ -66,12 +66,12 @@
   },
   {
     "name": "pie_menu_editor_fork",
-    "title": "Pie Menu Editor Fork",
-    "desc": "Tạo và chỉnh pie menu, phím tắt và macro tùy biến trong Blender. Tải thủ công từ Drive nội bộ.",
+    "title": "Pie Menu Editor Fork 1.19.52",
+    "desc": "Tạo và chỉnh pie menu, phím tắt và macro tùy biến trong Blender. Tải file zip từ Drive nội bộ, cài bằng Install from Disk.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/apps/files/?dir=/minh/Add%20on&fileid=6806572"
+    "link": "https://drive.horusvn.com/s/5W659cSZdZgg8Np"
   }
 ]
