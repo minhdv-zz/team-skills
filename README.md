@@ -32,12 +32,15 @@ Lưu ý: `fixship-hoidz` và `fixsung-hoidz` có bước xuất FBX, nên cài k
 Cập nhật khi có bản mới: `/plugin` → update.
 (Repo private thì máy phải đăng nhập Git có quyền đọc repo.)
 
-### Cách 2: script (dự phòng)
+### Cách 2: một dòng PowerShell (nhanh nhất, không cần git)
+Dán vào PowerShell, thay `copymau-hoidz` bằng tên skill cần cài:
 ```
-git clone https://github.com/minhdv-zz/team-skills.git && cd team-skills
-.\install.ps1 -Link     # cài cả 9 skill, junction: sau này chỉ cần git pull
-.\install.ps1           # hoặc copy
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.ps1))) copymau-hoidz
 ```
+- Cài nhiều skill: thêm tên phía sau (`... copymau-hoidz thoidz`).
+- Cài tất cả: thêm `-All`. Xem danh sách: thêm `-List`.
+- Skill được chép vào `%USERPROFILE%\.claude\skills`. Mở lại Claude Code để nhận skill mới.
+- Cập nhật skill: chạy lại đúng dòng đó.
 
 ## Yêu cầu môi trường
 - Skill Blender cần Blender MCP; skill Unity cần Unity MCP (`com.coplaydev.unity-mcp`).
