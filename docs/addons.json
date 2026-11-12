@@ -1,0 +1,7 @@
+[
+  { "name": "Asset_Creation_Toolset_2023_1_Bl361", "title": "Asset Creation Toolset (ACT)", "desc": "Bộ công cụ cho asset game: xuất FBX sang Unity, đổi tên, origin, material. Cần cho skill export_hoidz.", "license": "GPL", "needs": ["Blender 3.6+"] },
+  { "name": "EdgeFlow", "title": "EdgeFlow", "desc": "Chỉnh hình học mesh khớp theo bề mặt cong, giúp dòng cạnh (edge flow) đều và đẹp hơn.", "license": "GPL v3", "needs": ["Blender 3.5+"] },
+  { "name": "simple_renaming_panel", "title": "Simple Renaming Panel", "desc": "Đổi tên hàng loạt object, mesh, material, bone bằng tiền tố, hậu tố, số thứ tự.", "license": "GPL v3", "needs": ["Blender 3.0+"] },
+  { "name": "interactive_tools", "title": "Interactive Tools", "desc": "Bộ công cụ tự đổi theo ngữ cảnh đang chọn, dùng hiệu quả nhất khi gán phím tắt.", "license": "GPL v3", "needs": ["Blender 4.2+"] },
+  { "name": "uv_toolkit", "title": "UV Toolkit 2.1.2", "desc": "Công cụ UV: pie menu cho 3D view và UV editor, checker map, sharp edges từ UV island, chế độ UV sync.", "license": "GPL v3", "needs": ["Blender 4.2+"] }
+]

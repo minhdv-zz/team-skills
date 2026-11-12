@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Team Skills</title>
+<title>Team Tools</title>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--text:#e6edf3;--mut:#8b949e;--acc:#7c5cff;--ok:#3fb950;--err:#f85149}
   *{box-sizing:border-box}
@@ -39,21 +39,32 @@
   .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#21262d;border:1px solid var(--line);border-radius:8px;padding:10px 16px;display:none;max-width:90vw}
   #toast.ok{border-color:var(--ok)} #toast.err{border-color:var(--err)}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{padding:8px 18px;border-radius:999px}
+  .tab.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Team Skills</h1>
-  <p class="sub">Chọn skill rồi bấm <b>Cài</b>. Cài xong mở lại Claude Code để nhận skill.</p>
+  <h1>Team Tools</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="tabs">
+    <button class="tab on" id="tab-skills" onclick="setTab('skills')">Skill</button>
+    <button class="tab" id="tab-addons" onclick="setTab('addons')">Addon Blender</button>
+  </div>
 
   <div class="bar">
     <span class="dot" id="dot"></span>
     <span class="st" id="status">Đang kiểm tra plugin Paseo...</span>
-    <label>Cài vào
+    <label id="lblTarget">Cài vào
       <select id="target">
         <option value="claude">Claude Code (~/.claude/skills)</option>
         <option value="claude-api">Hồ sơ Claude API (~/.claude-api/skills)</option>
       </select>
+    </label>
+    <label id="lblVersion" style="display:none">Blender
+      <select id="version"></select>
     </label>
     <button id="btnMissing" disabled onclick="bulk('missing')">Cài còn thiếu</button>
     <button id="btnAll" class="pri" disabled onclick="bulk('all')">Cài tất cả</button>
@@ -74,11 +85,11 @@
 <div class="overlay" id="ov" onclick="if(event.target===this)closeM()">
   <div class="modal">
     <h2 id="mTitle"></h2><div class="id" id="mId"></div>
-    <p style="margin:10px 0 4px">Chưa kết nối plugin Paseo. Dán lệnh này vào PowerShell để cài skill:</p>
+    <p style="margin:10px 0 4px" id="mText"></p>
     <pre id="mCmd"></pre>
     <div class="row">
       <button onclick="closeM()">Đóng</button>
-      <button class="pri" onclick="copy(mCmd.textContent,this)">Copy lệnh</button>
+      <button class="pri" onclick="copy(mCmd.textContent,this)">Copy</button>
     </div>
   </div>
 </div>
@@ -89,69 +100,119 @@ var RAW = 'https://raw.githubusercontent.com/minhdv-zz/team-skills/main';
 var LOCAL = 'http://127.0.0.1:47653';
 var PLUGIN_SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
 var INSTALL = '& ([scriptblock]::Create((irm ' + RAW + '/install.ps1)))';
-var SKILLS = [];       // from skills.json
+var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
-
-document.getElementById('pluginSrc').textContent = PLUGIN_SRC;
-document.getElementById('pluginCmd').textContent = 'paseo plugin install ' + PLUGIN_SRC;
+var TAB = 'skills';
 
 function $(id){return document.getElementById(id)}
+$('pluginSrc').textContent = PLUGIN_SRC;
+$('pluginCmd').textContent = 'paseo plugin install ' + PLUGIN_SRC;
+
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function target(){return $('target').value}
+function version(){return $('version').value}
 function toast(msg, ok){
   var t=$('toast'); t.textContent=msg; t.className=ok?'ok':'err'; t.style.display='block';
-  clearTimeout(toast._t); toast._t=setTimeout(function(){t.style.display='none'},5000);
+  clearTimeout(toast._t); toast._t=setTimeout(function(){t.style.display='none'},6000);
 }
 function copy(text, btn){
   navigator.clipboard.writeText(text).then(function(){
     var o=btn.textContent; btn.textContent='Đã copy'; setTimeout(function(){btn.textContent=o},1500);
   });
 }
+function setTab(t){
+  TAB=t;
+  $('tab-skills').className='tab'+(t==='skills'?' on':'');
+  $('tab-addons').className='tab'+(t==='addons'?' on':'');
+  render();
+}
+
 function installedOf(name){
   if(!STATE) return false;
-  for(var i=0;i<STATE.skills.length;i++) if(STATE.skills[i].name===name) return STATE.skills[i].installed[target()];
+  if(TAB==='skills'){
+    for(var i=0;i<STATE.skills.length;i++) if(STATE.skills[i].name===name) return STATE.skills[i].installed[target()];
+  } else if(STATE.blender){
+    for(var j=0;j<STATE.blender.addons.length;j++) if(STATE.blender.addons[j].name===name) return !!STATE.blender.addons[j].installed[version()];
+  }
   return false;
 }
 
 function render(){
-  $('grid').innerHTML = SKILLS.map(function(s,i){
+  var isSk = TAB==='skills', list = ITEMS[TAB];
+  $('sub').innerHTML = isSk
+    ? 'Chọn skill rồi bấm <b>Cài</b>. Cài xong mở lại Claude Code để nhận skill.'
+    : 'Chọn addon rồi bấm <b>Cài</b>. Cài xong mở Blender, vào <b>Edit → Preferences → Add-ons</b> và tick bật addon.';
+  $('lblTarget').style.display = isSk ? '' : 'none';
+  $('lblVersion').style.display = isSk ? 'none' : '';
+
+  var vs = (STATE && STATE.blender) ? STATE.blender.versions : [];
+  var cur = $('version').value;
+  $('version').innerHTML = vs.map(function(v){return '<option value="'+v+'">'+v+'</option>'}).join('');
+  if(vs.indexOf(cur)>=0) $('version').value = cur;
+
+  var noBlender = !isSk && STATE && vs.length===0;
+  $('grid').innerHTML = list.map(function(s,i){
     var inst = installedOf(s.name);
     var label = STATE ? (inst ? 'Cài lại' : 'Cài') : 'Cài';
-    var hue = (i*47+250)%360;
+    var hue = (i*47+(isSk?250:150))%360;
     var thumb = '<div class="thumb" style="background:linear-gradient(135deg,hsl('+hue+',55%,32%),hsl('+((hue+40)%360)+',60%,18%))">'
       + esc(s.title.charAt(0)) + (s.img ? '<img src="'+esc(s.img)+'" alt="" loading="lazy" onerror="this.remove()">' : '') + '</div>';
+    var tags = (s.needs||[]).concat(s.license?[s.license]:[]);
     return '<div class="card">' + thumb
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
       + '<p>'+esc(s.desc)+'</p>'
-      + '<div class="tags">'+(s.needs||[]).map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
-      + '<div><button class="pri" '+(BUSY?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button></div></div>';
+      + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
+      + '<div><button class="pri" '+((BUSY||noBlender)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button></div></div>';
   }).join('');
+
   var on = !!STATE;
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
-  $('status').textContent = on ? 'Đã kết nối plugin Paseo trên máy này.' : 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).';
-  $('btnAll').disabled = !on || BUSY; $('btnMissing').disabled = !on || BUSY;
+  $('status').textContent = !on ? 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).'
+    : noBlender ? 'Đã kết nối Paseo, nhưng không tìm thấy Blender trên máy này.'
+    : 'Đã kết nối plugin Paseo trên máy này.';
+  var can = on && !noBlender && !BUSY;
+  $('btnAll').disabled = !can; $('btnMissing').disabled = !can;
   $('help').open = !on;
 }
 
-function post(body){
+function post(path, body){
   BUSY = true; render();
-  return fetch(LOCAL + '/install', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+  return fetch(LOCAL + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
     .then(function(r){return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; })})
     .finally(function(){ BUSY=false; });
 }
+function req(extra){
+  return TAB==='skills'
+    ? ['/install', Object.assign({target:target()}, extra)]
+    : ['/install-addon', Object.assign({version:version()}, extra)];
+}
+function doneMsg(n){
+  return TAB==='skills' ? n+' skill đã cài. Mở lại Claude Code để nhận skill.'
+                        : n+' addon đã cài. Mở Blender, bật trong Preferences → Add-ons.';
+}
 function installOne(i){
-  var s = SKILLS[i];
-  if(!STATE){ $('mTitle').textContent=s.title; $('mId').textContent=s.name;
-    var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : '';
-    $('mCmd').textContent = INSTALL + ' ' + s.name + dest; $('ov').classList.add('on'); return; }
-  post({names:[s.name], target:target()}).then(function(){
-    toast('Đã cài ' + s.name + '. Mở lại Claude Code để nhận skill.', true); return refresh();
-  }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+  var s = ITEMS[TAB][i];
+  if(!STATE){
+    $('mTitle').textContent=s.title; $('mId').textContent=s.name;
+    if(TAB==='skills'){
+      var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : '';
+      $('mText').textContent='Chưa kết nối plugin Paseo. Dán lệnh này vào PowerShell để cài skill:';
+      $('mCmd').textContent = INSTALL + ' ' + s.name + dest;
+    } else {
+      $('mText').textContent='Chưa kết nối plugin Paseo nên chưa cài tự động được. Tải thư mục addon từ link này rồi chép vào thư mục scripts/addons của Blender:';
+      $('mCmd').textContent='https://github.com/minhdv-zz/team-blender-addons/tree/main/addons/' + s.name;
+    }
+    $('ov').classList.add('on'); return;
+  }
+  var r = req({names:[s.name]});
+  post(r[0], r[1]).then(function(){ toast(s.title+': '+doneMsg(1), true); return refresh(); })
+    .catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
 }
 function bulk(mode){
-  post({mode:mode, target:target()}).then(function(j){
-    toast(j.installed.length ? 'Đã cài ' + j.installed.length + ' skill. Mở lại Claude Code để nhận skill.' : 'Không có skill nào cần cài.', true);
+  var r = req({mode:mode});
+  post(r[0], r[1]).then(function(j){
+    toast(j.installed.length ? doneMsg(j.installed.length) : 'Không có mục nào cần cài.', true);
     return refresh();
   }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
 }
@@ -162,9 +223,12 @@ function refresh(){
     .then(function(j){ STATE = j; }).catch(function(){ STATE = null; }).then(render);
 }
 $('target').addEventListener('change', render);
+$('version').addEventListener('change', render);
 
-fetch('skills.json?t=' + Date.now()).then(function(r){return r.json()}).then(function(list){ SKILLS = list; render(); return refresh(); })
-  .catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách skill.</p>' });
+function load(file){ return fetch(file + '?t=' + Date.now()).then(function(r){return r.json()}); }
+Promise.all([load('skills.json'), load('addons.json').catch(function(){return []})]).then(function(a){
+  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); return refresh();
+}).catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách.</p>' });
 </script>
 </body>
 </html>

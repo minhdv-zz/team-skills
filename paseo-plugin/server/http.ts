@@ -1,5 +1,16 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { allSkillNames, installSkills, listSkills, missingSkills, TARGETS, type Target } from "./handlers";
+import {
+  allAddonNames,
+  allSkillNames,
+  installAddons,
+  installSkills,
+  listAddons,
+  listSkills,
+  missingAddons,
+  missingSkills,
+  TARGETS,
+  type Target,
+} from "./handlers";
 
 export const PORT = 47653;
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
@@ -64,7 +75,32 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
   if (req.method === "GET" && path === "/status") {
     const { skills } = await listSkills();
-    return send(res, 200, { ok: true, plugin: "team-skills", skills });
+    // Addons are optional: a failure here must not break the skills tab.
+    let blender: Awaited<ReturnType<typeof listAddons>> = { versions: [], addons: [] };
+    try {
+      blender = await listAddons();
+    } catch {
+      /* keep empty */
+    }
+    return send(res, 200, { ok: true, plugin: "team-skills", skills, blender });
+  }
+
+  if (req.method === "POST" && path === "/install-addon") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    const body = await readJson(req);
+    const version = String(body.version ?? "");
+    let names: string[];
+    if (Array.isArray(body.names)) {
+      names = body.names.map((n) => String(n));
+    } else if (body.mode === "missing") {
+      names = await missingAddons(version);
+    } else if (body.mode === "all") {
+      names = await allAddonNames();
+    } else {
+      return send(res, 400, { error: "Provide names or mode" });
+    }
+    const paths = await installAddons(names, version);
+    return send(res, 200, { ok: true, installed: names, paths });
   }
 
   if (req.method === "POST" && path === "/install") {
