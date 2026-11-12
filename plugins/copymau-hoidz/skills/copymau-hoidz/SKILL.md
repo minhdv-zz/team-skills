@@ -1,6 +1,7 @@
 ---
 name: copymau-hoidz
 description: Copy colors between Blender models or selected parts, especially palette-texture models whose colors are controlled by UVs. Use for /copymau-hoidz, "copy màu hoidz", or copying wheel, rim, hub, and other component colors while preserving geometry.
+author: hoidz
 ---
 
 # Copy màu hoidz trong Blender

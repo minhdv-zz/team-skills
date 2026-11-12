@@ -1,6 +1,7 @@
 ---
 name: tb-hoidz
 description: Texture existing Blender game models with palette-strip gradient UV mapping from a concept image. Use only when the user explicitly invokes /tb-hoidz, $tb-hoidz or tb-hoidz. Do not trigger for generic requests such as gradient mapping, UV gradient or tô màu model bằng palette unless tb-hoidz is named, so it does not collide with other team members' texturing skills.
+author: hoidz
 ---
 
 # Gradient Mapping for Blender

@@ -6,7 +6,8 @@
     "needs": [
       "Blender MCP"
     ],
-    "img": "img/copymau-hoidz.jpg"
+    "img": "img/copymau-hoidz.jpg",
+    "author": "hoidz"
   },
   {
     "name": "export_hoidz",
@@ -16,7 +17,8 @@
       "Blender MCP",
       "Addon ACT"
     ],
-    "img": "img/export_hoidz.jpg"
+    "img": "img/export_hoidz.jpg",
+    "author": "hoidz"
   },
   {
     "name": "tb-hoidz",
@@ -25,6 +27,7 @@
     "needs": [
       "Blender MCP"
     ],
-    "img": "img/tb-hoidz.jpg"
+    "img": "img/tb-hoidz.jpg",
+    "author": "hoidz"
   }
 ]

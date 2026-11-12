@@ -6,7 +6,8 @@
     "license": "GPL",
     "needs": [
       "Blender 3.6+"
-    ]
+    ],
+    "author": "Ivan 'mrven' Vostrikov, Felipe Torrents, mokalux, Oxicid"
   },
   {
     "name": "EdgeFlow",
@@ -15,7 +16,8 @@
     "license": "GPL v3",
     "needs": [
       "Blender 3.5+"
-    ]
+    ],
+    "author": "Benjamin Sauder"
   },
   {
     "name": "simple_renaming_panel",
@@ -24,7 +26,8 @@
     "license": "GPL v3",
     "needs": [
       "Blender 3.0+"
-    ]
+    ],
+    "author": "Matthias Patscheider"
   },
   {
     "name": "interactive_tools",
@@ -33,7 +36,8 @@
     "license": "GPL v3",
     "needs": [
       "Blender 4.2+"
-    ]
+    ],
+    "author": "Maxi Vazquez, Ajfurey"
   },
   {
     "name": "uv_toolkit",
@@ -42,7 +46,8 @@
     "license": "GPL v3",
     "needs": [
       "Blender 4.2+"
-    ]
+    ],
+    "author": "Ethan Simon-Law"
   },
   {
     "name": "hardops",
@@ -54,7 +59,8 @@
     ],
     "link": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym",
     "zip": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym/download",
-    "folder": "HOps"
+    "folder": "HOps",
+    "author": "AR, MX, proxe, bonjorno7, MACHIN3 và cộng sự"
   },
   {
     "name": "uvpackmaster4",
@@ -66,7 +72,8 @@
     ],
     "link": "https://drive.horusvn.com/s/72wDsoqNdCdo973",
     "zip": "https://drive.horusvn.com/s/72wDsoqNdCdo973/download",
-    "folder": "uvpackmaster4"
+    "folder": "uvpackmaster4",
+    "author": "glukoz"
   },
   {
     "name": "pie_menu_editor_fork",
@@ -78,6 +85,7 @@
     ],
     "link": "https://drive.horusvn.com/s/5W659cSZdZgg8Np",
     "zip": "https://drive.horusvn.com/s/5W659cSZdZgg8Np/download",
-    "folder": "pie_menu_editor"
+    "folder": "pie_menu_editor",
+    "author": "roaoao, pluglug"
   }
 ]

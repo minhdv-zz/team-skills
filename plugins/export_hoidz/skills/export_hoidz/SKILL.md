@@ -1,6 +1,7 @@
 ---
 name: export_hoidz
 description: Xuất mesh từ Blender sang Unity dạng FBX bằng add-on ACT (Import/Export Tools → Export FBX to Unity), điều khiển qua Blender MCP. Người dùng đưa tên mesh hoặc ảnh có mũi tên chỉ mesh cần xuất; ACT dùng cài đặt mặc định cố định; Export Path luôn hỏi người dùng. Dùng khi người dùng gọi /export_hoidz, "export hoidz", "xuất sang Unity bằng ACT".
+author: hoidz
 ---
 
 # export_hoidz — Xuất FBX sang Unity bằng ACT

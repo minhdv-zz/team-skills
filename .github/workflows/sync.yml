@@ -1,0 +1,45 @@
+name: Sync listings
+
+# After a merge, regenerate plugin.json / marketplace.json / docs/skills.json and add new addons
+# found in team-blender-addons to docs/addons.json. Also runs daily and on demand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/**"
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-listings
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: minhdv-zz/team-blender-addons
+          path: _addons
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Regenerate listings
+        run: python scripts/sync.py --addons _addons/addons
+      - name: Commit changes
+        run: |
+          git config user.name "team-skills-bot"
+          git config user.email "team-skills-bot@users.noreply.github.com"
+          git add docs/skills.json docs/addons.json .claude-plugin/marketplace.json plugins
+          if git diff --cached --quiet; then
+            echo "No listing changes."
+          else
+            git commit -m "chore: sync listings [skip ci]"
+            git push
+          fi

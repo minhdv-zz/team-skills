@@ -41,6 +41,8 @@
   .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#21262d;border:1px solid var(--line);border-radius:8px;padding:10px 16px;display:none;max-width:90vw}
   #toast.ok{border-color:var(--ok)} #toast.err{border-color:var(--err)}
+  input{font:inherit;background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  code{background:#0b0f14;border:1px solid var(--line);border-radius:4px;padding:0 4px}
   .tabs{display:flex;gap:8px;margin-bottom:16px}
   .tab{padding:8px 18px;border-radius:999px}
   .tab.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
@@ -54,8 +56,10 @@
   <div class="tabs">
     <button class="tab on" id="tab-skills" onclick="setTab('skills')">Skill</button>
     <button class="tab" id="tab-addons" onclick="setTab('addons')">Addon Blender</button>
+    <button class="tab" id="tab-contrib" onclick="setTab('contrib')">Đóng góp</button>
   </div>
 
+  <div id="main">
   <div class="bar">
     <span class="dot" id="dot"></span>
     <span class="st" id="status">Đang kiểm tra plugin Paseo...</span>
@@ -83,6 +87,49 @@
   </details>
 
   <div class="grid" id="grid"></div>
+  </div>
+  <div id="contrib" style="display:none">
+    <div class="bar" style="display:block">
+      <b>Ai cũng đóng góp được.</b> Cần một tài khoản GitHub, và phải ghi <b>tên tác giả</b> (<code>author:</code> trong SKILL.md, hoặc <code>bl_info</code> của addon) để mọi người biết skill/addon đó của ai. Người không có quyền ghi vào repo sẽ được GitHub tự tạo bản sao (fork) và gửi đề xuất (Pull Request). Mọi đóng góp đều được chủ repo duyệt trước khi xuất hiện trên trang này.
+    </div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">
+      <div class="card">
+        <h3>Đóng góp một skill</h3>
+        <p>Skill là một thư mục có file <code>SKILL.md</code> (kèm tiêu đề <code>name</code> và <code>description</code> ở đầu file).</p>
+        <label>Tên skill (chữ thường, số, <code>-</code> hoặc <code>_</code>)<br>
+          <input id="cSkill" value="ten-skill-moi" style="width:100%;margin-top:6px"></label>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn pri" id="cSkillNew" target="_blank" rel="noopener noreferrer">1. Tạo SKILL.md trên GitHub</a>
+          <a class="btn" id="cSkillUp" target="_blank" rel="noopener noreferrer">2. Thêm file kèm theo</a>
+        </div>
+        <p style="color:var(--mut);margin-top:10px">Bước 1 mở sẵn trang tạo file với mẫu nội dung, bạn chỉnh rồi bấm <b>Propose new file</b> (hoặc <b>Commit</b>). Bước 2 chỉ cần khi skill có thêm script hoặc tài liệu, làm sau khi bước 1 đã được gộp.</p>
+      </div>
+
+      <div class="card">
+        <h3>Đóng góp một addon Blender</h3>
+        <p>Addon là một thư mục có <code>__init__.py</code> hoặc <code>blender_manifest.toml</code>, kèm file giấy phép (miễn phí, được phép chia sẻ lại).</p>
+        <label>Tên thư mục addon<br>
+          <input id="cAddon" value="ten_addon_moi" style="width:100%;margin-top:6px"></label>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn pri" id="cAddonUp" target="_blank" rel="noopener noreferrer">Tải addon lên GitHub</a>
+        </div>
+        <p style="color:var(--mut);margin-top:10px">Trang tải lên của GitHub mở đúng thư mục <code>addons/</code>. Kéo thả nguyên thư mục addon vào đó, rồi bấm <b>Propose changes</b>.</p>
+      </div>
+    </div>
+
+    <details class="help" open style="margin-top:20px">
+      <summary>Quy tắc để được duyệt</summary>
+      <p>
+        • Không đưa khóa, token, mật khẩu. Hệ thống tự quét và từ chối.<br>
+        • Không đưa file cài đặt hoặc chương trình chạy (<code>.exe</code>, <code>.dll</code>, <code>.bat</code>...) vào skill.<br>
+        • Addon trả phí hoặc không có giấy phép cho phép chia sẻ thì <b>không</b> đưa lên.<br>
+        • Skill nên ghi rõ cần gì (Blender MCP, Unity MCP...) và không để đường dẫn riêng như <code>C:\Users\ten</code>.<br>
+        • Skill và addon là mã chạy trên máy người cài, nên chủ repo sẽ đọc kỹ trước khi gộp.
+      </p>
+      <p>Sau khi gộp, một bot tự cập nhật danh sách trên trang này trong vài phút. Hướng dẫn đầy đủ: <a href="https://github.com/minhdv-zz/team-skills/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" style="color:#9d8cff">CONTRIBUTING.md</a></p>
+    </details>
+  </div>
 </div>
 
 <div class="overlay" id="ov" onclick="if(event.target===this)closeM()">
@@ -128,8 +175,25 @@ function setTab(t){
   TAB=t;
   $('tab-skills').className='tab'+(t==='skills'?' on':'');
   $('tab-addons').className='tab'+(t==='addons'?' on':'');
+  $('tab-contrib').className='tab'+(t==='contrib'?' on':'');
+  $('main').style.display = t==='contrib' ? 'none' : '';
+  $('contrib').style.display = t==='contrib' ? '' : 'none';
+  if(t==='contrib'){ $('sub').innerHTML='Gửi skill hoặc addon của bạn lên kho chung. Chủ repo duyệt rồi mới hiện trên trang.'; updateContribLinks(); return; }
   render();
 }
+var SKILL_TEMPLATE = '---\nname: NAME\ndescription: Mô tả ngắn skill làm gì và khi nào dùng\nauthor: Tên của bạn\n---\n\n# NAME\n\nHướng dẫn cho Claude: các bước, công cụ cần dùng, điều cần hỏi người dùng.\n';
+function cleanName(v, fallback){ v=(v||'').trim().replace(/[^A-Za-z0-9_-]/g,'-'); return v.length>=2 ? v.slice(0,64) : fallback; }
+function updateContribLinks(){
+  var s = cleanName($('cSkill').value, 'ten-skill-moi');
+  var a = cleanName($('cAddon').value, 'ten_addon_moi');
+  var base = 'https://github.com/minhdv-zz/team-skills';
+  $('cSkillNew').href = base + '/new/main?filename=' + encodeURIComponent('plugins/'+s+'/skills/'+s+'/SKILL.md') + '&value=' + encodeURIComponent(SKILL_TEMPLATE.split('NAME').join(s));
+  $('cSkillUp').href = base + '/upload/main/plugins/' + encodeURIComponent(s) + '/skills/' + encodeURIComponent(s);
+  $('cAddonUp').href = 'https://github.com/minhdv-zz/team-blender-addons/upload/main/addons';
+}
+$('cSkill').addEventListener('input', updateContribLinks);
+$('cAddon').addEventListener('input', updateContribLinks);
+updateContribLinks();
 
 function installedOf(name){
   if(!STATE) return false;
@@ -167,6 +231,7 @@ function render(){
     return '<div class="card">' + thumb
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
       + '<p>'+esc(s.desc)+'</p>'
+      + (s.author ? '<div style="color:var(--mut);font-size:13px">Tác giả: '+esc(s.author)+'</div>' : '')
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
       + '<div>' + (s.link && !(STATE && s.zip)
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">Tải về (nội bộ)</a>'
