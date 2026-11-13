@@ -298,7 +298,7 @@ var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
 var TAB = 'skills';
-var PENDING = null;
+var PENDING = null, PEND_FAIL = false;
 var PR_REPOS = [{repo:'minhdv-zz/team-skills', kind:'Skill'}, {repo:'minhdv-zz/team-blender-addons', kind:'Addon'}];
 function ghj(url){
   return fetch('https://api.github.com' + url, {headers:{Accept:'application/vnd.github+json'}})
@@ -317,7 +317,8 @@ function loadPending(){
       return l.map(function(p){ return {repo:R.repo, kind:R.kind, n:p.number, title:p.title, user:p.user.login, url:p.html_url, sha:p.head.sha, at:p.created_at}; });
     }).catch(function(){ return null; });
   })).then(function(a){
-    if(a.every(function(x){ return x === null; })) return;       // GitHub unreachable or rate limited: keep what we had
+    if(a.every(function(x){ return x === null; })){ PEND_FAIL = true; return; }       // GitHub unreachable or rate limited: keep what we had
+    PEND_FAIL = false;
     PENDING = [].concat.apply([], a.map(function(x){ return x || []; }));
     updateBadge();
   });
@@ -339,7 +340,12 @@ function checkChip(p){
 }
 function renderReview(){
   var el = $('rvList');
-  if(PENDING === null){ el.innerHTML = '<div class="fine">Đang tải...</div>'; return; }
+  if(PENDING === null){
+    el.innerHTML = PEND_FAIL
+      ? '<div class="card"><h3>Chưa đọc được danh sách</h3><div class="fine" style="font-size:14px">GitHub đang giới hạn lượt đọc tạm thời (thường hết sau vài chục phút). Xem trực tiếp trên GitHub:</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn pri" href="https://github.com/minhdv-zz/team-skills/pulls" target="_blank" rel="noopener noreferrer">Đóng góp skill</a><a class="btn pri" href="https://github.com/minhdv-zz/team-blender-addons/pulls" target="_blank" rel="noopener noreferrer">Đóng góp addon</a></div></div>'
+      : '<div class="fine">Đang tải...</div>';
+    return;
+  }
   if(!PENDING.length){ el.innerHTML = '<div class="card"><h3>Không có đóng góp nào đang chờ duyệt</h3><div class="fine">Khi có người gửi skill hoặc addon, nó sẽ hiện ở đây.</div></div>'; return; }
   el.innerHTML = PENDING.map(function(p, i){
     var out = p.files ? outsideOf(p) : [];
@@ -350,13 +356,14 @@ function renderReview(){
       + (p.files ? '<details><summary>Xem danh sách file</summary><pre>' + p.files.slice(0,60).map(esc).join('\n') + (p.files.length > 60 ? '\n... (' + (p.files.length-60) + ' file nữa)' : '') + '</pre></details>' : '')
       + '<div class="foot"><a class="btn" href="' + esc(p.url) + '/files" target="_blank" rel="noopener noreferrer">Xem thay đổi</a>'
       + '<a class="btn pri" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">Duyệt trên GitHub</a></div>'
-      + '<details><summary>Cách khác: duyệt ngay trong trang (cần đăng nhập GitHub bằng mã)</summary><div style="display:flex;gap:8px;margin-top:8px"><button class="danger" onclick="doReview(' + i + ','close')">Từ chối</button><button onclick="doReview(' + i + ','merge')">Gộp nhanh</button></div></details></div>';
+      + '<details><summary>Cách khác: duyệt ngay trong trang (cần đăng nhập GitHub bằng mã)</summary><div style="display:flex;gap:8px;margin-top:8px"><button class="danger" onclick="doReview(' + i + ',\'close\')">Từ chối</button><button onclick="doReview(' + i + ',\'merge\')">Gộp nhanh</button></div></details></div>';
   }).join('');
 }
 function loadReview(){
   renderReview();
   loadPending().then(function(){
     renderReview();
+    if(!PENDING) return [];
     return Promise.all((PENDING || []).map(function(p){
       return Promise.all([
         ghj('/repos/' + p.repo + '/pulls/' + p.n + '/files?per_page=100').catch(function(){ return null; }),
