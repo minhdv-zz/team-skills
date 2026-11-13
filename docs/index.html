@@ -425,7 +425,7 @@ function render(){
     var hue = (i*47+(isSk?250:150))%360;
     var thumb = '<div class="thumb" style="background:linear-gradient(135deg,hsl('+hue+',55%,32%),hsl('+((hue+40)%360)+',60%,18%))">'
       + esc(s.title.charAt(0)) + (s.img ? '<img src="'+esc(s.img)+'" alt="" loading="lazy" onerror="this.remove()">' : '') + '</div>';
-    var act = (s.link && !(STATE && s.zip))
+    var act = (s.link && !(STATE && (s.zip || inst)))
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Tải về (nội bộ)</a>'
           : (STATE && inst && !canUninstall)
             ? '<button onclick="event.stopPropagation();needUpdate()">Cần cập nhật plugin</button>'
@@ -534,7 +534,7 @@ function openDetail(i){
   // the action button mirrors the card
   var act = $('dtAct'); act.innerHTML = '';
   var b;
-  if(s.link && !(STATE && s.zip)){
+  if(s.link && !(STATE && (s.zip || inst))){
     b = document.createElement('a'); b.className='btn pri'; b.textContent='Tải về (nội bộ)'; b.href=s.link; b.target='_blank'; b.rel='noopener noreferrer';
   } else {
     b = document.createElement('button');

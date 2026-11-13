@@ -69,9 +69,9 @@
     "img": "img/hardops.jpg"
   },
   {
-    "name": "uvpackmaster3",
-    "title": "UVPackmaster 3.3.2",
-    "desc": "Xếp (pack) UV island tối ưu diện tích. Tải gói từ Drive nội bộ, cài engine rồi cài addon vào Blender.",
+    "name": "uvpackmaster4",
+    "title": "UVPackmaster 4",
+    "desc": "Xếp (pack) UV island tối ưu diện tích. Gói tải trên Drive nội bộ là bản 3.3.2 gồm engine và addon, cần cài tay.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
@@ -79,7 +79,8 @@
     "link": "https://drive.horusvn.com/s/YRqPojRmxHMY2ir",
     "author": "glukoz",
     "img": "img/uvpackmaster4.jpg",
-    "desc_full": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM.\n\nĐây là gói tải về (file RAR) gồm engine và addon, nên cần cài tay, plugin Paseo không cài tự động được:\n1. Giải nén, chạy file uvpm-engine-pro-3.3.2-windows-x64.exe (Next, Install).\n2. Kéo file uvpackmaster3-addon-3.3.2.zip vào cửa sổ Blender (hoặc Edit > Preferences > Install from Disk) rồi tick bật addon.\n3. Edit > Preferences > Add-ons > UVPackmaster 3 > Activate license (cần giấy phép hợp lệ của hãng).\n4. Khởi động lại Blender, mở UV Editor, tab UVPackmaster.\n\nNếu Windows Defender chặn file engine thì cho phép file đó."
+    "desc_full": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM.\n\nGói tải trên Drive nội bộ hiện là bản 3.3.2, là file RAR (file RAR) gồm engine và addon, nên cần cài tay, plugin Paseo không cài tự động được:\n1. Giải nén, chạy file uvpm-engine-pro-3.3.2-windows-x64.exe (Next, Install).\n2. Kéo file uvpackmaster3-addon-3.3.2.zip vào cửa sổ Blender (hoặc Edit > Preferences > Install from Disk) rồi tick bật addon.\n3. Edit > Preferences > Add-ons > UVPackmaster 3 > Activate license (cần giấy phép hợp lệ của hãng).\n4. Khởi động lại Blender, mở UV Editor, tab UVPackmaster.\n\nNếu Windows Defender chặn file engine thì cho phép file đó.",
+    "folder": "uvpackmaster4"
   },
   {
     "name": "pie_menu_editor_fork",
