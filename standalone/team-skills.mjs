@@ -371,6 +371,9 @@ async function uninstallAddons(names, version) {
   return { paths, via: live ? "blender" : "files" };
 }
 
+// server/review.ts
+import { execFile as execFile2 } from "node:child_process";
+
 // server/contribute.ts
 import { execFile } from "node:child_process";
 import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readdirSync as readdirSync2, readFileSync, rmSync as rmSync2, statSync, writeFileSync as writeFileSync2 } from "node:fs";
@@ -744,6 +747,111 @@ async function submitContribution(opts) {
   return { prUrl: String(pr.html_url), branch, direct: work === upstream };
 }
 
+// server/review.ts
+var OWNER = "minhdv-zz";
+var REPOS2 = /* @__PURE__ */ new Set([`${OWNER}/team-skills`, `${OWNER}/team-blender-addons`]);
+async function gitSession(requireOwner = true) {
+  const token = await new Promise((resolve2) => {
+    const child = execFile2(
+      "git",
+      ["credential", "fill"],
+      { timeout: 8e3, env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" } },
+      (err, stdout) => {
+        if (err) return resolve2("");
+        const m = /^password=(.*)$/m.exec(String(stdout));
+        resolve2(m ? m[1].trim() : "");
+      }
+    );
+    child.stdin?.end("protocol=https\nhost=github.com\n\n");
+  });
+  if (!token) return null;
+  const s = { token, login: "", expiresAt: Date.now() + 6e4 };
+  const me = await api(s, "GET", "/user");
+  if (me.status !== 200 || !me.json?.login) return null;
+  if (requireOwner && String(me.json.login).toLowerCase() !== OWNER) return null;
+  s.login = String(me.json.login);
+  return s;
+}
+function outsideFiles(repo, files) {
+  const prefix = repo.endsWith("team-skills") ? "plugins/" : "addons/";
+  const roots = /* @__PURE__ */ new Set();
+  for (const f of files) if (f.startsWith(prefix)) roots.add(f.split("/").slice(0, 2).join("/"));
+  const first = [...roots][0];
+  return files.filter((f) => roots.size !== 1 || !f.startsWith(first + "/"));
+}
+async function reviewPr(repo, number, action, allowOutside) {
+  if (!REPOS2.has(repo) || !Number.isInteger(number) || number < 1) return { ok: false, error: "Y\xEAu c\u1EA7u kh\xF4ng h\u1EE3p l\u1EC7." };
+  if (action !== "merge" && action !== "close") return { ok: false, error: "H\xE0nh \u0111\u1ED9ng kh\xF4ng h\u1EE3p l\u1EC7." };
+  let session2 = await gitSession();
+  if (!session2) {
+    session2 = (await ensureSession(1500)).session;
+    if (!session2) return { ok: false, login: pendingLogin() };
+  }
+  if (session2.login.toLowerCase() !== OWNER) {
+    return { ok: false, error: `B\u1EA1n \u0111ang \u0111\u0103ng nh\u1EADp GitHub l\xE0 ${session2.login}. Ch\u1EC9 ch\u1EE7 repo (${OWNER}) m\u1EDBi duy\u1EC7t \u0111\u01B0\u1EE3c.` };
+  }
+  const pr = await api(session2, "GET", `/repos/${repo}/pulls/${number}`);
+  if (pr.status === 401) {
+    logout();
+    return { ok: false, error: "Phi\xEAn \u0111\u0103ng nh\u1EADp GitHub \u0111\xE3 h\u1EBFt h\u1EA1n. B\u1EA5m l\u1EA1i \u0111\u1EC3 \u0111\u0103ng nh\u1EADp." };
+  }
+  if (pr.status !== 200) return { ok: false, error: `Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c Pull Request #${number} (HTTP ${pr.status}).` };
+  if (pr.json.state !== "open") return { ok: false, error: `Pull Request #${number} kh\xF4ng c\xF2n \u1EDF tr\u1EA1ng th\xE1i m\u1EDF.` };
+  if (action === "close") {
+    const r = await api(session2, "PATCH", `/repos/${repo}/pulls/${number}`, { state: "closed" });
+    if (r.status !== 200) return { ok: false, error: `Kh\xF4ng t\u1EEB ch\u1ED1i \u0111\u01B0\u1EE3c (HTTP ${r.status}): ${String(r.json?.message ?? "").slice(0, 200)}` };
+    clearPendingCache();
+    return { ok: true, done: "closed" };
+  }
+  const fl = await api(session2, "GET", `/repos/${repo}/pulls/${number}/files?per_page=100`);
+  if (fl.status !== 200 || !Array.isArray(fl.json)) return { ok: false, error: `Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c danh s\xE1ch file (HTTP ${fl.status}).` };
+  const outside = outsideFiles(repo, fl.json.map((f) => String(f.filename)));
+  if (outside.length > 0 && !allowOutside) {
+    return { ok: false, outside: outside.slice(0, 20), error: "Pull Request n\xE0y s\u1EEDa c\u1EA3 file ngo\xE0i th\u01B0 m\u1EE5c c\u1EE7a n\xF3." };
+  }
+  const sha = String(pr.json.head.sha);
+  const runs = await api(session2, "GET", `/repos/${repo}/actions/runs?head_sha=${sha}&status=action_required`);
+  if (runs.status === 200 && Array.isArray(runs.json?.workflow_runs)) {
+    for (const run of runs.json.workflow_runs) await api(session2, "POST", `/repos/${repo}/actions/runs/${run.id}/approve`);
+  }
+  const m = await api(session2, "PUT", `/repos/${repo}/pulls/${number}/merge`, { merge_method: "squash", sha });
+  if (m.status !== 200) return { ok: false, error: `Kh\xF4ng g\u1ED9p \u0111\u01B0\u1EE3c (HTTP ${m.status}): ${String(m.json?.message ?? "").slice(0, 200)}` };
+  clearPendingCache();
+  return { ok: true, done: "merged" };
+}
+var cache = null;
+async function listPending() {
+  if (cache && Date.now() - cache.at < 2e4) return cache.list;
+  const s = await gitSession();
+  if (!s) return null;
+  const out = [];
+  for (const repo of REPOS2) {
+    const r = await api(s, "GET", `/repos/${repo}/pulls?state=open&per_page=30`);
+    if (r.status !== 200 || !Array.isArray(r.json)) throw new Error(`Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c ${repo} (HTTP ${r.status}).`);
+    for (const p of r.json) {
+      const f = await api(s, "GET", `/repos/${repo}/pulls/${p.number}/files?per_page=100`);
+      const c = await api(s, "GET", `/repos/${repo}/commits/${p.head.sha}/check-runs`);
+      out.push({
+        repo,
+        kind: repo.endsWith("team-skills") ? "Skill" : "Addon",
+        n: p.number,
+        title: String(p.title),
+        user: String(p.user?.login ?? ""),
+        url: String(p.html_url),
+        sha: String(p.head.sha),
+        at: String(p.created_at),
+        files: Array.isArray(f.json) ? f.json.map((x) => String(x.filename)) : [],
+        checks: c.status === 200 && Array.isArray(c.json?.check_runs) ? c.json.check_runs.map((x) => ({ status: String(x.status), conclusion: x.conclusion ?? null })) : null
+      });
+    }
+  }
+  cache = { at: Date.now(), list: out };
+  return out;
+}
+function clearPendingCache() {
+  cache = null;
+}
+
 // server/agent.ts
 var reply = (text, isError = false) => ({ text, isError });
 function skillInfo(dir) {
@@ -909,7 +1017,8 @@ async function webContribute(input) {
     const base = { ok: true, kind: it.kind, name: it.name, files: checked.files.length, author: checked.author, description: checked.description, errors, warnings };
     if (!input.confirm) return { ...base, stage: "check" };
     if (errors.length) return { ...base, ok: false, error: "C\xF2n l\u1ED7i c\u1EA7n s\u1EEDa tr\u01B0\u1EDBc khi g\u1EEDi." };
-    const login = await ensureSession(1500);
+    const gitS = await gitSession(false);
+    const login = gitS ? { session: gitS } : await ensureSession(1500);
     if (!login.session) return { ok: false, login: pendingLogin() };
     const r = await submitContribution({
       kind: it.kind,
@@ -931,113 +1040,6 @@ async function webContribute(input) {
 
 // server/http.ts
 import { createServer } from "node:http";
-
-// server/review.ts
-import { execFile as execFile2 } from "node:child_process";
-var OWNER = "minhdv-zz";
-var REPOS2 = /* @__PURE__ */ new Set([`${OWNER}/team-skills`, `${OWNER}/team-blender-addons`]);
-async function gitSession() {
-  const token = await new Promise((resolve2) => {
-    const child = execFile2(
-      "git",
-      ["credential", "fill"],
-      { timeout: 8e3, env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" } },
-      (err, stdout) => {
-        if (err) return resolve2("");
-        const m = /^password=(.*)$/m.exec(String(stdout));
-        resolve2(m ? m[1].trim() : "");
-      }
-    );
-    child.stdin?.end("protocol=https\nhost=github.com\n\n");
-  });
-  if (!token) return null;
-  const s = { token, login: "", expiresAt: Date.now() + 6e4 };
-  const me = await api(s, "GET", "/user");
-  if (me.status !== 200 || String(me.json?.login ?? "").toLowerCase() !== OWNER) return null;
-  s.login = String(me.json.login);
-  return s;
-}
-function outsideFiles(repo, files) {
-  const prefix = repo.endsWith("team-skills") ? "plugins/" : "addons/";
-  const roots = /* @__PURE__ */ new Set();
-  for (const f of files) if (f.startsWith(prefix)) roots.add(f.split("/").slice(0, 2).join("/"));
-  const first = [...roots][0];
-  return files.filter((f) => roots.size !== 1 || !f.startsWith(first + "/"));
-}
-async function reviewPr(repo, number, action, allowOutside) {
-  if (!REPOS2.has(repo) || !Number.isInteger(number) || number < 1) return { ok: false, error: "Y\xEAu c\u1EA7u kh\xF4ng h\u1EE3p l\u1EC7." };
-  if (action !== "merge" && action !== "close") return { ok: false, error: "H\xE0nh \u0111\u1ED9ng kh\xF4ng h\u1EE3p l\u1EC7." };
-  let session2 = await gitSession();
-  if (!session2) {
-    session2 = (await ensureSession(1500)).session;
-    if (!session2) return { ok: false, login: pendingLogin() };
-  }
-  if (session2.login.toLowerCase() !== OWNER) {
-    return { ok: false, error: `B\u1EA1n \u0111ang \u0111\u0103ng nh\u1EADp GitHub l\xE0 ${session2.login}. Ch\u1EC9 ch\u1EE7 repo (${OWNER}) m\u1EDBi duy\u1EC7t \u0111\u01B0\u1EE3c.` };
-  }
-  const pr = await api(session2, "GET", `/repos/${repo}/pulls/${number}`);
-  if (pr.status === 401) {
-    logout();
-    return { ok: false, error: "Phi\xEAn \u0111\u0103ng nh\u1EADp GitHub \u0111\xE3 h\u1EBFt h\u1EA1n. B\u1EA5m l\u1EA1i \u0111\u1EC3 \u0111\u0103ng nh\u1EADp." };
-  }
-  if (pr.status !== 200) return { ok: false, error: `Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c Pull Request #${number} (HTTP ${pr.status}).` };
-  if (pr.json.state !== "open") return { ok: false, error: `Pull Request #${number} kh\xF4ng c\xF2n \u1EDF tr\u1EA1ng th\xE1i m\u1EDF.` };
-  if (action === "close") {
-    const r = await api(session2, "PATCH", `/repos/${repo}/pulls/${number}`, { state: "closed" });
-    if (r.status !== 200) return { ok: false, error: `Kh\xF4ng t\u1EEB ch\u1ED1i \u0111\u01B0\u1EE3c (HTTP ${r.status}): ${String(r.json?.message ?? "").slice(0, 200)}` };
-    clearPendingCache();
-    return { ok: true, done: "closed" };
-  }
-  const fl = await api(session2, "GET", `/repos/${repo}/pulls/${number}/files?per_page=100`);
-  if (fl.status !== 200 || !Array.isArray(fl.json)) return { ok: false, error: `Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c danh s\xE1ch file (HTTP ${fl.status}).` };
-  const outside = outsideFiles(repo, fl.json.map((f) => String(f.filename)));
-  if (outside.length > 0 && !allowOutside) {
-    return { ok: false, outside: outside.slice(0, 20), error: "Pull Request n\xE0y s\u1EEDa c\u1EA3 file ngo\xE0i th\u01B0 m\u1EE5c c\u1EE7a n\xF3." };
-  }
-  const sha = String(pr.json.head.sha);
-  const runs = await api(session2, "GET", `/repos/${repo}/actions/runs?head_sha=${sha}&status=action_required`);
-  if (runs.status === 200 && Array.isArray(runs.json?.workflow_runs)) {
-    for (const run of runs.json.workflow_runs) await api(session2, "POST", `/repos/${repo}/actions/runs/${run.id}/approve`);
-  }
-  const m = await api(session2, "PUT", `/repos/${repo}/pulls/${number}/merge`, { merge_method: "squash", sha });
-  if (m.status !== 200) return { ok: false, error: `Kh\xF4ng g\u1ED9p \u0111\u01B0\u1EE3c (HTTP ${m.status}): ${String(m.json?.message ?? "").slice(0, 200)}` };
-  clearPendingCache();
-  return { ok: true, done: "merged" };
-}
-var cache = null;
-async function listPending() {
-  if (cache && Date.now() - cache.at < 2e4) return cache.list;
-  const s = await gitSession();
-  if (!s) return null;
-  const out = [];
-  for (const repo of REPOS2) {
-    const r = await api(s, "GET", `/repos/${repo}/pulls?state=open&per_page=30`);
-    if (r.status !== 200 || !Array.isArray(r.json)) throw new Error(`Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c ${repo} (HTTP ${r.status}).`);
-    for (const p of r.json) {
-      const f = await api(s, "GET", `/repos/${repo}/pulls/${p.number}/files?per_page=100`);
-      const c = await api(s, "GET", `/repos/${repo}/commits/${p.head.sha}/check-runs`);
-      out.push({
-        repo,
-        kind: repo.endsWith("team-skills") ? "Skill" : "Addon",
-        n: p.number,
-        title: String(p.title),
-        user: String(p.user?.login ?? ""),
-        url: String(p.html_url),
-        sha: String(p.head.sha),
-        at: String(p.created_at),
-        files: Array.isArray(f.json) ? f.json.map((x) => String(x.filename)) : [],
-        checks: c.status === 200 && Array.isArray(c.json?.check_runs) ? c.json.check_runs.map((x) => ({ status: String(x.status), conclusion: x.conclusion ?? null })) : null
-      });
-    }
-  }
-  cache = { at: Date.now(), list: out };
-  return out;
-}
-function clearPendingCache() {
-  cache = null;
-}
-
-// server/http.ts
 var PORT = 47653;
 var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);

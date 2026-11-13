@@ -14,7 +14,7 @@ type Sess = Parameters<typeof api>[0];
  * The GitHub sign-in this machine already uses for `git push` (Git Credential Manager). Used only to merge or close
  * a Pull Request, never stored or sent anywhere else, and only accepted when it belongs to the repo owner.
  */
-export async function gitSession(): Promise<Sess | null> {
+export async function gitSession(requireOwner = true): Promise<Sess | null> {
   const token = await new Promise<string>((resolve) => {
     const child = execFile(
       "git",
@@ -31,7 +31,8 @@ export async function gitSession(): Promise<Sess | null> {
   if (!token) return null;
   const s: Sess = { token, login: "", expiresAt: Date.now() + 60_000 };
   const me = await api(s, "GET", "/user");
-  if (me.status !== 200 || String(me.json?.login ?? "").toLowerCase() !== OWNER) return null;
+  if (me.status !== 200 || !me.json?.login) return null;
+  if (requireOwner && String(me.json.login).toLowerCase() !== OWNER) return null;
   s.login = String(me.json.login);
   return s;
 }

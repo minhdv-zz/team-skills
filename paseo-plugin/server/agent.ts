@@ -6,6 +6,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeF
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { addonRoots, teamNames } from "./handlers";
+import { gitSession } from "./review";
 import {
   NAME_RE,
   checkContribution,
@@ -238,7 +239,9 @@ export async function webContribute(input: WebContributeInput): Promise<Record<s
     if (!input.confirm) return { ...base, stage: "check" };
     if (errors.length) return { ...base, ok: false, error: "Còn lỗi cần sửa trước khi gửi." };
 
-    const login = await ensureSession(1500);
+    // Prefer the GitHub sign-in this machine already uses for git (no code to type); otherwise sign in with a code.
+    const gitS = await gitSession(false);
+    const login = gitS ? { session: gitS } : await ensureSession(1500);
     if (!login.session) return { ok: false, login: pendingLogin() };
     const r = await submitContribution({
       kind: it.kind,
