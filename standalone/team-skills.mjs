@@ -1042,7 +1042,7 @@ async function webContributeOnce(input) {
       replace: false,
       s: login.session
     });
-    return { ...base, stage: "sent", prUrl: r.prUrl, login: login.session.login };
+    return { ...base, stage: "sent", prUrl: r.prUrl, as: login.session.login };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   } finally {

@@ -587,7 +587,7 @@ function ctSendNow(){
   CT.sending = true;
   ctShow('<div class="fine">Đang gửi lên GitHub...</div>');
   ctPost({confirm:true, author:CT.author}).then(function(j){
-    if(j.login){
+    if(j.login && j.login.code){
       ctShow('<div class="msg-body">Lần đầu cần đăng nhập GitHub. Mở trang bên dưới, nhập mã này rồi bấm Authorize.</div>'
         + '<div style="text-align:center;margin-top:12px"><div style="font:700 30px Consolas,monospace;letter-spacing:.1em;background:#0b0f14;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px">' + esc(j.login.code) + '</div>'
         + '<a class="btn pri" href="' + esc(j.login.url) + '" target="_blank" rel="noopener noreferrer">Mở trang nhập mã GitHub</a> <button id="ctCopy">Copy mã</button></div>'
