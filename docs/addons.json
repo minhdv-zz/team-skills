@@ -7,7 +7,8 @@
     "needs": [
       "Blender 3.6+"
     ],
-    "author": "Ivan 'mrven' Vostrikov, Felipe Torrents, mokalux, Oxicid"
+    "author": "Ivan 'mrven' Vostrikov, Felipe Torrents, mokalux, Oxicid",
+    "img": "img/Asset_Creation_Toolset_2023_1_Bl361.jpg"
   },
   {
     "name": "EdgeFlow",
@@ -17,7 +18,8 @@
     "needs": [
       "Blender 3.5+"
     ],
-    "author": "Benjamin Sauder"
+    "author": "Benjamin Sauder",
+    "img": "img/EdgeFlow.jpg"
   },
   {
     "name": "simple_renaming_panel",
@@ -27,7 +29,8 @@
     "needs": [
       "Blender 3.0+"
     ],
-    "author": "Matthias Patscheider"
+    "author": "Matthias Patscheider",
+    "img": "img/simple_renaming_panel.jpg"
   },
   {
     "name": "interactive_tools",
@@ -37,7 +40,8 @@
     "needs": [
       "Blender 4.2+"
     ],
-    "author": "Maxi Vazquez, Ajfurey"
+    "author": "Maxi Vazquez, Ajfurey",
+    "img": "img/interactive_tools.jpg"
   },
   {
     "name": "uv_toolkit",
@@ -47,7 +51,8 @@
     "needs": [
       "Blender 4.2+"
     ],
-    "author": "Ethan Simon-Law"
+    "author": "Ethan Simon-Law",
+    "img": "img/uv_toolkit.jpg"
   },
   {
     "name": "hardops",
@@ -60,7 +65,8 @@
     "link": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym",
     "zip": "https://drive.horusvn.com/s/B5AFa79zNmT2Wym/download",
     "folder": "HOps",
-    "author": "AR, MX, proxe, bonjorno7, MACHIN3 và cộng sự"
+    "author": "AR, MX, proxe, bonjorno7, MACHIN3 và cộng sự",
+    "img": "img/hardops.jpg"
   },
   {
     "name": "uvpackmaster4",
@@ -73,7 +79,8 @@
     "link": "https://drive.horusvn.com/s/72wDsoqNdCdo973",
     "zip": "https://drive.horusvn.com/s/72wDsoqNdCdo973/download",
     "folder": "uvpackmaster4",
-    "author": "glukoz"
+    "author": "glukoz",
+    "img": "img/uvpackmaster4.jpg"
   },
   {
     "name": "pie_menu_editor_fork",
@@ -86,6 +93,7 @@
     "link": "https://drive.horusvn.com/s/5W659cSZdZgg8Np",
     "zip": "https://drive.horusvn.com/s/5W659cSZdZgg8Np/download",
     "folder": "pie_menu_editor",
-    "author": "roaoao, pluglug"
+    "author": "roaoao, pluglug",
+    "img": "img/pie_menu_editor_fork.jpg"
   }
 ]
