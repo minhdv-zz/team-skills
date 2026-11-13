@@ -52,6 +52,16 @@
   .tabs{display:flex;gap:8px;margin-bottom:16px}
   .tab{padding:8px 18px;border-radius:999px}
   .tab.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .wrap{max-width:1240px}
+  .layout{display:flex;gap:28px;align-items:flex-start}
+  .tabs{flex-direction:column;width:190px;flex:none;margin-bottom:0;position:sticky;top:24px}
+  .tab{text-align:left;border-radius:10px;padding:10px 16px}
+  .main-col{flex:1;min-width:0}
+  @media (max-width:820px){
+    .layout{flex-direction:column;gap:0}
+    .tabs{flex-direction:row;flex-wrap:wrap;width:auto;position:static;margin-bottom:16px}
+    .tab{border-radius:999px;padding:8px 18px}
+  }
 </style>
 </head>
 <body>
@@ -59,11 +69,13 @@
   <h1>Team Tools</h1>
   <p class="sub" id="sub"></p>
 
+  <div class="layout">
   <div class="tabs">
     <button class="tab on" id="tab-skills" onclick="setTab('skills')">Skill</button>
     <button class="tab" id="tab-addons" onclick="setTab('addons')">Addon Blender</button>
     <button class="tab" id="tab-contrib" onclick="setTab('contrib')">Đóng góp</button>
   </div>
+  <div class="main-col">
 
   <div id="main">
   <div class="bar">
@@ -157,6 +169,8 @@
       </div>
       <p style="color:var(--mut);margin-top:12px">Chưa có quyền ghi vào repo thì GitHub tự tạo bản sao cho bạn. Hướng dẫn đầy đủ: <a href="https://github.com/minhdv-zz/team-skills/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" style="color:#9d8cff">CONTRIBUTING.md</a></p>
     </details>
+  </div>
+  </div>
   </div>
 </div>
 
