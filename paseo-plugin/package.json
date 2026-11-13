@@ -12,7 +12,8 @@
     "shared/"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:standalone": "npx --yes esbuild standalone/main.ts --bundle --platform=node --format=esm --target=node20 --outfile=../standalone/team-skills.mjs"
   },
   "devDependencies": {
     "@getpaseo/plugin": "0.15.1",

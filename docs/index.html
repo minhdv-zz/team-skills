@@ -134,10 +134,10 @@
 
   <div id="main">
   <details class="help step1" id="help" open>
-    <summary id="helpSum">Cài plugin Paseo (làm một lần)</summary>
-    <p>Bấm copy, rồi dán vào một chat Claude trong Paseo. Claude sẽ tự cài giúp bạn.</p>
-    <button class="pri big" id="btnPluginPrompt">Copy lời nhờ Claude cài plugin</button>
-    <div class="fine">Plugin chạy không có sandbox. Dán vào chat nghĩa là bạn đồng ý cài.</div>
+    <summary id="helpSum">Cài Team Skills (làm một lần)</summary>
+    <p>Bấm copy, rồi dán vào chat của app AI bạn đang dùng (Paseo, Claude Code, Cursor, Codex, ...). AI sẽ tự nhận ra app của bạn, cài đúng cách và kiểm tra giúp.</p>
+    <button class="pri big" id="btnPluginPrompt">Copy lời nhờ cài</button>
+    <div class="fine">Chương trình chạy không có sandbox, trên máy của bạn. Dán vào chat nghĩa là bạn đồng ý cài.</div>
     <details class="alt">
       <summary>Cách khác: tự làm tay</summary>
       <p>Paseo &rarr; <b>Settings &rarr; Plugins</b>, dán nguồn này vào ô <b>Plugin source</b>, bấm <b>Install plugin</b>:</p>
@@ -150,7 +150,7 @@
 
   <div class="bar">
     <span class="dot" id="dot"></span>
-    <span class="st" id="status">Đang kiểm tra plugin Paseo...</span>
+    <span class="st" id="status">Đang kiểm tra Team Skills trên máy...</span>
     <label id="lblTarget">Cài vào
       <select id="target">
         <option value="claude">Claude Code (~/.claude/skills)</option>
@@ -186,7 +186,7 @@
           <b>Chọn skill hoặc addon trên máy bạn, bấm Đóng góp</b>
           <div class="fine" style="margin:4px 0 8px;font-size:13.5px">Trang tự quét skill và addon Blender đang có trên máy. Cái nào đã có trong kho chung sẽ hiện <span class="chip ok">Đã đóng góp</span>.</div>
           <div id="localList"></div>
-          <div class="fine">Bấm <b>Đóng góp</b> sẽ copy lời nhờ, dán vào một chat mới trong Paseo.</div>
+          <div class="fine">Bấm <b>Đóng góp</b> sẽ copy lời nhờ, dán vào một chat Claude mới (trong Paseo hoặc app khác).</div>
           <details class="alt">
             <summary>Skill nằm trong thư mục dự án, không thấy trong danh sách?</summary>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
@@ -203,6 +203,15 @@
       </ol>
       <div class="fine" style="border-top:1px solid var(--line);padding-top:10px">Cần có: <b>tên tác giả</b> trong skill/addon &middot; addon phải <b>miễn phí và được chia sẻ lại</b> &middot; không chứa <b>khóa, token, mật khẩu</b>. Hệ thống tự quét.</div>
     </div>
+
+    <details class="help" style="margin-top:14px" id="otherApps">
+      <summary>Thêm vào app dạng MCP (Claude Code, Cursor, Codex, ...)</summary>
+      <p>Nút <b>Copy lời nhờ cài</b> ở đầu trang đã dùng được cho mọi app: AI của app bạn dùng sẽ tự nhận ra app và cài đúng cách (cần Node.js 20 trở lên nếu không dùng Paseo). Mục này chỉ để thêm Team Skills dạng <b>MCP</b>, khi app của bạn hỗ trợ.</p>
+      <div class="fine" style="margin:4px 0 8px;font-size:13.5px">Cần có file <code>~/.team-skills/team-skills.mjs</code> (lời nhờ cài ở đầu trang tải giúp). Rồi khai báo máy chủ MCP trong app, app sẽ có sẵn công cụ liệt kê và đóng góp.</div>
+      <pre id="mcpCmd"></pre>
+      <button onclick="copy(mcpCmd.textContent,this)">Copy lệnh Claude Code</button> <span class="fine">(<code>-s user</code>: dùng cho mọi dự án; trên cmd của Windows hãy thay <code>$HOME</code> bằng đường dẫn thật)</span>
+      <div class="fine">App khác: thêm máy chủ MCP dạng stdio, command <code>node</code>, đối số <code>~/.team-skills/team-skills.mjs</code> và <code>mcp</code> (dùng đường dẫn đầy đủ nếu app không hiểu dấu <code>~</code>).</div>
+    </details>
 
     <details class="help" style="margin-top:14px">
       <summary>Không dùng Paseo? Gửi thủ công trên GitHub</summary>
@@ -257,7 +266,7 @@
     <h2 id="permTitle">Cần bạn bấm &ldquo;Cho phép&rdquo;</h2>
     <p class="lead">Trình duyệt đang hỏi bạn ở <b>góc trên bên trái</b> màn hình:</p>
     <div class="quote">&ldquo;minhdv-zz.github.io muốn truy nhập các ứng dụng và dịch vụ khác trên thiết bị này&rdquo;</div>
-    <div class="must"><b>Bắt buộc bấm &ldquo;Cho phép&rdquo;</b> thì trang mới nói chuyện được với plugin Paseo trên máy bạn để <b>cài, gỡ và cập nhật</b> skill, addon tự động. Bấm <i>Chặn</i> thì các nút Cài và Gỡ cài sẽ không chạy.</div>
+    <div class="must"><b>Bắt buộc bấm &ldquo;Cho phép&rdquo;</b> thì trang mới nói chuyện được với Team Skills (plugin Paseo hoặc chương trình độc lập) trên máy bạn để <b>cài, gỡ và cập nhật</b> skill, addon tự động. Bấm <i>Chặn</i> thì các nút Cài và Gỡ cài sẽ không chạy.</div>
     <div class="skip" id="permSkip">Hộp thoại không hiện? <a id="permSkipLink">Tiếp tục không cần cho phép</a> (chỉ dùng được lệnh copy thủ công).</div>
   </div>
 </div>
@@ -392,7 +401,7 @@ function loadReview(){
 }
 function doReview(i, action, allowOutside, skipAsk){
   var p = PENDING[i];
-  if(!STATE){ toast('Muốn duyệt tại đây cần cài plugin Paseo (Bước 1). Hoặc bấm Xem thay đổi trên GitHub rồi duyệt ở đó.', false); return; }
+  if(!STATE){ toast('Muốn duyệt tại đây cần cài Team Skills (Bước 1). Hoặc bấm Xem thay đổi trên GitHub rồi duyệt ở đó.', false); return; }
   if((STATE.features || []).indexOf('review') < 0){ needUpdate(); return; }
   var bad = p.checks && p.checks.some(function(x){ return ['failure','cancelled','timed_out'].indexOf(x.conclusion) >= 0; });
   var needAsk = action === 'merge' && bad;
@@ -405,7 +414,7 @@ function doReview(i, action, allowOutside, skipAsk){
   go.then(function(ok){
     if(!ok) return;
     return fetch(LOCAL + '/review', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({repo:p.repo, number:p.n, action:action, allow_outside:!!allowOutside})})
-      .then(function(r){ if(r.status === 404) throw new Error('Plugin Paseo là bản cũ, chưa có chức năng duyệt. Cập nhật: paseo plugin update team-skills --yes'); return r.json(); })
+      .then(function(r){ if(r.status === 404) throw new Error('Team Skills trên máy là bản cũ, chưa có chức năng duyệt. Cập nhật: paseo plugin update team-skills --yes'); return r.json(); })
       .then(function(j){
         if(j.login) return askConfirm('Đăng nhập GitHub (tài khoản chủ repo)', 'Bấm nút bên dưới để mở trang GitHub (nếu trình duyệt chưa tự mở), nhập mã này rồi bấm Authorize. Xong bấm nút dưới đây, trang sẽ tự làm tiếp.', 'Đã nhập xong, tiếp tục', j.login).then(function(y){ if(y) doReview(i, action, allowOutside, true); });
         if(j.outside) return askConfirm('Có file ngoài thư mục của nó', 'Đóng góp này sửa cả:\n' + j.outside.join('\n') + '\n\nVẫn gộp?', 'Vẫn gộp').then(function(y){ if(y) doReview(i, action, true); });
@@ -470,10 +479,10 @@ function buildPrompt(kindArg, whatArg){
   var field = isPath || !what ? '"path":"' + (what || '<đường dẫn tuyệt đối, dùng dấu />') + '"' : '"name":"' + what + '"';
   var body = '{"kind":"' + kind + '",' + field;
   var L = [];
-  L.push('Hãy giúp tôi đóng góp ' + label + ' "' + target + '" lên Team Skills (kho chung của team) thông qua plugin Paseo team-skills đang chạy trên máy này, nghe ở http://127.0.0.1:47653. Làm đúng theo các bước dưới đây. Mọi lệnh curl BẮT BUỘC có header X-Team-Skills: 1. Nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
+  L.push('Hãy giúp tôi đóng góp ' + label + ' "' + target + '" lên Team Skills (kho chung của team) thông qua Team Skills (plugin Paseo hoặc chương trình độc lập) đang chạy trên máy này, nghe ở http://127.0.0.1:47653. Làm đúng theo các bước dưới đây. Mọi lệnh curl BẮT BUỘC có header X-Team-Skills: 1. Nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
   L.push('');
   L.push('Bước 0 - kiểm tra plugin: curl -s -H "X-Team-Skills: 1" http://127.0.0.1:47653/agent/list');
-  L.push('Nếu lỗi kết nối, 403 hoặc 404 (Not found): plugin chưa chạy hoặc là bản cũ. Bảo tôi mở Paseo và chạy "paseo plugin update team-skills --yes", rồi thử lại.');
+  L.push('Nếu lỗi kết nối, 403 hoặc 404 (Not found): plugin chưa chạy hoặc là bản cũ. Nếu tôi dùng Paseo thì bảo tôi chạy "paseo plugin update team-skills --yes"; nếu không thì bảo tôi dùng mục "Dùng app khác" trên trang https://minhdv-zz.github.io/team-skills/ để cài chương trình độc lập. Rồi thử lại.');
   L.push('');
   L.push('Bước 1 - kiểm tra thử, CHƯA gửi gì. Ghi JSON ra một file tạm body.json rồi gửi (dùng dấu / trong đường dẫn):');
   L.push('curl -s -X POST -H "X-Team-Skills: 1" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/agent/contribute');
@@ -504,7 +513,7 @@ function isPendingName(name){
 }
 function renderLocal(){
   var el = $('localList');
-  if(!STATE){ el.innerHTML = '<div class="warnbox">Chưa kết nối plugin Paseo trên máy này nên chưa quét được. Làm bước 1 rồi tải lại trang.</div>'; return; }
+  if(!STATE){ el.innerHTML = '<div class="warnbox">Chưa kết nối Team Skills trên máy này nên chưa quét được. Làm bước 1 (Paseo) hoặc mục "Dùng app khác" bên dưới, rồi tải lại trang.</div>'; return; }
   if(LOCAL_FAIL === 'old'){ el.innerHTML = '<div class="warnbox">Plugin trên máy là bản cũ, chưa quét được. Làm bước 1 để cập nhật rồi tải lại trang.</div>'; return; }
   if(!LOCAL_ITEMS){ el.innerHTML = LOCAL_FAIL ? '<div class="warnbox">Không quét được: ' + esc(LOCAL_FAIL) + '</div>' : '<div class="fine">Đang quét máy...</div>'; return; }
   var groups = [['skill','Skill'],['addon','Addon Blender']];
@@ -531,43 +540,57 @@ $('localList').addEventListener('click', function(e){
   var x = LOCAL_ITEMS[Number(b.getAttribute('data-i'))];
   if(x) copy(buildPrompt(x.kind, x.path), b);
 });
+var STANDALONE_URL = RAW + '/standalone/team-skills.mjs';
+function standaloneLines(){
+  var L = [];
+  L.push('Cách B (không dùng Paseo) - chương trình Team Skills chạy độc lập, cần Node.js:');
+  L.push('B1. Chạy "node -v". Cần phiên bản 20 trở lên. Nếu chưa có hoặc cũ hơn, báo tôi cài từ https://nodejs.org rồi dừng.');
+  L.push('B2. Tạo thư mục .team-skills trong thư mục home của tôi, rồi tải ' + STANDALONE_URL + ' thành file team-skills.mjs trong thư mục đó. Chỉ tải file này, không tải gì khác. Nhắc tôi: file này sẽ chạy trên máy tôi với quyền của tôi.');
+  L.push('B3. Nếu http://127.0.0.1:47653/status đã trả 200 thì đã có chương trình chạy sẵn, bỏ qua B4.');
+  L.push('B4. Chạy nền, không chặn chat: node <đường dẫn đầy đủ của team-skills.mjs> serve . Windows PowerShell gợi ý: Start-Process -WindowStyle Hidden -FilePath node -ArgumentList "<đường dẫn đầy đủ>","serve"; macOS/Linux: nohup node <đường dẫn> serve > /dev/null 2>&1 &');
+  L.push('B5. Kiểm tra lại /status phải trả 200.');
+  L.push('Sau khi xong, nhắc tôi: chương trình tắt khi tắt máy (muốn chạy lại thì chạy lại lệnh ở B4); cập nhật bản mới thì tải lại file ở B2. Nếu app của tôi hỗ trợ MCP, hỏi tôi có muốn thêm máy chủ MCP không (Claude Code: claude mcp add -s user team-skills -- node <đường dẫn đầy đủ>/team-skills.mjs mcp); chỉ làm khi tôi đồng ý.');
+  return L;
+}
 function buildPluginPrompt(item){
   var SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
   var winPaseo = '%LOCALAPPDATA%\\Programs\\Paseo\\resources\\bin\\paseo.cmd';
   var ORIGIN = 'https://minhdv-zz.github.io';
   var kindWord = item ? (item.kind === 'skill' ? 'skill' : 'addon Blender') : '';
   var L = [];
-  L.push('Hãy giúp tôi cài (hoặc cập nhật) plugin Paseo "team-skills" cho trang https://minhdv-zz.github.io/team-skills/' + (item ? ', rồi cài luôn ' + kindWord + ' "' + item.title + '" (tên ' + item.name + ')' : '') + ' . Làm đúng các bước sau, nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
+  L.push('Hãy giúp tôi cài (hoặc cập nhật) Team Skills cho trang https://minhdv-zz.github.io/team-skills/' + (item ? ', rồi cài luôn ' + kindWord + ' "' + item.title + '" (tên ' + item.name + ')' : '') + ' , dùng được với app AI mà tôi đang dùng. Làm đúng các bước sau, nói chuyện với tôi bằng tiếng Việt, ngắn gọn. Tôi đã chủ động dán lời nhờ này nên coi như đã đồng ý cài, KHÔNG cần hỏi lại (trừ chỗ có ghi hỏi). Dùng cú pháp đúng với shell đang chạy (PowerShell, cmd, bash...); trên PowerShell gọi curl.exe thay vì curl (curl là bí danh của Invoke-WebRequest).');
   L.push('');
-  L.push('Bước 1 - tìm lệnh paseo: chạy "paseo --version". Nếu không có lệnh paseo, trên Windows dùng đường dẫn đầy đủ ' + winPaseo + ' thay cho "paseo" ở mọi lệnh bên dưới.');
+  L.push('Bước 1 - chọn cách cài theo app tôi đang dùng. Chạy "paseo --version" (Windows: nếu không có lệnh paseo thì thử đường dẫn đầy đủ ' + winPaseo + ' thay cho "paseo" ở mọi lệnh Cách A).');
+  L.push('- Tìm thấy paseo và chat này đang chạy trong Paseo: dùng Cách A.');
+  L.push('- Không có paseo, hoặc tôi đang dùng app khác (Claude Code, Cursor, Codex, ...): dùng Cách B.');
+  L.push('- Không chắc: hỏi tôi một câu duy nhất, đang dùng app nào.');
   L.push('');
-  L.push('Bước 2 - xem đã cài chưa: chạy "paseo plugin ls" và tìm plugin tên team-skills.');
+  L.push('Cách A (Paseo) - plugin Paseo "team-skills":');
+  L.push('A1. Chạy "paseo plugin ls" và tìm plugin tên team-skills.');
+  L.push('A2. Chưa có: chạy "paseo plugin install ' + SRC + '". Đã có: chạy "paseo plugin update team-skills --yes" (xem trước bằng "paseo plugin update team-skills --check"). Nếu plugin đó được cài từ một thư mục trên máy thay vì từ Git, hãy nói cho tôi biết và đừng gỡ hay cài đè.');
+  L.push('A3. Chỉ nói một dòng bạn đang chạy lệnh nào. Sau khi chạy, "paseo plugin ls" phải thấy team-skills ở trạng thái running.');
   L.push('');
-  L.push('Bước 3 - chọn lệnh:');
-  L.push('- Chưa có team-skills: lệnh cài là "paseo plugin install ' + SRC + '".');
-  L.push('- Đã có team-skills: lệnh cập nhật là "paseo plugin update team-skills --yes" (xem trước có bản mới không bằng "paseo plugin update team-skills --check"). Nếu plugin đó được cài từ một thư mục trên máy thay vì từ Git, hãy nói cho tôi biết và đừng gỡ hay cài đè.');
+  standaloneLines().forEach(function(x){ L.push(x); });
   L.push('');
-  L.push('Bước 4 - chạy lệnh đã chọn ở bước 3 luôn, KHÔNG cần hỏi lại tôi (tôi đã chủ động dán lời nhờ này nên coi như đã đồng ý). Chỉ nói một dòng bạn đang chạy lệnh nào.');
-  L.push('');
-  L.push('Bước 5 - kiểm tra sau khi chạy: "paseo plugin ls" phải thấy team-skills ở trạng thái running, và lệnh curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:47653/status phải trả 200.');
+  L.push('Bước 2 - kiểm tra chung cho cả hai cách: GET http://127.0.0.1:47653/status phải trả 200 (Windows dùng curl.exe -s -o NUL -w "%{http_code}", macOS/Linux dùng curl -s -o /dev/null -w "%{http_code}").');
   L.push('');
   if(item){
     var tgt = (item.target || 'claude');
-    L.push('Bước 6 - cài ' + kindWord + ' "' + item.name + '" bằng plugin vừa chạy. Mọi lệnh curl dưới đây cần header Origin: ' + ORIGIN + ' . Ghi JSON ra file tạm body.json rồi gửi bằng --data-binary @body.json để khỏi lỗi dấu ngoặc.');
+    L.push('Bước 3 - cài ' + kindWord + ' "' + item.name + '" bằng chương trình vừa chạy. Mọi lệnh curl dưới đây cần header Origin: ' + ORIGIN + ' . Ghi JSON ra file tạm body.json rồi gửi bằng --data-binary @body.json để khỏi lỗi dấu ngoặc.');
     if(item.kind === 'skill'){
       L.push('curl -s -X POST -H "Origin: ' + ORIGIN + '" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/install');
       L.push('body.json: {"names":["' + item.name + '"],"target":"' + tgt + '"}');
       L.push('Kết quả phải có "ok":true. Nếu lỗi, gửi tôi nguyên văn.');
     } else {
-      L.push('6a. Lấy phiên bản Blender: curl -s -H "Origin: ' + ORIGIN + '" http://127.0.0.1:47653/status , đọc blender.versions[0]. Nếu danh sách rỗng thì báo tôi biết chưa thấy Blender (cần mở Blender ít nhất một lần) và dừng.');
-      L.push('6b. Cài addon: curl -s -X POST -H "Origin: ' + ORIGIN + '" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/install-addon');
-      L.push('body.json: {"names":["' + item.name + '"],"version":"<phiên bản ở 6a>"}');
+      L.push('3a. Lấy phiên bản Blender: curl -s -H "Origin: ' + ORIGIN + '" http://127.0.0.1:47653/status , đọc blender.versions[0]. Nếu danh sách rỗng thì báo tôi biết chưa thấy Blender (cần mở Blender ít nhất một lần) và dừng.');
+      L.push('3b. Cài addon: curl -s -X POST -H "Origin: ' + ORIGIN + '" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/install-addon');
+      L.push('body.json: {"names":["' + item.name + '"],"version":"<phiên bản ở 3a>"}');
       L.push('Kết quả phải có "ok":true. Nếu "via" là "blender" và addon được bật thì xong; nếu không, nhắc tôi bật addon trong Edit > Preferences > Add-ons.');
     }
     L.push('');
-    L.push('Bước 7 - báo kết quả ngắn gọn, nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển xanh' + (item.kind === 'skill' ? ' và mở lại Claude Code để nhận skill mới' : '') + '. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
+    L.push('Bước 4 - báo kết quả ngắn gọn, nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển xanh' + (item.kind === 'skill' ? ' và mở lại app đang dùng để nhận skill mới' : '') + '. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
   } else {
-    L.push('Bước 6 - báo kết quả ngắn gọn và nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển sang xanh. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
+    L.push('Bước 3 - báo kết quả ngắn gọn và nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển sang xanh. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
   }
   return L.join('\n');
 }
@@ -625,25 +648,25 @@ function render(){
   var on = !!STATE;
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
   $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (làm Bước 1 ở trên).')
-    : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills --yes'
+    : (!isSk && outdated) ? 'Team Skills trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills --yes (bản độc lập: tải lại file team-skills.mjs)'
     : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
-    : (STATE && !canUninstall) ? 'Đã kết nối plugin Paseo nhưng là bản cũ, chưa gỡ cài được. Cập nhật: paseo plugin update team-skills --yes'
+    : (STATE && !canUninstall) ? 'Đã kết nối Team Skills nhưng là bản cũ, chưa gỡ cài được. Cập nhật: paseo plugin update team-skills --yes (bản độc lập: tải lại file team-skills.mjs)'
     : (!isSk && STATE.blender && STATE.blender.live) ? 'Đã kết nối Blender đang mở (' + vs[0] + '): addon sẽ được cài và bật trực tiếp.'
-    : 'Đã kết nối plugin Paseo trên máy này.';
+    : 'Đã kết nối Team Skills trên máy này.';
   var can = on && !blocked && !BUSY;
   $('btnAll').disabled = !can; $('btnMissing').disabled = !can;
   var good = on && canUninstall;   // connected AND recent enough
   $('help').open = !good;
   $('help').className = 'help step1' + (good ? ' ok' : '');
-  $('helpSum').textContent = good ? 'Plugin Paseo đã kết nối (bấm để xem lại cách cài hoặc cập nhật)'
-    : (on ? 'Cập nhật plugin Paseo (bản trên máy này đã cũ)' : 'Cài plugin Paseo (làm một lần)');
+  $('helpSum').textContent = good ? 'Team Skills đã kết nối (bấm để xem lại cách cài hoặc cập nhật)'
+    : (on ? 'Cập nhật Team Skills (bản trên máy này đã cũ)' : 'Cài Team Skills (làm một lần)');
 }
 
 function post(path, body){
   BUSY = true; render();
   return fetch(LOCAL + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
     .then(function(r){
-      if(r.status === 404) throw new Error('Plugin Paseo trên máy này là bản cũ, chưa có chức năng này. Hãy cập nhật: paseo plugin update team-skills --yes (hoặc dùng nút Copy lời nhờ Claude ở Bước 1).');
+      if(r.status === 404) throw new Error('Team Skills trên máy này là bản cũ, chưa có chức năng này. Hãy cập nhật: paseo plugin update team-skills --yes (hoặc dùng nút Copy lời nhờ Claude ở Bước 1).');
       return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; });
     })
     .finally(function(){ BUSY=false; });
@@ -669,7 +692,7 @@ function installOne(i){
   var s = ITEMS[TAB][i];
   if(!STATE){
     QUICK_ITEM = {kind: TAB==='skills' ? 'skill' : 'addon', name: s.name, title: s.title, target: target()};
-    $('mQuickT').textContent = 'Claude sẽ cài plugin Paseo (nếu chưa có) và cài luôn "' + s.title + '" cho bạn, không cần làm tay.';
+    $('mQuickT').textContent = 'AI sẽ cài Team Skills (nếu chưa có) và cài luôn "' + s.title + '" cho bạn, không cần làm tay.';
     $('mTitle').textContent=s.title; $('mId').textContent=s.name;
     if(TAB==='skills'){
       var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : '';
@@ -798,7 +821,7 @@ function bulk(mode){
 function needUpdate(){
   $('help').open = true;
   $('help').scrollIntoView({behavior:'smooth', block:'start'});
-  toast('Plugin Paseo trên máy này là bản cũ. Cập nhật: paseo plugin update team-skills --yes (hoặc copy lời nhờ Claude ở Bước 1).', false);
+  toast('Team Skills trên máy này là bản cũ. Cập nhật: paseo plugin update team-skills --yes (hoặc copy lời nhờ Claude ở Bước 1).', false);
 }
 function closeM(){ $('ov').classList.remove('on') }
 

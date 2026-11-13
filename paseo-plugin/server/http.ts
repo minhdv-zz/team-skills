@@ -198,7 +198,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 }
 
 /** Starts the loopback HTTP endpoint used by the team-skills web page. Returns a cleanup. */
-export function startHttp(): () => void {
+export function startHttp(opts?: { onListening?: () => void; onError?: (e: Error) => void }): () => void {
   const server: Server = createServer((req, res) => {
     handle(req, res).catch((e: unknown) => {
       send(res, 500, { error: e instanceof Error ? e.message : String(e) });
@@ -206,8 +206,9 @@ export function startHttp(): () => void {
   });
   server.on("error", (e) => {
     console.error("[team-skills] HTTP endpoint not started: " + (e instanceof Error ? e.message : String(e)));
+    opts?.onError?.(e);
   });
-  server.listen(PORT, "127.0.0.1");
+  server.listen(PORT, "127.0.0.1", () => opts?.onListening?.());
   return () => {
     server.close();
   };

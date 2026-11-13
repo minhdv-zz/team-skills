@@ -472,7 +472,7 @@ export async function submitContribution(opts: {
     description ? `**Mô tả:** ${description}` : "",
     `**File:** ${files.length}`,
     "",
-    "Gửi tự động từ plugin Team Skills của Paseo.",
+    "Gửi tự động từ Team Skills (plugin Paseo hoặc chương trình độc lập).",
     warnings.length ? "\n**Cảnh báo khi kiểm tra cục bộ:**\n" + warnings.join("\n") : "",
     "",
     "**Người duyệt:** đây là mã/hướng dẫn sẽ chạy trên máy người cài. Hãy đọc kỹ nội dung trước khi gộp.",
