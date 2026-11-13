@@ -34,10 +34,10 @@
   #perm .skip{margin-top:14px;font-size:13px;color:var(--mut);display:none}
   #perm .skip a{color:#9d8cff;cursor:pointer;text-decoration:underline}
   details.help.step1{border:2px solid var(--acc);background:linear-gradient(135deg,#1c1640,#161b22);box-shadow:0 0 30px #7c5cff55;padding:18px 22px;margin-bottom:20px}
-  details.help.step1 summary{font-size:19px;font-weight:700}
+  details.help.step1>summary{font-size:19px;font-weight:700}
   details.help.step1 p{color:#d4dbe4}
   details.help.step1.ok p{color:var(--mut)}
-  details.help.step1 summary::before{content:'BƯỚC 1';display:inline-block;background:var(--acc);color:#fff;font-size:12px;letter-spacing:.06em;padding:3px 10px;border-radius:999px;margin-right:12px;vertical-align:2px}
+  details.help.step1>summary::before{content:'BƯỚC 1';display:inline-block;background:var(--acc);color:#fff;font-size:12px;letter-spacing:.06em;padding:3px 10px;border-radius:999px;margin-right:12px;vertical-align:2px}
   details.help.step1.ok{border-color:#1f4a2b;background:var(--card);box-shadow:none;padding:12px 18px}
   details.help.step1.ok summary{font-size:15px;font-weight:600}
   details.help.step1.ok summary::before{content:'XONG';background:#12261a;color:var(--ok);border:1px solid #1f4a2b}
@@ -93,6 +93,20 @@
     .tabs{flex-direction:row;flex-wrap:wrap;width:auto;position:static;margin-bottom:16px}
     .tab{border-radius:999px;padding:8px 18px}
   }
+  button.big{font-size:16px;padding:11px 22px}
+  .fine{color:var(--mut);font-size:12.5px;margin-top:8px}
+  details.alt{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+  details.alt>summary{cursor:pointer;color:var(--mut);font-size:14px}
+  .card .d{margin:0;color:var(--mut);font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:none}
+  .card h3{font-size:17px}
+  .foot{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:auto;padding-top:4px}
+  .foot .by{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .foot button,.foot a.btn{flex:none}
+  .lk{position:absolute;top:8px;right:8px;z-index:2;background:#0d1117cc;border:1px solid #ffffff33;color:#e6edf3;border-radius:999px;padding:3px 11px;font-size:13px;backdrop-filter:blur(4px)}
+  .lk.on{color:#ff6b8a;border-color:#ff6b8a88}
+  .lk.sm{position:static;background:#21262d;backdrop-filter:none;border-color:var(--line);font-size:14px;padding:7px 14px;border-radius:8px}
+  .lk.sm.on{background:#3a1522}
+  .card{gap:6px}
 </style>
 </head>
 <body>
@@ -111,16 +125,17 @@
   <div id="main">
   <details class="help step1" id="help" open>
     <summary id="helpSum">Cài plugin Paseo (làm một lần)</summary>
-    <p><b>Cách nhanh:</b> copy lời nhờ rồi dán vào <b>một cuộc chat Claude trong Paseo</b>. Claude sẽ cài (hoặc cập nhật) plugin giúp bạn, không hỏi lại.</p>
-    <button class="pri" id="btnPluginPrompt">Copy lời nhờ Claude cài plugin</button>
-    <p style="font-size:13px;margin:8px 0 0">&#9888; Plugin chạy <b>không có sandbox</b>: code của repo này sẽ chạy trên máy bạn. Bấm Copy rồi dán vào chat nghĩa là bạn đồng ý cài.</p>
-    <p style="margin-top:18px"><b>Hoặc làm tay:</b></p>
-    <p>Mở Paseo, vào <b>Settings → Plugins</b>, dán nguồn plugin vào ô <b>Plugin source</b> rồi bấm <b>Install plugin</b>:</p>
-    <pre id="pluginSrc"></pre>
-    <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
-    <p>Hoặc dùng dòng lệnh: <code id="pluginCmd"></code></p>
-    <p>Sau khi plugin chạy, tải lại trang này. Chấm tròn ở trên sẽ chuyển sang xanh.</p>
-    <p>Đã cài plugin từ trước mà nút Cài addon không bấm được? Plugin được ghim theo phiên bản, hãy cập nhật: <code>paseo plugin update team-skills</code></p>
+    <p>Bấm copy, rồi dán vào một chat Claude trong Paseo. Claude sẽ tự cài giúp bạn.</p>
+    <button class="pri big" id="btnPluginPrompt">Copy lời nhờ Claude cài plugin</button>
+    <div class="fine">Plugin chạy không có sandbox. Dán vào chat nghĩa là bạn đồng ý cài.</div>
+    <details class="alt">
+      <summary>Cách khác: tự làm tay</summary>
+      <p>Paseo &rarr; <b>Settings &rarr; Plugins</b>, dán nguồn này vào ô <b>Plugin source</b>, bấm <b>Install plugin</b>:</p>
+      <pre id="pluginSrc"></pre>
+      <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
+      <p>Hoặc chạy lệnh: <code id="pluginCmd"></code></p>
+      <p>Đã cài rồi mà nút không bấm được? Cập nhật: <code>paseo plugin update team-skills</code></p>
+    </details>
   </details>
 
   <div class="bar">
@@ -145,41 +160,28 @@
   <div id="contrib" style="display:none">
     <div class="card" style="border-color:var(--acc);gap:14px">
       <h3 style="font-size:20px">Đóng góp skill hoặc addon của bạn</h3>
-      <div style="color:var(--mut)">Gửi lên kho chung cho cả team dùng. Chủ repo duyệt rồi mới hiện. Cần một tài khoản GitHub.</div>
-
+      <div style="color:var(--mut)">Cần tài khoản GitHub. Chủ repo duyệt xong mới hiện cho cả team.</div>
       <ol class="steps">
         <li>
-          <b>Cập nhật plugin Paseo</b> (làm một lần)
-          <pre id="cmdUpdate">paseo plugin update team-skills</pre>
-          <button onclick="copy(cmdUpdate.textContent,this)">Copy lệnh</button>
-          <button class="pri" id="btnPluginPrompt2" style="margin-left:8px">Copy lời nhờ Claude cập nhật plugin</button>
-          <div style="color:var(--mut);font-size:13px;margin-top:6px">Plugin chạy không có sandbox. Dán lời nhờ vào chat nghĩa là bạn đồng ý cập nhật.</div>
+          <b>Cập nhật plugin Paseo</b> (một lần)
+          <div style="margin-top:8px"><button class="pri" id="btnPluginPrompt2">Copy lời nhờ Claude cập nhật plugin</button></div>
+          <div class="fine">Hoặc chạy lệnh <code>paseo plugin update team-skills</code></div>
         </li>
         <li>
-          <b>Điền thông tin rồi copy lời nhờ Claude</b>
+          <b>Điền tên hoặc đường dẫn, rồi copy lời nhờ</b>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
             <select id="cKind"><option value="skill">Skill</option><option value="addon">Addon Blender</option></select>
-            <input id="cWhat" placeholder="Tên hoặc đường dẫn thư mục, ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
+            <input id="cWhat" placeholder="Ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
           </div>
           <button class="pri" id="btnPrompt">Copy lời nhờ Claude</button>
-          <div style="color:var(--mut);font-size:13px;margin-top:6px">Lời nhờ đã có đủ các bước, <b>không cần cài thêm skill nào</b>. Mở <b>một cuộc chat mới</b> trong Paseo (mở trong thư mục dự án nếu skill nằm trong dự án) rồi dán vào.</div>
+          <div class="fine">Dán vào một chat mới trong Paseo (mở trong thư mục dự án nếu skill nằm trong dự án).</div>
         </li>
         <li>
-          <b>Claude kiểm tra giúp bạn</b>, tự sửa lỗi nhỏ (ví dụ thêm tên tác giả) và hỏi bạn có đồng ý công khai không. Chỉ cần trả lời.
-        </li>
-        <li>
-          <b>Đăng nhập GitHub khi được mở trang:</b> nhập mã hiện ra rồi bấm <i>Authorize</i>. Xong Claude gửi cho bạn <b>link Pull Request</b>. Việc còn lại là chờ chủ repo duyệt.
+          <b>Làm theo Claude</b>
+          <div class="fine" style="font-size:14px;margin-top:4px">Trả lời câu hỏi, đăng nhập GitHub khi trang được mở, rồi nhận link Pull Request.</div>
         </li>
       </ol>
-    </div>
-
-    <div class="card" style="margin-top:14px">
-      <h3>Trước khi gửi, kiểm tra nhanh</h3>
-      <ul class="check">
-        <li>Có <b>tên tác giả</b>: dòng <code>author:</code> trong <code>SKILL.md</code>, hoặc <code>author</code> trong <code>bl_info</code> của addon.</li>
-        <li>Addon phải <b>miễn phí và được phép chia sẻ lại</b>, kèm file giấy phép. Addon trả phí thì không đưa lên.</li>
-        <li>Không có <b>khóa, token, mật khẩu</b> hay file <code>.exe</code>/<code>.dll</code> trong skill. Hệ thống tự quét và từ chối.</li>
-      </ul>
+      <div class="fine" style="border-top:1px solid var(--line);padding-top:10px">Cần có: <b>tên tác giả</b> trong skill/addon &middot; addon phải <b>miễn phí và được chia sẻ lại</b> &middot; không chứa <b>khóa, token, mật khẩu</b>. Hệ thống tự quét.</div>
     </div>
 
     <details class="help" style="margin-top:14px">
@@ -253,6 +255,7 @@
     <div class="row" style="justify-content:space-between">
       <a class="btn" id="dtGit" target="_blank" rel="noopener noreferrer">Xem trên GitHub</a>
       <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="lk sm" id="dtLike"></button>
         <button id="dtClose">Đóng</button>
         <span id="dtAct"></span>
       </span>
@@ -280,6 +283,69 @@ var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
 var TAB = 'skills';
+var LIKES = {}, ORDER = {};
+var MINE = {}; try{ MINE = JSON.parse(localStorage.getItem('tt_liked') || '{}'); }catch(e){}
+var LK_BUSY = false;
+function likeKey(s){ return (TAB==='skills' ? 'skill:' : 'addon:') + s.name; }
+function saveMine(){ try{ localStorage.setItem('tt_liked', JSON.stringify(MINE)); sessionStorage.removeItem('tt_lk'); }catch(e){} }
+function setOrder(){
+  ['skills','addons'].forEach(function(t){
+    var pre = t==='skills' ? 'skill:' : 'addon:';
+    ORDER[t] = ITEMS[t].map(function(_, i){ return i; }).sort(function(a, b){
+      return ((LIKES[pre+ITEMS[t][b].name]||0) - (LIKES[pre+ITEMS[t][a].name]||0)) || (a-b);
+    });
+  });
+}
+function loadLikes(){
+  try{ var c = JSON.parse(sessionStorage.getItem('tt_lk') || 'null'); if(c && Date.now()-c.t < 180000){ LIKES = c.m; setOrder(); return Promise.resolve(); } }catch(e){}
+  var m = {};
+  function page(n){
+    return fetch('https://api.github.com/repos/minhdv-zz/team-skills/issues?state=all&per_page=100&sort=created&direction=asc&page='+n, {headers:{Accept:'application/vnd.github+json'}})
+      .then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
+      .then(function(list){
+        list.forEach(function(is){
+          if(is.pull_request) return;
+          var t = /^like:(skill|addon):([A-Za-z0-9_-]+)$/.exec(is.title || '');
+          var k = t && t[1]+':'+t[2];
+          if(k && !(k in m)) m[k] = (is.reactions && is.reactions['+1']) || 0;
+        });
+        if(list.length === 100 && n < 3) return page(n+1);
+      });
+  }
+  return page(1).then(function(){ LIKES = m; try{ sessionStorage.setItem('tt_lk', JSON.stringify({t:Date.now(), m:m})); }catch(e){} setOrder(); }).catch(function(){});
+}
+function syncDtLike(){
+  if(DT_I < 0) return;
+  var s = ITEMS[TAB][DT_I], k = likeKey(s), b = $('dtLike');
+  b.className = 'lk sm' + (MINE[k] ? ' on' : '');
+  b.textContent = (MINE[k] ? '\u2665 Đã thích' : '\u2661 Thích') + (LIKES[k] ? ' \u00b7 ' + LIKES[k] : '');
+  b.onclick = function(){ toggleLike(DT_I); };
+}
+function toggleLike(i){
+  var s = ITEMS[TAB][i], k = likeKey(s), on = !MINE[k], kind = k.split(':')[0];
+  if(!STATE){
+    $('help').open = true; $('help').scrollIntoView({behavior:'smooth', block:'start'});
+    toast('Muốn thích cần cài plugin Paseo (Bước 1) và đăng nhập GitHub.', false); return;
+  }
+  if((STATE.features || []).indexOf('like') < 0){ needUpdate(); return; }
+  if(LK_BUSY) return;
+  LK_BUSY = true;
+  var prevMine = !!MINE[k], prevCount = LIKES[k] || 0;
+  MINE[k] = on; LIKES[k] = Math.max(0, prevCount + (on ? 1 : -1)); render(); syncDtLike();
+  function rollback(){ MINE[k] = prevMine; LIKES[k] = prevCount; render(); syncDtLike(); }
+  fetch(LOCAL + '/like', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({kind:kind, name:s.name, on:on})})
+    .then(function(r){ if(r.status===404) throw new Error('Plugin Paseo là bản cũ, chưa có nút thích. Cập nhật: paseo plugin update team-skills'); return r.json(); })
+    .then(function(j){
+      if(j.login){
+        rollback();
+        return askConfirm('Đăng nhập GitHub để thích', 'Trình duyệt vừa mở trang GitHub.\n\nNhập mã: ' + j.login.code + '\nrồi bấm Authorize. Xong quay lại đây và bấm thích lần nữa.', 'Đã hiểu');
+      }
+      if(!j.ok) throw new Error(j.error || 'Không thích được.');
+      MINE[k] = j.liked; LIKES[k] = j.count; saveMine(); render(); syncDtLike();
+    })
+    .catch(function(e){ rollback(); toast('Lỗi: ' + e.message, false); })
+    .finally(function(){ LK_BUSY = false; });
+}
 
 function $(id){return document.getElementById(id)}
 $('pluginSrc').textContent = PLUGIN_SRC;
@@ -407,9 +473,7 @@ function installedOf(name){
 
 function render(){
   var isSk = TAB==='skills', list = ITEMS[TAB];
-  $('sub').innerHTML = isSk
-    ? 'Chọn skill rồi bấm <b>Cài</b>. Cài xong mở lại Claude Code để nhận skill.'
-    : 'Chọn addon rồi bấm <b>Cài</b>. Cài xong mở Blender, vào <b>Edit → Preferences → Add-ons</b> và tick bật addon.';
+  $('sub').textContent = isSk ? 'Cài xong, mở lại Claude Code để dùng.' : 'Cài xong, bật addon trong Edit → Preferences → Add-ons.';
   $('lblTarget').style.display = isSk ? '' : 'none';
   $('lblVersion').style.display = isSk ? 'none' : '';
 
@@ -422,25 +486,25 @@ function render(){
   var noBlender = !isSk && !!STATE && !outdated && vs.length===0;
   var canUninstall = !STATE || (STATE.features || []).indexOf('uninstall') >= 0;
   var blocked = !isSk && (outdated || noBlender);
-  $('grid').innerHTML = list.map(function(s,i){
+  $('grid').innerHTML = (ORDER[TAB] || list.map(function(_, i){ return i; })).map(function(i){ var s = list[i];
     var inst = installedOf(s.name);
     var label = 'Cài';
     var hue = (i*47+(isSk?250:150))%360;
     var thumb = '<div class="thumb" style="background:linear-gradient(135deg,hsl('+hue+',55%,32%),hsl('+((hue+40)%360)+',60%,18%))">'
       + esc(s.title.charAt(0)) + (s.img ? '<img src="'+esc(s.img)+'" alt="" loading="lazy" onerror="this.remove()">' : '') + '</div>';
-    var tags = (s.needs||[]).concat(s.license?[s.license]:[]);
-    return '<div class="card click" onclick="openDetail('+i+')">' + thumb
-      + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
-      + '<p>'+esc(s.desc)+'</p><div class="more">Xem chi tiết &rarr;</div>'
-      + (s.author ? '<div style="color:var(--mut);font-size:13px">Tác giả: '+esc(s.author)+'</div>' : '')
-      + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
-      + '<div>' + (s.link && !(STATE && s.zip)
+    var k = likeKey(s);
+    var lk = '<button class="lk'+(MINE[k]?' on':'')+'" title="Thích" onclick="event.stopPropagation();toggleLike('+i+')">'+(MINE[k]?'\u2665':'\u2661')+(LIKES[k]?' '+LIKES[k]:'')+'</button>';
+    var act = (s.link && !(STATE && s.zip))
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Tải về (nội bộ)</a>'
           : (STATE && inst && !canUninstall)
-            ? '<button onclick="event.stopPropagation();needUpdate()">Cần cập nhật plugin để gỡ</button>'
+            ? '<button onclick="event.stopPropagation();needUpdate()">Cần cập nhật plugin</button>'
           : (STATE && inst)
             ? '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();uninstallOne('+i+')">Gỡ cài</button>'
-            : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();installOne('+i+')">'+label+'</button>') + '</div></div>';
+            : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();installOne('+i+')">'+label+'</button>';
+    return '<div class="card click" onclick="openDetail('+i+')">' + thumb.slice(0, -6) + lk + '</div>'
+      + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3>'
+      + '<p class="d">'+esc(s.desc)+'</p>'
+      + '<div class="foot"><span class="by">'+(s.author ? esc(s.author) : '')+'</span>' + act + '</div></div>';
   }).join('');
 
   var on = !!STATE;
@@ -506,7 +570,7 @@ function installOne(i){
   post(r[0], r[1]).then(function(j){ toast(s.title+': '+doneMsg(j), true); return refresh(); })
     .catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
 }
-var DT_SEQ = 0;
+var DT_SEQ = 0, DT_I = -1;
 function closeDetail(){ $('dt').classList.remove('on'); DT_SEQ++; }
 function fmFrom(text){
   var m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
@@ -548,6 +612,7 @@ function openDetail(i){
     else { b.className='pri'; b.textContent='Cài'; b.onclick=function(){ closeDetail(); installOne(i); }; }
   }
   act.appendChild(b);
+  DT_I = i; syncDtLike();
   $('dt').classList.add('on');
 
   // the full text lives in the repo: SKILL.md (skills) or README (addons)
@@ -647,7 +712,7 @@ $('version').addEventListener('change', render);
 
 function load(file){ return fetch(file + '?t=' + Date.now()).then(function(r){return r.json()}); }
 Promise.all([load('skills.json'), load('addons.json').catch(function(){return []})]).then(function(a){
-  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); return refresh();
+  ITEMS.skills = a[0]; ITEMS.addons = a[1]; setOrder(); render(); return Promise.all([loadLikes().then(render), refresh()]);
 }).catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách.</p>' });
 </script>
 </body>

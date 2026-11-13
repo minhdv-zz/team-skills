@@ -13,11 +13,12 @@ import {
   uninstallSkills,
   type Target,
 } from "./handlers";
+import { setLike } from "./likes";
 import { runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
 
 export const PORT = 47653;
 /** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
-const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute"];
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "like"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 
@@ -130,6 +131,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     if (!Array.isArray(body.names) || body.names.length === 0) return send(res, 400, { error: "Provide names" });
     const result = await uninstallAddons(body.names.map((n) => String(n)), String(body.version ?? ""));
     return send(res, 200, { ok: true, removed: result.paths, via: result.via });
+  }
+
+  if (req.method === "POST" && path === "/like") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    const body = await readJson(req);
+    return send(res, 200, await setLike(String(body.kind), String(body.name), body.on !== false));
   }
 
   if (req.method === "POST" && path === "/install-addon") {

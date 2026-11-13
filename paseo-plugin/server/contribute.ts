@@ -219,6 +219,10 @@ export function logout(): boolean {
   return had;
 }
 
+export function pendingLogin(): { code: string; url: string } | null {
+  return pending && pending.expiresAt > Date.now() ? { code: pending.userCode, url: pending.verificationUri } : null;
+}
+
 export function currentLogin(): string | null {
   return session && session.expiresAt > Date.now() + 60_000 ? session.login : null;
 }
@@ -307,7 +311,7 @@ export async function ensureSession(waitMs: number): Promise<LoginResult> {
 
 // ------------------------------------------------------------------ submit as a Pull Request
 
-async function api(s: Session, method: string, path: string, body?: unknown): Promise<{ status: number; json: any }> {
+export async function api(s: Session, method: string, path: string, body?: unknown): Promise<{ status: number; json: any }> {
   const res = await fetch("https://api.github.com" + path, {
     method,
     headers: {
