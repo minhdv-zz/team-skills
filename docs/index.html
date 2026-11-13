@@ -426,7 +426,7 @@ function openDetail(i){
   $('dtId').textContent = s.name;
   $('dtMeta').textContent = [s.author ? 'Tác giả: '+s.author : '', s.license ? 'Giấy phép: '+s.license : ''].filter(Boolean).join('   •   ');
   $('dtTags').innerHTML = (s.needs||[]).map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('');
-  $('dtDesc').textContent = s.desc;
+  $('dtDesc').textContent = s.desc_full || s.desc;
   $('dtBody').style.display = 'none'; $('dtBodyH').style.display = 'none';
 
   var folder = s.folder || s.name;
@@ -456,12 +456,11 @@ function openDetail(i){
   fetch(url + '?t=' + Date.now()).then(function(r){ if(!r.ok) throw new Error(); return r.text(); }).then(function(text){
     if(seq !== DT_SEQ) return;
     var p = isSk ? fmFrom(text) : {fm:{}, body:text};
-    if(p.fm.description) $('dtDesc').textContent = p.fm.description;
     var body = p.body.trim();
     if(body){
       if(body.length > 6000) body = body.slice(0, 6000).replace(/\s+\S*$/,'') + '\n\n… (còn nữa, xem đầy đủ trên GitHub)';
       $('dtBody').textContent = body; $('dtBody').style.display=''; $('dtBodyH').style.display='';
-      $('dtBodyH').textContent = isSk ? 'Nội dung skill' : 'README';
+      $('dtBodyH').textContent = isSk ? 'Nội dung skill (bản gốc, có thể bằng tiếng Anh)' : 'README (bản gốc, có thể bằng tiếng Anh)';
     }
   }).catch(function(){});
 }

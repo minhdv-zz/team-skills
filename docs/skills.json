@@ -7,7 +7,8 @@
       "Blender MCP"
     ],
     "img": "img/copymau-hoidz.jpg",
-    "author": "hoidz"
+    "author": "hoidz",
+    "desc_full": "Copy màu từ model này sang model khác, hoặc từ bộ phận này sang bộ phận khác trong Blender mà vẫn giữ nguyên hình học. Dùng cho model tô màu bằng palette (màu do UV điều khiển), ví dụ copy màu bánh xe, vành, trục bánh và các bộ phận khác. Gọi bằng /copymau-hoidz hoặc nói \"copy màu hoidz\"."
   },
   {
     "name": "export_hoidz",
@@ -18,7 +19,8 @@
       "Addon ACT"
     ],
     "img": "img/export_hoidz.jpg",
-    "author": "hoidz"
+    "author": "hoidz",
+    "desc_full": "Xuất mesh từ Blender sang Unity dạng FBX bằng add-on ACT (Import/Export Tools, mục Export FBX to Unity), điều khiển qua Blender MCP. Bạn đưa tên mesh, hoặc ảnh có mũi tên chỉ mesh cần xuất. ACT dùng cài đặt mặc định cố định, còn đường dẫn xuất (Export Path) luôn được hỏi lại. Gọi bằng /export_hoidz hoặc nói \"export hoidz\", \"xuất sang Unity bằng ACT\"."
   },
   {
     "name": "tb-hoidz",
@@ -28,14 +30,16 @@
       "Blender MCP"
     ],
     "img": "img/tb-hoidz.jpg",
-    "author": "hoidz"
+    "author": "hoidz",
+    "desc_full": "Tô texture cho model Blender có sẵn bằng cách gán UV vào các dải gradient của palette (palette-strip), dựa trên ảnh concept. Chỉ dùng khi gọi rõ /tb-hoidz hoặc \"tb-hoidz\", để không trùng với skill tô texture của người khác trong team."
   },
   {
     "name": "gm3d-tudn",
-    "title": "Gm3D Tudn",
-    "desc": "Gradient-map UV texturing for Blender game props/gates on the color2/T_Colorpalette strips with TuDN's 3D lighting and color rules (cylinder shading, 3-level white, Unity-aware values). Use for /gm3d…",
+    "title": "GM3D TuDN",
+    "desc": "Tô texture gradient map cho cổng và prop game trong Blender trên dải palette, theo quy tắc ánh sáng 3D và màu của TuDN.",
     "needs": [],
     "author": "TuDN",
-    "img": "img/gm3d-tudn.jpg"
+    "img": "img/gm3d-tudn.jpg",
+    "desc_full": "Tô texture bằng gradient map UV cho prop và cổng game trong Blender, dùng các dải màu của palette color2/T_Colorpalette, theo quy tắc ánh sáng 3D và màu của TuDN: đổ bóng hình trụ cho khối tròn, màu trắng 3 mức, giá trị màu tính trước ánh sáng của Unity. Dùng khi gọi /gm3d-tudn, GM3D-TUDN hoặc khi tô texture cho cổng cuối trận."
   }
 ]
