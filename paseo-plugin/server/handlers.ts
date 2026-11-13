@@ -271,12 +271,17 @@ async function installableAddons(): Promise<AddonEntry[]> {
   return (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link || a.zip);
 }
 
+/** Every addon on the site, including manual-download ones: used to show installed state and to uninstall. */
+async function knownAddons(): Promise<AddonEntry[]> {
+  return fetchJson<AddonEntry[]>("addons.json");
+}
+
 const folderOf = (a: AddonEntry) => a.folder ?? a.name;
 
 export async function listAddons() {
   const live = await liveBlender();
   const versions = live ? [live.version] : blenderVersions();
-  const list = await installableAddons();
+  const list = await knownAddons();
   return {
     /** True when a running Blender answered on the MCP socket; installs then go through it. */
     live: live !== null,
@@ -448,7 +453,7 @@ export async function uninstallAddons(names: string[], version: string): Promise
   if (live ? version !== live.version : !blenderVersions().includes(version)) {
     throw new Error("Blender " + version + " not found on this machine");
   }
-  const list = await installableAddons();
+  const list = await knownAddons();
   const byName = new Map(list.map((a) => [a.name, a]));
   for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
 
