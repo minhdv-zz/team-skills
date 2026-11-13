@@ -169,7 +169,7 @@
   </div>
   <div id="review" style="display:none">
     <h2 style="margin:0 0 6px">Đóng góp chờ duyệt</h2>
-    <div class="fine" style="margin:0 0 14px;font-size:13.5px">Đọc kỹ trước khi duyệt: skill và addon sẽ chạy trên máy của người cài. Chỉ chủ repo mới duyệt được, và cần plugin Paseo cùng đăng nhập GitHub.</div>
+    <div class="fine" style="margin:0 0 14px;font-size:13.5px">Đọc kỹ trước khi duyệt: skill và addon sẽ chạy trên máy của người cài. Bấm <b>Duyệt trên GitHub</b>, đọc rồi bấm <b>Merge</b> ở trang đó. Chỉ chủ repo mới duyệt được.</div>
     <div id="rvList"></div>
   </div>
   <div id="contrib" style="display:none">
@@ -348,8 +348,9 @@ function renderReview(){
       + '<div class="tags">' + checkChip(p) + (p.files ? '<span class="chip">' + p.files.length + ' file</span>' : '') + '</div>'
       + (out.length ? '<div class="warnbox"><b>Cẩn thận:</b> đóng góp này sửa cả file ngoài thư mục của nó (' + out.slice(0,5).map(esc).join(', ') + (out.length > 5 ? ', ...' : '') + '). Chỉ duyệt nếu bạn hiểu rõ.</div>' : '')
       + (p.files ? '<details><summary>Xem danh sách file</summary><pre>' + p.files.slice(0,60).map(esc).join('\n') + (p.files.length > 60 ? '\n... (' + (p.files.length-60) + ' file nữa)' : '') + '</pre></details>' : '')
-      + '<div class="foot"><a class="btn" href="' + esc(p.url) + '/files" target="_blank" rel="noopener noreferrer">Xem thay đổi trên GitHub</a>'
-      + '<span style="display:flex;gap:8px"><button class="danger" onclick="doReview(' + i + ',\'close\')">Từ chối</button><button class="pri" onclick="doReview(' + i + ',\'merge\')">Duyệt và gộp</button></span></div></div>';
+      + '<div class="foot"><a class="btn" href="' + esc(p.url) + '/files" target="_blank" rel="noopener noreferrer">Xem thay đổi</a>'
+      + '<a class="btn pri" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">Duyệt trên GitHub</a></div>'
+      + '<details><summary>Cách khác: duyệt ngay trong trang (cần đăng nhập GitHub bằng mã)</summary><div style="display:flex;gap:8px;margin-top:8px"><button class="danger" onclick="doReview(' + i + ','close')">Từ chối</button><button onclick="doReview(' + i + ','merge')">Gộp nhanh</button></div></details></div>';
   }).join('');
 }
 function loadReview(){
