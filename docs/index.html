@@ -99,16 +99,18 @@
 
       <ol class="steps">
         <li>
-          <b>Chuẩn bị (làm một lần):</b> cập nhật plugin Paseo, rồi cài skill <b>Đóng góp lên Team Skills</b> (tab <i>Skill</i> → bấm <i>Cài</i>)
+          <b>Cập nhật plugin Paseo</b> (làm một lần)
           <pre id="cmdUpdate">paseo plugin update team-skills</pre>
           <button onclick="copy(cmdUpdate.textContent,this)">Copy lệnh</button>
         </li>
         <li>
-          <b>Mở một cuộc chat mới trong Paseo</b> (cạnh thư mục dự án chứa skill, nếu có) và nhắn Claude
-          <pre id="chatSkill">Hãy dùng skill team-skills-contribute để đóng góp skill tên-skill-của-bạn lên Team Skills</pre>
-          <button onclick="copy(chatSkill.textContent,this)">Copy câu mẫu (skill)</button>
-          <pre id="chatAddon" style="margin-top:10px">Hãy dùng skill team-skills-contribute để đóng góp addon Blender tên-addon-của-bạn lên Team Skills</pre>
-          <button onclick="copy(chatAddon.textContent,this)">Copy câu mẫu (addon)</button>
+          <b>Điền thông tin rồi copy lời nhờ Claude</b>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+            <select id="cKind"><option value="skill">Skill</option><option value="addon">Addon Blender</option></select>
+            <input id="cWhat" placeholder="Tên hoặc đường dẫn thư mục, ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
+          </div>
+          <button class="pri" id="btnPrompt">Copy lời nhờ Claude</button>
+          <div style="color:var(--mut);font-size:13px;margin-top:6px">Lời nhờ đã có đủ các bước, <b>không cần cài thêm skill nào</b>. Mở <b>một cuộc chat mới</b> trong Paseo (mở trong thư mục dự án nếu skill nằm trong dự án) rồi dán vào.</div>
         </li>
         <li>
           <b>Claude kiểm tra giúp bạn</b>, tự sửa lỗi nhỏ (ví dụ thêm tên tác giả) và hỏi bạn có đồng ý công khai không. Chỉ cần trả lời.
@@ -218,6 +220,36 @@ function updateContribLinks(){
 $('cSkill').addEventListener('input', updateContribLinks);
 $('cAddon').addEventListener('input', updateContribLinks);
 updateContribLinks();
+
+function buildPrompt(){
+  var kind = $('cKind').value;
+  var what = ($('cWhat').value || '').trim().replace(/\x5c/g,'/');
+  var isPath = /^[A-Za-z]:\//.test(what) || what.charAt(0)==='/';
+  var label = kind==='skill' ? 'skill' : 'addon Blender';
+  var target = what || (isPath ? '<đường dẫn thư mục>' : '<tên>');
+  var field = isPath || !what ? '"path":"' + (what || '<đường dẫn tuyệt đối, dùng dấu />') + '"' : '"name":"' + what + '"';
+  var body = '{"kind":"' + kind + '",' + field;
+  var L = [];
+  L.push('Hãy giúp tôi đóng góp ' + label + ' "' + target + '" lên Team Skills (kho chung của team) thông qua plugin Paseo team-skills đang chạy trên máy này, nghe ở http://127.0.0.1:47653. Làm đúng theo các bước dưới đây. Mọi lệnh curl BẮT BUỘC có header X-Team-Skills: 1. Nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
+  L.push('');
+  L.push('Bước 0 - kiểm tra plugin: curl -s -H "X-Team-Skills: 1" http://127.0.0.1:47653/agent/list');
+  L.push('Nếu lỗi kết nối hoặc 403: bảo tôi mở Paseo và chạy "paseo plugin update team-skills", rồi thử lại.');
+  L.push('');
+  L.push('Bước 1 - kiểm tra thử, CHƯA gửi gì. Ghi JSON ra một file tạm body.json rồi gửi (dùng dấu / trong đường dẫn):');
+  L.push('curl -s -X POST -H "X-Team-Skills: 1" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/agent/contribute');
+  L.push('body.json: ' + body + ',"dry_run":true}');
+  L.push('(Skill nằm trong ~/.claude/skills hoặc addon trong thư mục addons của Blender thì dùng "name", còn lại dùng "path" là đường dẫn tuyệt đối.)');
+  L.push('');
+  L.push('Bước 2 - kết quả có LỖI (bắt buộc sửa) và CẢNH BÁO (nên dọn: đường dẫn riêng của máy, khóa/token, phần ghi là lịch sử hoặc không dùng). HỎI TÔI TRƯỚC khi sửa. Sửa trên BẢN SAO trong thư mục tạm (giữ nguyên tên thư mục), không sửa file gốc. SKILL.md phải có dòng "author:" (hỏi tôi tên muốn hiển thị) và "name" trùng tên thư mục. Kiểm tra lại đến khi hết lỗi.');
+  L.push('');
+  L.push('Bước 3 - hỏi tôi có đồng ý CÔNG KHAI nội dung này trong kho chung không' + (kind==='addon' ? ', và addon có miễn phí, giấy phép cho phép chia sẻ lại không' : '') + '. Chưa được tôi đồng ý rõ ràng thì TUYỆT ĐỐI không gửi.');
+  L.push('');
+  L.push('Bước 4 - gửi: như bước 1 nhưng bỏ dry_run và thêm "share_confirmed":true. Nếu kết quả có mã đăng nhập GitHub (trình duyệt đã tự mở github.com/login/device): bảo tôi nhập mã đó rồi bấm Authorize, sau đó chạy lại đúng lệnh. Nếu tên đã có trong kho chung: hỏi tôi, muốn cập nhật thì thêm "replace_existing":true.');
+  L.push('');
+  L.push('Bước 5 - gửi tôi link Pull Request. Không tự đăng nhập GitHub, không xin token của tôi.');
+  return L.join('\n');
+}
+$('btnPrompt').addEventListener('click', function(){ copy(buildPrompt(), this); });
 
 function installedOf(name){
   if(!STATE) return false;
