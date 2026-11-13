@@ -1,0 +1,8 @@
+{
+  "name": "model-routing-dang",
+  "description": "Lets the lead choose which AI model runs each task of the 3D Automation - Dangpbh pipeline (GPT image model for concepts, Claude model and effort for 3D work, Claude or GPT model for skill creation a…",
+  "version": "1.0.0",
+  "author": {
+    "name": "dangpbh"
+  }
+}

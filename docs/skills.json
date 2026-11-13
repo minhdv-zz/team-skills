@@ -41,5 +41,12 @@
     "author": "TuDN",
     "img": "img/gm3d-tudn.jpg",
     "desc_full": "Tô texture bằng gradient map UV cho prop và cổng game trong Blender, dùng các dải màu của palette color2/T_Colorpalette, theo quy tắc ánh sáng 3D và màu của TuDN: đổ bóng hình trụ cho khối tròn, màu trắng 3 mức, giá trị màu tính trước ánh sáng của Unity. Dùng khi gọi /gm3d-tudn, GM3D-TUDN hoặc khi tô texture cho cổng cuối trận."
+  },
+  {
+    "name": "model-routing-dang",
+    "title": "Model Routing Dang",
+    "desc": "Lets the lead choose which AI model runs each task of the 3D Automation - Dangpbh pipeline (GPT image model for concepts, Claude model and effort for 3D work, Claude or GPT model for skill creation a…",
+    "needs": [],
+    "author": "dangpbh"
   }
 ]
