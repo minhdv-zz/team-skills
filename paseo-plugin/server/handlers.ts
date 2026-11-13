@@ -403,3 +403,65 @@ export async function teamNames(): Promise<{ skills: Set<string>; addons: Set<st
   }
   return out;
 }
+
+// ---------------------------------------------------------------- uninstall
+
+/** Remove skills from the target skills folder. Only names published in the team list are accepted. */
+export async function uninstallSkills(names: string[], target: Target): Promise<string[]> {
+  if (!TARGETS.includes(target)) throw new Error("Invalid target: " + String(target));
+  const list = await fetchJson<SkillEntry[]>("skills.json");
+  const allowed = new Set(list.map((s) => s.name));
+  for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
+  const removed: string[] = [];
+  for (const name of names) {
+    const dest = join(skillsDir(target), name);
+    if (existsSync(dest)) {
+      rmSync(dest, { recursive: true, force: true });
+      removed.push(dest);
+    }
+  }
+  return removed;
+}
+
+/**
+ * Remove addons from Blender. With a running Blender (MCP socket) each addon is disabled first and the
+ * preferences saved, then its folder is deleted; otherwise only the folder is deleted.
+ * Only addons published in the team list are accepted.
+ */
+export async function uninstallAddons(names: string[], version: string): Promise<{ paths: string[]; via: "blender" | "files" }> {
+  const live = await liveBlender();
+  if (live ? version !== live.version : !blenderVersions().includes(version)) {
+    throw new Error("Blender " + version + " not found on this machine");
+  }
+  const list = await installableAddons();
+  const byName = new Map(list.map((a) => [a.name, a]));
+  for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
+
+  const destRoot = live ? live.addonsPath : addonsDir(version);
+  const paths: string[] = [];
+  for (const name of names) {
+    const folder = folderOf(byName.get(name)!);
+    const dest = join(destRoot, folder);
+    if (!existsSync(dest)) continue;
+    if (live) {
+      await blenderRun(
+        [
+          "import bpy, addon_utils",
+          "folder = " + JSON.stringify(folder),
+          "try:",
+          "    addon_utils.disable(folder, default_set=True)",
+          "except Exception:",
+          "    pass",
+          "try:",
+          "    bpy.ops.wm.save_userpref()",
+          "except Exception:",
+          "    pass",
+          "print('ok')",
+        ].join("\n"),
+      ).catch(() => "");
+    }
+    rmSync(dest, { recursive: true, force: true });
+    paths.push(dest);
+  }
+  return { paths, via: live ? "blender" : "files" };
+}

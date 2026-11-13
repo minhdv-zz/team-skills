@@ -33,6 +33,7 @@
   button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
   a.btn{display:inline-block;text-decoration:none;border-radius:8px;border:1px solid var(--line);padding:7px 14px;color:var(--text);background:#21262d}
   a.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  button.danger{background:#3b1219;border-color:#f85149;color:#ffb4ac;font-weight:600}
   button:hover:not(:disabled){filter:brightness(1.12)} button:disabled{opacity:.55;cursor:default}
   .overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
   .overlay.on{display:flex}
@@ -279,7 +280,7 @@ function render(){
   var blocked = !isSk && (outdated || noBlender);
   $('grid').innerHTML = list.map(function(s,i){
     var inst = installedOf(s.name);
-    var label = STATE ? (inst ? 'Cài lại' : 'Cài') : 'Cài';
+    var label = 'Cài';
     var hue = (i*47+(isSk?250:150))%360;
     var thumb = '<div class="thumb" style="background:linear-gradient(135deg,hsl('+hue+',55%,32%),hsl('+((hue+40)%360)+',60%,18%))">'
       + esc(s.title.charAt(0)) + (s.img ? '<img src="'+esc(s.img)+'" alt="" loading="lazy" onerror="this.remove()">' : '') + '</div>';
@@ -291,7 +292,9 @@ function render(){
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
       + '<div>' + (s.link && !(STATE && s.zip)
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">Tải về (nội bộ)</a>'
-          : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
+          : (STATE && inst)
+            ? '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="uninstallOne('+i+')">Gỡ cài</button>'
+            : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
   }).join('');
 
   var on = !!STATE;
@@ -347,6 +350,21 @@ function installOne(i){
   post(r[0], r[1]).then(function(j){ toast(s.title+': '+doneMsg(j), true); return refresh(); })
     .catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
 }
+function uninstallOne(i){
+  var s = ITEMS[TAB][i];
+  var where = TAB==='skills' ? (target()==='claude-api' ? '~/.claude-api/skills' : '~/.claude/skills') : 'Blender ' + version();
+  var paid = s.license && /riêng/i.test(s.license);
+  var msg = 'Gỡ "' + s.title + '" khỏi máy này?\n\nThư mục của nó trong ' + where + ' sẽ bị XÓA. Nếu bạn đã sửa riêng trên máy thì phần sửa sẽ mất.'
+    + (paid ? '\n\nĐây là addon trả phí: gỡ rồi muốn dùng lại phải tải lại từ Drive nội bộ.' : '')
+    + (TAB==='addons' ? '\n\nNếu Blender đang mở với MCP, addon sẽ được tắt trước khi xóa.' : '');
+  if(!confirm(msg)) return;
+  var p = TAB==='skills' ? post('/uninstall', {names:[s.name], target:target()}) : post('/uninstall-addon', {names:[s.name], version:version()});
+  p.then(function(j){
+    toast(j.removed && j.removed.length ? 'Đã gỡ ' + s.title + ' khỏi máy này.' + (TAB==='skills' ? ' Mở lại Claude Code để cập nhật.' : '') : s.title + ' không còn trên máy này.', true);
+    return refresh();
+  }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+}
+
 function bulk(mode){
   var r = req({mode:mode});
   post(r[0], r[1]).then(function(j){

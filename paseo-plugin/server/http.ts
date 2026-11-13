@@ -9,6 +9,8 @@ import {
   missingAddons,
   missingSkills,
   TARGETS,
+  uninstallAddons,
+  uninstallSkills,
   type Target,
 } from "./handlers";
 import { runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
@@ -108,6 +110,24 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       /* keep empty */
     }
     return send(res, 200, { ok: true, plugin: "team-skills", skills, blender });
+  }
+
+  if (req.method === "POST" && path === "/uninstall") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    const body = await readJson(req);
+    const target = body.target as Target;
+    if (!TARGETS.includes(target)) return send(res, 400, { error: "Invalid target" });
+    if (!Array.isArray(body.names) || body.names.length === 0) return send(res, 400, { error: "Provide names" });
+    const removed = await uninstallSkills(body.names.map((n) => String(n)), target);
+    return send(res, 200, { ok: true, removed });
+  }
+
+  if (req.method === "POST" && path === "/uninstall-addon") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    const body = await readJson(req);
+    if (!Array.isArray(body.names) || body.names.length === 0) return send(res, 400, { error: "Provide names" });
+    const result = await uninstallAddons(body.names.map((n) => String(n)), String(body.version ?? ""));
+    return send(res, 200, { ok: true, removed: result.paths, via: result.via });
   }
 
   if (req.method === "POST" && path === "/install-addon") {
