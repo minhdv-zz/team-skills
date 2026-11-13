@@ -1,0 +1,8 @@
+{
+  "name": "copysize-hoidz",
+  "description": "Chỉnh khung ô súng (osungXXX / osungXXX.001, đôi khi tên base.00x) trên thân thuyền Blender cho vừa cannon_tXXX_g, bằng thông số đã chốt (margin, mép trên cố định, căn tâm y theo súng, kiểm tra lẹm b…",
+  "version": "1.0.0",
+  "author": {
+    "name": "Hoidz"
+  }
+}
