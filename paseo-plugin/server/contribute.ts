@@ -28,10 +28,18 @@ export function skillDirs(): string[] {
   return [join(homedir(), ".claude", "skills"), join(homedir(), ".claude-api", "skills")];
 }
 
+function isDirLink(p: string): boolean {
+  try {
+    return statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 export function listDirs(root: string): string[] {
   try {
     return readdirSync(root, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+      .filter((d) => !d.name.startsWith(".") && (d.isDirectory() || (d.isSymbolicLink() && isDirLink(join(root, d.name)))))
       .map((d) => d.name);
   } catch {
     return [];

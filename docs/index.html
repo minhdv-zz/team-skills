@@ -183,13 +183,18 @@
           <div class="fine">Hoặc chạy lệnh <code>paseo plugin update team-skills --yes</code></div>
         </li>
         <li>
-          <b>Điền tên hoặc đường dẫn, rồi copy lời nhờ</b>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
-            <select id="cKind"><option value="skill">Skill</option><option value="addon">Addon Blender</option></select>
-            <input id="cWhat" placeholder="Ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
-          </div>
-          <button class="pri" id="btnPrompt">Copy lời nhờ Claude</button>
-          <div class="fine">Dán vào một chat mới trong Paseo (mở trong thư mục dự án nếu skill nằm trong dự án).</div>
+          <b>Chọn skill hoặc addon trên máy bạn, bấm Đóng góp</b>
+          <div class="fine" style="margin:4px 0 8px;font-size:13.5px">Trang tự quét skill và addon Blender đang có trên máy. Cái nào đã có trong kho chung sẽ hiện <span class="chip ok">Đã đóng góp</span>.</div>
+          <div id="localList"></div>
+          <div class="fine">Bấm <b>Đóng góp</b> sẽ copy lời nhờ, dán vào một chat mới trong Paseo.</div>
+          <details class="alt">
+            <summary>Skill nằm trong thư mục dự án, không thấy trong danh sách?</summary>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+              <select id="cKind"><option value="skill">Skill</option><option value="addon">Addon Blender</option></select>
+              <input id="cWhat" placeholder="Ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
+            </div>
+            <button id="btnPrompt">Copy lời nhờ Claude</button>
+          </details>
         </li>
         <li>
           <b>Làm theo Claude</b>
@@ -439,7 +444,7 @@ function setTab(t){
   $('review').style.display = t==='review' ? '' : 'none';
   updateBadge();
   if(t==='review'){ $('sub').textContent=''; loadReview(); return; }
-  if(t==='contrib'){ $('sub').innerHTML=''; updateContribLinks(); return; }
+  if(t==='contrib'){ $('sub').innerHTML=''; updateContribLinks(); renderLocal(); loadLocal().then(function(){ if(TAB==='contrib') renderLocal(); }); return; }
   render();
 }
 var SKILL_TEMPLATE = '---\nname: NAME\ndescription: Mô tả ngắn skill làm gì và khi nào dùng\nauthor: Tên của bạn\n---\n\n# NAME\n\nHướng dẫn cho Claude: các bước, công cụ cần dùng, điều cần hỏi người dùng.\n';
@@ -456,9 +461,9 @@ $('cSkill').addEventListener('input', updateContribLinks);
 $('cAddon').addEventListener('input', updateContribLinks);
 updateContribLinks();
 
-function buildPrompt(){
-  var kind = $('cKind').value;
-  var what = ($('cWhat').value || '').trim().replace(/\x5c/g,'/');
+function buildPrompt(kindArg, whatArg){
+  var kind = kindArg || $('cKind').value;
+  var what = (whatArg !== undefined ? whatArg : ($('cWhat').value || '')).trim().replace(/\x5c/g,'/');
   var isPath = /^[A-Za-z]:\//.test(what) || what.charAt(0)==='/';
   var label = kind==='skill' ? 'skill' : 'addon Blender';
   var target = what || (isPath ? '<đường dẫn thư mục>' : '<tên>');
@@ -485,6 +490,47 @@ function buildPrompt(){
   return L.join('\n');
 }
 $('btnPrompt').addEventListener('click', function(){ copy(buildPrompt(), this); });
+var LOCAL_ITEMS = null, LOCAL_FAIL = '';
+function loadLocal(){
+  LOCAL_FAIL = '';
+  if(!STATE){ LOCAL_ITEMS = null; return Promise.resolve(); }
+  if((STATE.features || []).indexOf('local-list') < 0){ LOCAL_ITEMS = null; LOCAL_FAIL = 'old'; return Promise.resolve(); }
+  return fetch(LOCAL + '/local').then(function(r){ return r.json(); }).then(function(j){
+    if(j.ok){ LOCAL_ITEMS = j.items; } else { LOCAL_ITEMS = null; LOCAL_FAIL = j.error || 'err'; }
+  }).catch(function(){ LOCAL_ITEMS = null; LOCAL_FAIL = 'err'; });
+}
+function isPendingName(name){
+  return (PENDING || []).some(function(p){ return String(p.title).indexOf('] ' + name + ' - ') >= 0; });
+}
+function renderLocal(){
+  var el = $('localList');
+  if(!STATE){ el.innerHTML = '<div class="warnbox">Chưa kết nối plugin Paseo trên máy này nên chưa quét được. Làm bước 1 rồi tải lại trang.</div>'; return; }
+  if(LOCAL_FAIL === 'old'){ el.innerHTML = '<div class="warnbox">Plugin trên máy là bản cũ, chưa quét được. Làm bước 1 để cập nhật rồi tải lại trang.</div>'; return; }
+  if(!LOCAL_ITEMS){ el.innerHTML = LOCAL_FAIL ? '<div class="warnbox">Không quét được: ' + esc(LOCAL_FAIL) + '</div>' : '<div class="fine">Đang quét máy...</div>'; return; }
+  var groups = [['skill','Skill'],['addon','Addon Blender']];
+  el.innerHTML = groups.map(function(g){
+    var items = LOCAL_ITEMS.filter(function(x){ return x.kind === g[0]; });
+    items.sort(function(a,b){ return (a.shared - b.shared) || a.name.localeCompare(b.name); });
+    var rows = items.length ? items.map(function(x){
+      var idx = LOCAL_ITEMS.indexOf(x);
+      var act = x.shared ? '<span class="chip ok">Đã đóng góp</span>'
+        : isPendingName(x.name) ? '<span class="chip wait">Đang chờ duyệt</span>'
+        : '<button class="pri" data-i="' + idx + '">Đóng góp</button>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)">'
+        + '<div style="flex:1;min-width:0"><div style="font-weight:600">' + esc(x.name) + '</div>'
+        + (x.description ? '<div class="fine" style="margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.description) + '</div>' : '')
+        + '</div><div style="flex:none">' + act + '</div></div>';
+    }).join('') : '<div class="fine" style="margin:0">Không thấy mục nào trên máy.</div>';
+    var open = items.filter(function(x){ return !x.shared; }).length;
+    return '<div style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:2px">' + g[1] + ' <span class="fine">(' + items.length + ' trên máy, ' + open + ' chưa đóng góp)</span></div>' + rows + '</div>';
+  }).join('');
+}
+$('localList').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('button[data-i]') : null;
+  if(!b || !LOCAL_ITEMS) return;
+  var x = LOCAL_ITEMS[Number(b.getAttribute('data-i'))];
+  if(x) copy(buildPrompt(x.kind, x.path), b);
+});
 function buildPluginPrompt(item){
   var SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
   var winPaseo = '%LOCALAPPDATA%\\Programs\\Paseo\\resources\\bin\\paseo.cmd';
@@ -541,6 +587,7 @@ function installedOf(name){
 }
 
 function render(){
+  if(TAB === 'contrib'){ if(LOCAL_ITEMS || LOCAL_FAIL) renderLocal(); else loadLocal().then(function(){ if(TAB==='contrib') renderLocal(); }); return; }
   if(TAB !== 'skills' && TAB !== 'addons'){ if(TAB === 'review') renderReview(); return; }
   var isSk = TAB==='skills', list = ITEMS[TAB];
   $('sub').textContent = isSk ? 'Cài xong, mở lại Claude Code để dùng.' : 'Cài xong, bật addon trong Edit → Preferences → Add-ons.';
