@@ -33,6 +33,7 @@
   button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
   a.btn{display:inline-block;text-decoration:none;border-radius:8px;border:1px solid var(--line);padding:7px 14px;color:var(--text);background:#21262d}
   a.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .modal .msg-body{white-space:pre-line;margin:12px 0 4px;line-height:1.55}
   button.danger{background:#3b1219;border-color:#f85149;color:#ffb4ac;font-weight:600}
   button:hover:not(:disabled){filter:brightness(1.12)} button:disabled{opacity:.55;cursor:default}
   .overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
@@ -167,6 +168,16 @@
     <div class="row">
       <button onclick="closeM()">Đóng</button>
       <button class="pri" onclick="copy(mCmd.textContent,this)">Copy</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="cf">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+    <h2 id="cfTitle"></h2>
+    <div class="msg-body" id="cfText"></div>
+    <div class="row">
+      <button id="cfCancel">Hủy</button>
+      <button id="cfOk" class="danger">Đồng ý</button>
     </div>
   </div>
 </div>
@@ -350,21 +361,38 @@ function installOne(i){
   post(r[0], r[1]).then(function(j){ toast(s.title+': '+doneMsg(j), true); return refresh(); })
     .catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
 }
+var CF_DONE = null;
+function askConfirm(title, text, okLabel){
+  return new Promise(function(resolve){
+    $('cfTitle').textContent = title;
+    $('cfText').textContent = text;
+    $('cfOk').textContent = okLabel || 'Đồng ý';
+    $('cf').classList.add('on');
+    $('cfCancel').focus();
+    CF_DONE = function(v){ $('cf').classList.remove('on'); CF_DONE = null; resolve(v); };
+  });
+}
+$('cfOk').addEventListener('click', function(){ if(CF_DONE) CF_DONE(true); });
+$('cfCancel').addEventListener('click', function(){ if(CF_DONE) CF_DONE(false); });
+$('cf').addEventListener('click', function(e){ if(e.target===this && CF_DONE) CF_DONE(false); });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && CF_DONE) CF_DONE(false); });
+
 function uninstallOne(i){
   var s = ITEMS[TAB][i];
   var where = TAB==='skills' ? (target()==='claude-api' ? '~/.claude-api/skills' : '~/.claude/skills') : 'Blender ' + version();
   var paid = s.license && /riêng/i.test(s.license);
-  var msg = 'Gỡ "' + s.title + '" khỏi máy này?\n\nThư mục của nó trong ' + where + ' sẽ bị XÓA. Nếu bạn đã sửa riêng trên máy thì phần sửa sẽ mất.'
+  var body = 'Thư mục của nó trong ' + where + ' sẽ bị XÓA. Nếu bạn đã sửa riêng trên máy thì phần sửa sẽ mất.'
     + (paid ? '\n\nĐây là addon trả phí: gỡ rồi muốn dùng lại phải tải lại từ Drive nội bộ.' : '')
     + (TAB==='addons' ? '\n\nNếu Blender đang mở với MCP, addon sẽ được tắt trước khi xóa.' : '');
-  if(!confirm(msg)) return;
-  var p = TAB==='skills' ? post('/uninstall', {names:[s.name], target:target()}) : post('/uninstall-addon', {names:[s.name], version:version()});
-  p.then(function(j){
-    toast(j.removed && j.removed.length ? 'Đã gỡ ' + s.title + ' khỏi máy này.' + (TAB==='skills' ? ' Mở lại Claude Code để cập nhật.' : '') : s.title + ' không còn trên máy này.', true);
-    return refresh();
-  }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+  askConfirm('Gỡ "' + s.title + '" khỏi máy này?', body, 'Gỡ cài').then(function(ok){
+    if(!ok) return;
+    var p = TAB==='skills' ? post('/uninstall', {names:[s.name], target:target()}) : post('/uninstall-addon', {names:[s.name], version:version()});
+    return p.then(function(j){
+      toast(j.removed && j.removed.length ? 'Đã gỡ ' + s.title + ' khỏi máy này.' + (TAB==='skills' ? ' Mở lại Claude Code để cập nhật.' : '') : s.title + ' không còn trên máy này.', true);
+      return refresh();
+    }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+  });
 }
-
 function bulk(mode){
   var r = req({mode:mode});
   post(r[0], r[1]).then(function(j){
