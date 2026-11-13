@@ -23,6 +23,16 @@
   .card.click{cursor:pointer;transition:border-color .15s,transform .15s}
   .card.click:hover{border-color:var(--acc);transform:translateY(-2px)}
   .card .more{color:#9d8cff;font-size:13px;margin-top:-2px}
+  #perm{z-index:50;background:#000c;backdrop-filter:blur(3px)}
+  #perm .modal{width:min(600px,100%);text-align:center;border:2px solid var(--acc);box-shadow:0 0 50px #7c5cff88;padding:28px 26px}
+  #perm h2{font-size:24px;margin:6px 0 10px}
+  #perm .lead{font-size:16px;line-height:1.6;margin:0 0 14px}
+  #perm .quote{background:#0b0f14;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 14px;color:#e6edf3;font-size:15px}
+  #perm .must{background:#2a1f55;border:1px solid var(--acc);border-radius:10px;padding:12px 14px;font-size:15px;line-height:1.55}
+  #perm .arrow{font-size:54px;line-height:1;color:var(--acc);animation:nudge 1s ease-in-out infinite;display:inline-block}
+  @keyframes nudge{0%,100%{transform:translate(0,0)}50%{transform:translate(-10px,-10px)}}
+  #perm .skip{margin-top:14px;font-size:13px;color:var(--mut);display:none}
+  #perm .skip a{color:#9d8cff;cursor:pointer;text-decoration:underline}
   .modal.wide{width:min(780px,100%);max-height:90vh;overflow:auto}
   .modal .dimg{width:100%;max-height:230px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;display:block;margin-bottom:14px;background:#0b0f14}
   .modal.wide .row{position:sticky;bottom:-20px;background:var(--card);padding:14px 0 4px;margin-top:14px;border-top:1px solid var(--line)}
@@ -195,6 +205,16 @@
     </div>
   </div>
 </div>
+<div class="overlay" id="perm">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="permTitle">
+    <div class="arrow">&#8598;</div>
+    <h2 id="permTitle">Cần bạn bấm &ldquo;Cho phép&rdquo;</h2>
+    <p class="lead">Trình duyệt đang hỏi bạn ở <b>góc trên bên trái</b> màn hình:</p>
+    <div class="quote">&ldquo;minhdv-zz.github.io muốn truy nhập các ứng dụng và dịch vụ khác trên thiết bị này&rdquo;</div>
+    <div class="must"><b>Bắt buộc bấm &ldquo;Cho phép&rdquo;</b> thì trang mới nói chuyện được với plugin Paseo trên máy bạn để <b>cài, gỡ và cập nhật</b> skill, addon tự động. Bấm <i>Chặn</i> thì các nút Cài và Gỡ cài sẽ không chạy.</div>
+    <div class="skip" id="permSkip">Hộp thoại không hiện? <a id="permSkipLink">Tiếp tục không cần cho phép</a> (chỉ dùng được lệnh copy thủ công).</div>
+  </div>
+</div>
 <div class="overlay" id="dt">
   <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="dtTitle">
     <img class="dimg" id="dtImg" alt="" style="display:none">
@@ -354,7 +374,7 @@ function render(){
 
   var on = !!STATE;
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
-  $('status').textContent = !on ? 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).'
+  $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).')
     : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills'
     : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
     : (!isSk && STATE.blender && STATE.blender.live) ? 'Đã kết nối Blender đang mở (' + vs[0] + '): addon sẽ được cài và bật trực tiếp.'
@@ -508,9 +528,32 @@ function bulk(mode){
 }
 function closeM(){ $('ov').classList.remove('on') }
 
+var FIRST_REFRESH = true, PERM_DENIED = false, PERM_TIMER = null, PERM_SKIP_TIMER = null;
+function showPerm(){
+  $('perm').classList.add('on');
+  PERM_SKIP_TIMER = setTimeout(function(){ $('permSkip').style.display = 'block'; }, 20000);
+}
+function hidePerm(){
+  clearTimeout(PERM_TIMER); clearTimeout(PERM_SKIP_TIMER);
+  $('perm').classList.remove('on'); $('permSkip').style.display = 'none';
+}
+function permDenied(){
+  // Newer Chromium browsers expose the local-network permission; older ones throw, then we just do not know.
+  var names = ['local-network-access', 'loopback-network'];
+  return Promise.all(names.map(function(n){
+    return (navigator.permissions && navigator.permissions.query ? navigator.permissions.query({name:n}) : Promise.reject())
+      .then(function(p){ return p.state === 'denied'; }).catch(function(){ return false; });
+  })).then(function(a){ return a.some(Boolean); });
+}
+$('permSkipLink').addEventListener('click', hidePerm);
+
 function refresh(){
+  // The browser asks for permission on the first request. If it stays pending, hold the screen with a big notice.
+  if(FIRST_REFRESH){ FIRST_REFRESH = false; PERM_TIMER = setTimeout(showPerm, 250); }
   return fetch(LOCAL + '/status').then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
-    .then(function(j){ STATE = j; }).catch(function(){ STATE = null; }).then(render);
+    .then(function(j){ STATE = j; PERM_DENIED = false; })
+    .catch(function(){ STATE = null; return permDenied().then(function(d){ PERM_DENIED = d; }); })
+    .then(function(){ hidePerm(); render(); });
 }
 $('target').addEventListener('change', render);
 $('version').addEventListener('change', render);
