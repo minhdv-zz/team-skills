@@ -14,7 +14,7 @@ type Sess = Parameters<typeof api>[0];
  * The GitHub sign-in this machine already uses for `git push` (Git Credential Manager). Used only to merge or close
  * a Pull Request, never stored or sent anywhere else, and only accepted when it belongs to the repo owner.
  */
-async function gitSession(): Promise<Sess | null> {
+export async function gitSession(): Promise<Sess | null> {
   const token = await new Promise<string>((resolve) => {
     const child = execFile(
       "git",
@@ -71,6 +71,7 @@ export async function reviewPr(repo: string, number: number, action: string, all
   if (action === "close") {
     const r = await api(session, "PATCH", `/repos/${repo}/pulls/${number}`, { state: "closed" });
     if (r.status !== 200) return { ok: false, error: `Không từ chối được (HTTP ${r.status}): ${String(r.json?.message ?? "").slice(0, 200)}` };
+    clearPendingCache();
     return { ok: true, done: "closed" };
   }
 
@@ -91,5 +92,57 @@ export async function reviewPr(repo: string, number: number, action: string, all
 
   const m = await api(session, "PUT", `/repos/${repo}/pulls/${number}/merge`, { merge_method: "squash", sha });
   if (m.status !== 200) return { ok: false, error: `Không gộp được (HTTP ${m.status}): ${String(m.json?.message ?? "").slice(0, 200)}` };
+  clearPendingCache();
   return { ok: true, done: "merged" };
+}
+
+export interface PendingPr {
+  repo: string;
+  kind: string;
+  n: number;
+  title: string;
+  user: string;
+  url: string;
+  sha: string;
+  at: string;
+  files: string[];
+  checks: { status: string; conclusion: string | null }[] | null;
+}
+
+let cache: { at: number; list: PendingPr[] } | null = null;
+
+/** Open contribution PRs of both repos, with files and check results. Read with the owner's Git sign-in (higher rate limit). */
+export async function listPending(): Promise<PendingPr[] | null> {
+  if (cache && Date.now() - cache.at < 20_000) return cache.list;
+  const s = await gitSession();
+  if (!s) return null;
+  const out: PendingPr[] = [];
+  for (const repo of REPOS) {
+    const r = await api(s, "GET", `/repos/${repo}/pulls?state=open&per_page=30`);
+    if (r.status !== 200 || !Array.isArray(r.json)) throw new Error(`Không đọc được ${repo} (HTTP ${r.status}).`);
+    for (const p of r.json) {
+      const f = await api(s, "GET", `/repos/${repo}/pulls/${p.number}/files?per_page=100`);
+      const c = await api(s, "GET", `/repos/${repo}/commits/${p.head.sha}/check-runs`);
+      out.push({
+        repo,
+        kind: repo.endsWith("team-skills") ? "Skill" : "Addon",
+        n: p.number,
+        title: String(p.title),
+        user: String(p.user?.login ?? ""),
+        url: String(p.html_url),
+        sha: String(p.head.sha),
+        at: String(p.created_at),
+        files: Array.isArray(f.json) ? f.json.map((x: any) => String(x.filename)) : [],
+        checks: c.status === 200 && Array.isArray(c.json?.check_runs)
+          ? c.json.check_runs.map((x: any) => ({ status: String(x.status), conclusion: x.conclusion ?? null }))
+          : null,
+      });
+    }
+  }
+  cache = { at: Date.now(), list: out };
+  return out;
+}
+
+export function clearPendingCache(): void {
+  cache = null;
 }

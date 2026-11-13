@@ -311,7 +311,7 @@ function updateBadge(){
   $('pendBanner').style.display = (n && TAB !== 'review') ? 'flex' : 'none';
   $('pendText').textContent = n + ' đóng góp mới đang chờ duyệt';
 }
-function loadPending(){
+function publicPending(){
   return Promise.all(PR_REPOS.map(function(R){
     return ghj('/repos/' + R.repo + '/pulls?state=open&per_page=30').then(function(l){
       return l.map(function(p){ return {repo:R.repo, kind:R.kind, n:p.number, title:p.title, user:p.user.login, url:p.html_url, sha:p.head.sha, at:p.created_at}; });
@@ -321,6 +321,16 @@ function loadPending(){
     PEND_FAIL = false;
     PENDING = [].concat.apply([], a.map(function(x){ return x || []; }));
     updateBadge();
+  });
+}
+function loadPending(){
+  var viaPlugin = (STATE && (STATE.features || []).indexOf('pending') >= 0)
+    ? fetch(LOCAL + '/pending').then(function(r){ return r.json(); })
+        .then(function(j){ return (j.ok && j.list) ? j.list : null; }).catch(function(){ return null; })
+    : Promise.resolve(null);
+  return viaPlugin.then(function(list){
+    if(list){ PEND_FAIL = false; PENDING = list; updateBadge(); return; }
+    return publicPending();
   });
 }
 function outsideOf(p){
@@ -364,6 +374,7 @@ function loadReview(){
     renderReview();
     if(!PENDING) return [];
     return Promise.all((PENDING || []).map(function(p){
+      if(p.files) return null;
       return Promise.all([
         ghj('/repos/' + p.repo + '/pulls/' + p.n + '/files?per_page=100').catch(function(){ return null; }),
         ghj('/repos/' + p.repo + '/commits/' + p.sha + '/check-runs').catch(function(){ return null; })
@@ -775,7 +786,7 @@ $('version').addEventListener('change', render);
 
 function load(file){ return fetch(file + '?t=' + Date.now()).then(function(r){return r.json()}); }
 Promise.all([load('skills.json'), load('addons.json').catch(function(){return []})]).then(function(a){
-  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); loadPending(); if(location.hash === '#review') setTab('review'); return refresh();
+  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); if(location.hash === '#review') setTab('review'); return refresh().then(loadPending).then(function(){ if(TAB === 'review') renderReview(); });
 }).catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách.</p>' });
 </script>
 </body>
