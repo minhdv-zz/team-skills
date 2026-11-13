@@ -20,6 +20,16 @@
   details.help p{color:var(--mut);margin:10px 0 6px}
   pre{font-family:Consolas,monospace;font-size:13px;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;margin:6px 0;white-space:pre-wrap;word-break:break-all}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+  .card.click{cursor:pointer;transition:border-color .15s,transform .15s}
+  .card.click:hover{border-color:var(--acc);transform:translateY(-2px)}
+  .card .more{color:#9d8cff;font-size:13px;margin-top:-2px}
+  .modal.wide{width:min(780px,100%);max-height:90vh;overflow:auto}
+  .modal .dimg{width:100%;max-height:230px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;display:block;margin-bottom:14px;background:#0b0f14}
+  .modal.wide .row{position:sticky;bottom:-20px;background:var(--card);padding:14px 0 4px;margin-top:14px;border-top:1px solid var(--line)}
+  .modal .dtitle{margin:0 0 2px;font-size:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .modal h4{margin:18px 0 6px;font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+  .modal .dfull{white-space:pre-line;line-height:1.6}
+  .modal pre.dbody{max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.5}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
   .thumb{aspect-ratio:16/9;border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#ffffffcc;margin:-4px -4px 4px}
   .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -185,6 +195,26 @@
     </div>
   </div>
 </div>
+<div class="overlay" id="dt">
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="dtTitle">
+    <img class="dimg" id="dtImg" alt="" style="display:none">
+    <h2 class="dtitle"><span id="dtTitle"></span><span class="badge" id="dtBadge" style="display:none">đã cài</span></h2>
+    <div class="id" id="dtId"></div>
+    <div id="dtMeta" style="color:var(--mut);font-size:13px;margin-top:6px"></div>
+    <div class="tags" id="dtTags" style="margin-top:10px"></div>
+    <h4>Mô tả</h4>
+    <div class="dfull" id="dtDesc"></div>
+    <h4 id="dtBodyH" style="display:none">Nội dung chi tiết</h4>
+    <pre class="dbody" id="dtBody" style="display:none"></pre>
+    <div class="row" style="justify-content:space-between">
+      <a class="btn" id="dtGit" target="_blank" rel="noopener noreferrer">Xem trên GitHub</a>
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="dtClose">Đóng</button>
+        <span id="dtAct"></span>
+      </span>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="cf">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
     <h2 id="cfTitle"></h2>
@@ -310,16 +340,16 @@ function render(){
     var thumb = '<div class="thumb" style="background:linear-gradient(135deg,hsl('+hue+',55%,32%),hsl('+((hue+40)%360)+',60%,18%))">'
       + esc(s.title.charAt(0)) + (s.img ? '<img src="'+esc(s.img)+'" alt="" loading="lazy" onerror="this.remove()">' : '') + '</div>';
     var tags = (s.needs||[]).concat(s.license?[s.license]:[]);
-    return '<div class="card">' + thumb
+    return '<div class="card click" onclick="openDetail('+i+')">' + thumb
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3><div class="id">'+esc(s.name)+'</div>'
-      + '<p>'+esc(s.desc)+'</p>'
+      + '<p>'+esc(s.desc)+'</p><div class="more">Xem chi tiết &rarr;</div>'
       + (s.author ? '<div style="color:var(--mut);font-size:13px">Tác giả: '+esc(s.author)+'</div>' : '')
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
       + '<div>' + (s.link && !(STATE && s.zip)
-          ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">Tải về (nội bộ)</a>'
+          ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Tải về (nội bộ)</a>'
           : (STATE && inst)
-            ? '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="uninstallOne('+i+')">Gỡ cài</button>'
-            : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="installOne('+i+')">'+label+'</button>') + '</div></div>';
+            ? '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();uninstallOne('+i+')">Gỡ cài</button>'
+            : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();installOne('+i+')">'+label+'</button>') + '</div></div>';
   }).join('');
 
   var on = !!STATE;
@@ -375,6 +405,69 @@ function installOne(i){
   post(r[0], r[1]).then(function(j){ toast(s.title+': '+doneMsg(j), true); return refresh(); })
     .catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
 }
+var DT_SEQ = 0;
+function closeDetail(){ $('dt').classList.remove('on'); DT_SEQ++; }
+function fmFrom(text){
+  var m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
+  var fm = {}, body = text;
+  if(m){
+    body = text.slice(m[0].length);
+    m[1].split(/\r?\n/).forEach(function(l){ var kv=/^([A-Za-z_][\w-]*)\s*:\s*(.*)$/.exec(l); if(kv) fm[kv[1]] = kv[2].trim().replace(/^["']|["']$/g,''); });
+  }
+  return {fm:fm, body:body};
+}
+function openDetail(i){
+  var s = ITEMS[TAB][i], isSk = TAB==='skills', seq = ++DT_SEQ;
+  var inst = installedOf(s.name);
+  var img = $('dtImg');
+  if(s.img){ img.style.display=''; img.onerror=function(){ img.style.display='none'; }; img.src = s.img; } else { img.style.display='none'; }
+  $('dtTitle').textContent = s.title;
+  $('dtBadge').style.display = inst ? '' : 'none';
+  $('dtId').textContent = s.name;
+  $('dtMeta').textContent = [s.author ? 'Tác giả: '+s.author : '', s.license ? 'Giấy phép: '+s.license : ''].filter(Boolean).join('   •   ');
+  $('dtTags').innerHTML = (s.needs||[]).map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('');
+  $('dtDesc').textContent = s.desc;
+  $('dtBody').style.display = 'none'; $('dtBodyH').style.display = 'none';
+
+  var folder = s.folder || s.name;
+  var git = isSk ? 'https://github.com/minhdv-zz/team-skills/tree/main/plugins/' + encodeURIComponent(s.name)
+                 : (s.link ? s.link : 'https://github.com/minhdv-zz/team-blender-addons/tree/main/addons/' + encodeURIComponent(folder));
+  $('dtGit').href = git;
+  $('dtGit').textContent = (!isSk && s.link) ? 'Mở trang tải' : 'Xem trên GitHub';
+
+  // the action button mirrors the card
+  var act = $('dtAct'); act.innerHTML = '';
+  var b;
+  if(s.link && !(STATE && s.zip)){
+    b = document.createElement('a'); b.className='btn pri'; b.textContent='Tải về (nội bộ)'; b.href=s.link; b.target='_blank'; b.rel='noopener noreferrer';
+  } else {
+    b = document.createElement('button');
+    if(STATE && inst){ b.className='danger'; b.textContent='Gỡ cài'; b.onclick=function(){ closeDetail(); uninstallOne(i); }; }
+    else { b.className='pri'; b.textContent='Cài'; b.onclick=function(){ closeDetail(); installOne(i); }; }
+  }
+  act.appendChild(b);
+  $('dt').classList.add('on');
+
+  // the full text lives in the repo: SKILL.md (skills) or README (addons)
+  var url = isSk
+    ? RAW + '/plugins/' + encodeURIComponent(s.name) + '/skills/' + encodeURIComponent(s.name) + '/SKILL.md'
+    : (s.link ? null : 'https://raw.githubusercontent.com/minhdv-zz/team-blender-addons/main/addons/' + encodeURIComponent(folder) + '/README.md');
+  if(!url) return;
+  fetch(url + '?t=' + Date.now()).then(function(r){ if(!r.ok) throw new Error(); return r.text(); }).then(function(text){
+    if(seq !== DT_SEQ) return;
+    var p = isSk ? fmFrom(text) : {fm:{}, body:text};
+    if(p.fm.description) $('dtDesc').textContent = p.fm.description;
+    var body = p.body.trim();
+    if(body){
+      if(body.length > 6000) body = body.slice(0, 6000).replace(/\s+\S*$/,'') + '\n\n… (còn nữa, xem đầy đủ trên GitHub)';
+      $('dtBody').textContent = body; $('dtBody').style.display=''; $('dtBodyH').style.display='';
+      $('dtBodyH').textContent = isSk ? 'Nội dung skill' : 'README';
+    }
+  }).catch(function(){});
+}
+$('dtClose').addEventListener('click', closeDetail);
+$('dt').addEventListener('click', function(e){ if(e.target===this) closeDetail(); });
+
 var CF_DONE = null;
 function askConfirm(title, text, okLabel){
   return new Promise(function(resolve){
@@ -389,7 +482,7 @@ function askConfirm(title, text, okLabel){
 $('cfOk').addEventListener('click', function(){ if(CF_DONE) CF_DONE(true); });
 $('cfCancel').addEventListener('click', function(){ if(CF_DONE) CF_DONE(false); });
 $('cf').addEventListener('click', function(e){ if(e.target===this && CF_DONE) CF_DONE(false); });
-document.addEventListener('keydown', function(e){ if(e.key==='Escape' && CF_DONE) CF_DONE(false); });
+document.addEventListener('keydown', function(e){ if(e.key!=='Escape') return; if(CF_DONE) CF_DONE(false); else if($('dt').classList.contains('on')) closeDetail(); });
 
 function uninstallOne(i){
   var s = ITEMS[TAB][i];
