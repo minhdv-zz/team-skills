@@ -4,7 +4,7 @@ Ai cũng đóng góp được, cần một tài khoản GitHub. Mọi đóng gó
 
 ## Cách nhanh nhất: nhờ Claude trong Paseo
 
-1. Cập nhật plugin: `paseo plugin update team-skills`.
+1. Cập nhật plugin: `paseo plugin update team-skills --yes`.
 2. Mở trang https://minhdv-zz.github.io/team-skills/ → tab **Đóng góp** → chọn loại, điền tên hoặc đường dẫn thư mục → bấm **Copy lời nhờ Claude**.
 3. Mở một cuộc chat **mới** trong Paseo (nên mở trong thư mục dự án nếu skill nằm ở `.claude/skills` của dự án) và dán lời nhờ vào. Không cần cài thêm skill nào.
 4. Claude làm theo các bước trong lời nhờ: gọi cổng cục bộ của plugin (`http://127.0.0.1:47653/agent/...`) để kiểm tra, **hỏi bạn trước khi dọn** nội dung (ví dụ đường dẫn riêng), hỏi bạn đồng ý công khai, rồi gửi. Paseo sẽ hỏi quyền chạy lệnh `curl`, bạn bấm cho phép.

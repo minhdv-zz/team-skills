@@ -134,7 +134,7 @@
       <pre id="pluginSrc"></pre>
       <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
       <p>Hoặc chạy lệnh: <code id="pluginCmd"></code></p>
-      <p>Đã cài rồi mà nút không bấm được? Cập nhật: <code>paseo plugin update team-skills</code></p>
+      <p>Đã cài rồi mà nút không bấm được? Cập nhật: <code>paseo plugin update team-skills --yes</code></p>
     </details>
   </details>
 
@@ -165,7 +165,7 @@
         <li>
           <b>Cập nhật plugin Paseo</b> (một lần)
           <div style="margin-top:8px"><button class="pri" id="btnPluginPrompt2">Copy lời nhờ Claude cập nhật plugin</button></div>
-          <div class="fine">Hoặc chạy lệnh <code>paseo plugin update team-skills</code></div>
+          <div class="fine">Hoặc chạy lệnh <code>paseo plugin update team-skills --yes</code></div>
         </li>
         <li>
           <b>Điền tên hoặc đường dẫn, rồi copy lời nhờ</b>
@@ -334,7 +334,7 @@ function toggleLike(i){
   MINE[k] = on; LIKES[k] = Math.max(0, prevCount + (on ? 1 : -1)); render(); syncDtLike();
   function rollback(){ MINE[k] = prevMine; LIKES[k] = prevCount; render(); syncDtLike(); }
   fetch(LOCAL + '/like', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({kind:kind, name:s.name, on:on})})
-    .then(function(r){ if(r.status===404) throw new Error('Plugin Paseo là bản cũ, chưa có nút thích. Cập nhật: paseo plugin update team-skills'); return r.json(); })
+    .then(function(r){ if(r.status===404) throw new Error('Plugin Paseo là bản cũ, chưa có nút thích. Cập nhật: paseo plugin update team-skills --yes'); return r.json(); })
     .then(function(j){
       if(j.login){
         rollback();
@@ -399,7 +399,7 @@ function buildPrompt(){
   L.push('Hãy giúp tôi đóng góp ' + label + ' "' + target + '" lên Team Skills (kho chung của team) thông qua plugin Paseo team-skills đang chạy trên máy này, nghe ở http://127.0.0.1:47653. Làm đúng theo các bước dưới đây. Mọi lệnh curl BẮT BUỘC có header X-Team-Skills: 1. Nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
   L.push('');
   L.push('Bước 0 - kiểm tra plugin: curl -s -H "X-Team-Skills: 1" http://127.0.0.1:47653/agent/list');
-  L.push('Nếu lỗi kết nối, 403 hoặc 404 (Not found): plugin chưa chạy hoặc là bản cũ. Bảo tôi mở Paseo và chạy "paseo plugin update team-skills", rồi thử lại.');
+  L.push('Nếu lỗi kết nối, 403 hoặc 404 (Not found): plugin chưa chạy hoặc là bản cũ. Bảo tôi mở Paseo và chạy "paseo plugin update team-skills --yes", rồi thử lại.');
   L.push('');
   L.push('Bước 1 - kiểm tra thử, CHƯA gửi gì. Ghi JSON ra một file tạm body.json rồi gửi (dùng dấu / trong đường dẫn):');
   L.push('curl -s -X POST -H "X-Team-Skills: 1" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/agent/contribute');
@@ -430,7 +430,7 @@ function buildPluginPrompt(item){
   L.push('');
   L.push('Bước 3 - chọn lệnh:');
   L.push('- Chưa có team-skills: lệnh cài là "paseo plugin install ' + SRC + '".');
-  L.push('- Đã có team-skills: lệnh cập nhật là "paseo plugin update team-skills" (xem trước có bản mới không bằng "paseo plugin update team-skills --check"). Nếu plugin đó được cài từ một thư mục trên máy thay vì từ Git, hãy nói cho tôi biết và đừng gỡ hay cài đè.');
+  L.push('- Đã có team-skills: lệnh cập nhật là "paseo plugin update team-skills --yes" (xem trước có bản mới không bằng "paseo plugin update team-skills --check"). Nếu plugin đó được cài từ một thư mục trên máy thay vì từ Git, hãy nói cho tôi biết và đừng gỡ hay cài đè.');
   L.push('');
   L.push('Bước 4 - chạy lệnh đã chọn ở bước 3 luôn, KHÔNG cần hỏi lại tôi (tôi đã chủ động dán lời nhờ này nên coi như đã đồng ý). Chỉ nói một dòng bạn đang chạy lệnh nào.');
   L.push('');
@@ -510,9 +510,9 @@ function render(){
   var on = !!STATE;
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
   $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (làm Bước 1 ở trên).')
-    : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills'
+    : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills --yes'
     : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
-    : (STATE && !canUninstall) ? 'Đã kết nối plugin Paseo nhưng là bản cũ, chưa gỡ cài được. Cập nhật: paseo plugin update team-skills'
+    : (STATE && !canUninstall) ? 'Đã kết nối plugin Paseo nhưng là bản cũ, chưa gỡ cài được. Cập nhật: paseo plugin update team-skills --yes'
     : (!isSk && STATE.blender && STATE.blender.live) ? 'Đã kết nối Blender đang mở (' + vs[0] + '): addon sẽ được cài và bật trực tiếp.'
     : 'Đã kết nối plugin Paseo trên máy này.';
   var can = on && !blocked && !BUSY;
@@ -528,7 +528,7 @@ function post(path, body){
   BUSY = true; render();
   return fetch(LOCAL + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
     .then(function(r){
-      if(r.status === 404) throw new Error('Plugin Paseo trên máy này là bản cũ, chưa có chức năng này. Hãy cập nhật: paseo plugin update team-skills (hoặc dùng nút Copy lời nhờ Claude ở Bước 1).');
+      if(r.status === 404) throw new Error('Plugin Paseo trên máy này là bản cũ, chưa có chức năng này. Hãy cập nhật: paseo plugin update team-skills --yes (hoặc dùng nút Copy lời nhờ Claude ở Bước 1).');
       return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; });
     })
     .finally(function(){ BUSY=false; });
@@ -676,7 +676,7 @@ function bulk(mode){
 function needUpdate(){
   $('help').open = true;
   $('help').scrollIntoView({behavior:'smooth', block:'start'});
-  toast('Plugin Paseo trên máy này là bản cũ. Cập nhật: paseo plugin update team-skills (hoặc copy lời nhờ Claude ở Bước 1).', false);
+  toast('Plugin Paseo trên máy này là bản cũ. Cập nhật: paseo plugin update team-skills --yes (hoặc copy lời nhờ Claude ở Bước 1).', false);
 }
 function closeM(){ $('ov').classList.remove('on') }
 
