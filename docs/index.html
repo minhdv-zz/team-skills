@@ -184,11 +184,6 @@
       <div style="color:var(--mut)">Cần tài khoản GitHub. Chủ repo duyệt xong mới hiện cho cả team.</div>
       <ol class="steps">
         <li>
-          <b>Cập nhật plugin Paseo</b> (một lần)
-          <div style="margin-top:8px"><button class="pri" id="btnPluginPrompt2">Copy lời nhờ Claude cập nhật plugin</button></div>
-          <div class="fine">Hoặc chạy lệnh <code>paseo plugin update team-skills --yes</code></div>
-        </li>
-        <li>
           <b>Chọn skill hoặc addon trên máy bạn, bấm Đóng góp</b>
           <div class="fine" style="margin:4px 0 8px;font-size:13.5px">Trang tự quét skill và addon Blender đang có trên máy. Cái nào đã có trong kho chung sẽ hiện <span class="chip ok">Đã đóng góp</span>.</div>
           <div id="localList"></div>
@@ -740,7 +735,6 @@ function buildPluginPrompt(item){
 var QUICK_ITEM = null;
 $('mPrompt').addEventListener('click', function(){ if(QUICK_ITEM) copy(buildPluginPrompt(QUICK_ITEM), this); });
 $('btnPluginPrompt').addEventListener('click', function(){ copy(buildPluginPrompt(), this); });
-$('btnPluginPrompt2').addEventListener('click', function(){ copy(buildPluginPrompt(), this); });
 
 function installedOf(name){
   if(!STATE) return false;
