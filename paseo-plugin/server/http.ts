@@ -14,11 +14,11 @@ import {
   type Target,
 } from "./handlers";
 import { listPending, reviewPr } from "./review";
-import { runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
+import { localItems, runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
 
 export const PORT = 47653;
 /** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
-const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending"];
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 
@@ -101,6 +101,14 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       return plain(200, r.text);
     }
     return send(res, 404, { error: "Not found" });
+  }
+
+  if (req.method === "GET" && path === "/local") {
+    try {
+      return send(res, 200, { ok: true, items: await localItems() });
+    } catch (e) {
+      return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   if (req.method === "GET" && path === "/status") {

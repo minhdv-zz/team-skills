@@ -2,8 +2,8 @@
  * The contribution workflow, shared by the agent tools (when Paseo exposes them) and the local
  * /agent/* HTTP endpoints (used by the prompt the website generates, through curl).
  */
-import { existsSync, statSync } from "node:fs";
-import { basename, isAbsolute, resolve } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename, isAbsolute, join, resolve } from "node:path";
 import { addonRoots, teamNames } from "./handlers";
 import {
   NAME_RE,
@@ -36,6 +36,52 @@ export interface Reply {
 }
 
 const reply = (text: string, isError = false): Reply => ({ text, isError });
+
+export interface LocalItem {
+  kind: Kind;
+  name: string;
+  /** Absolute folder path (forward slashes). */
+  path: string;
+  description: string;
+  author: string;
+  /** Already in the shared team list. */
+  shared: boolean;
+}
+
+function skillInfo(dir: string): { description: string; author: string } {
+  try {
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(join(dir, "SKILL.md"), "utf8"));
+    const get = (k: string) => new RegExp("^" + k + "[ \t]*:[ \t]*(.*)$", "m").exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "") ?? "";
+    return { description: get("description").slice(0, 200), author: get("author") };
+  } catch {
+    return { description: "", author: "" };
+  }
+}
+
+/** Every skill and Blender addon found on this machine, flagged when it is already in the team lists. */
+export async function localItems(): Promise<LocalItem[]> {
+  const team = await teamNames();
+  const out: LocalItem[] = [];
+  const seen = new Set<string>();
+  for (const root of skillDirs()) {
+    for (const name of listDirs(root)) {
+      const dir = join(root, name);
+      if (!NAME_RE.test(name) || seen.has("skill:" + name) || !existsSync(join(dir, "SKILL.md"))) continue;
+      seen.add("skill:" + name);
+      out.push({ kind: "skill", name, path: dir.split("\\").join("/"), ...skillInfo(dir), shared: team.skills.has(name) });
+    }
+  }
+  for (const root of await addonRoots()) {
+    for (const name of listDirs(root)) {
+      const dir = join(root, name);
+      if (!NAME_RE.test(name) || seen.has("addon:" + name)) continue;
+      if (!existsSync(join(dir, "__init__.py")) && !existsSync(join(dir, "blender_manifest.toml"))) continue;
+      seen.add("addon:" + name);
+      out.push({ kind: "addon", name, path: dir.split("\\").join("/"), description: "", author: "", shared: team.addons.has(name) });
+    }
+  }
+  return out;
+}
 
 export async function runListLocal(): Promise<Reply> {
   const team = await teamNames();

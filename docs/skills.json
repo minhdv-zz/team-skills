@@ -44,9 +44,11 @@
   },
   {
     "name": "model-routing-dang",
-    "title": "Model Routing Dang",
-    "desc": "Lets the lead choose which AI model runs each task of the 3D Automation - Dangpbh pipeline (GPT image model for concepts, Claude model and effort for 3D work, Claude or GPT model for skill creation a…",
+    "title": "Chọn model AI cho từng việc",
+    "desc": "Cho người phụ trách chọn model AI nào chạy từng việc trong quy trình 3D Automation của Dang: vẽ concept, dựng 3D, tạo hoặc sửa skill.",
     "needs": [],
-    "author": "dangpbh"
+    "author": "dangpbh",
+    "desc_full": "Dùng cho quy trình \"3D Automation - Dangpbh\". Người phụ trách chọn model AI cho từng loại việc qua hộp thoại, skill lưu lựa chọn vào file model_routing.json rồi bắt từng công đoạn dùng đúng model đã chọn.\n\nCác việc được chọn model riêng:\n- Ảnh concept: model GPT tạo ảnh (astra, sol, terra...).\n- Dựng 3D, dọn Tripo, topology/số tam giác/màu, sửa lỗi sau review: model Claude (Opus, Fable, Sonnet) cùng mức effort (low, medium, high...).\n- Tạo hoặc cập nhật skill: model Claude hoặc GPT tùy chọn.\n\nKhi nào chạy: lúc bắt đầu một model mới, khi mở chat cho giai đoạn mới, trước khi tạo hoặc sửa skill, hoặc khi người phụ trách nói muốn đổi model. Một cuộc chat không tự đổi được model của chính nó, nên skill hướng dẫn mở chat đúng model, giao việc cho tác tử phụ chạy model đã chọn, hoặc soạn sẵn lời nhờ để dán vào ChatGPT.\n\nLưu ý: skill đang trỏ tới thư mục riêng trên máy tác giả (D:\\AI - Dang\\3D Automation - Dangpbh), cần đổi đường dẫn cho khớp máy bạn.",
+    "img": "img/model-routing-dang.jpg"
   }
 ]
