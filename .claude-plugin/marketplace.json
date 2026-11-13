@@ -15,6 +15,11 @@
       "description": "Xuất mesh từ Blender sang Unity dạng FBX bằng add-on ACT (Import/Export Tools → Export FBX to Unity), điều khiển qua Blender MCP. Người dùng đưa tên mesh hoặc ảnh có mũi tÃ"
     },
     {
+      "name": "gm3d-tudn",
+      "source": "./plugins/gm3d-tudn",
+      "description": "Gradient-map UV texturing for Blender game props/gates on the color2/T_Colorpalette strips with TuDN's 3D lighting and color rules (cylinder shading, 3-level white, Unity-aware values). Use for /gm3d…"
+    },
+    {
       "name": "tb-hoidz",
       "source": "./plugins/tb-hoidz",
       "description": "Texture existing Blender game models with palette-strip gradient UV mapping from a concept image. Use only when the user explicitly invokes /tb-hoidz, $tb-hoidz or tb-hoidz. Do not trigger for generic"

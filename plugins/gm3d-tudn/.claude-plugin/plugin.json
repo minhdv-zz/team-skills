@@ -1,0 +1,8 @@
+{
+  "name": "gm3d-tudn",
+  "description": "Gradient-map UV texturing for Blender game props/gates on the color2/T_Colorpalette strips with TuDN's 3D lighting and color rules (cylinder shading, 3-level white, Unity-aware values). Use for /gm3d…",
+  "version": "1.0.0",
+  "author": {
+    "name": "TuDN"
+  }
+}
