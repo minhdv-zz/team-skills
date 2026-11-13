@@ -15,6 +15,11 @@
       "description": "Xuất mesh từ Blender sang Unity dạng FBX bằng add-on ACT (Import/Export Tools → Export FBX to Unity), điều khiển qua Blender MCP. Người dùng đưa tên mesh hoặc ảnh có mũi tÃ"
     },
     {
+      "name": "game-ready-mesh",
+      "source": "./plugins/game-ready-mesh",
+      "description": "Fix/optimize an existing 3D model (Tripo/Meshy/AI mesh, GLB/FBX/OBJ) into a clean game-ready mesh in Blender: topology, edge loops, tri budget, holes, n-gons, pivots, UV, Unity export."
+    },
+    {
       "name": "gm3d-tudn",
       "source": "./plugins/gm3d-tudn",
       "description": "Gradient-map UV texturing for Blender game props/gates on the color2/T_Colorpalette strips with TuDN's 3D lighting and color rules (cylinder shading, 3-level white, Unity-aware values). Use for /gm3d…"
