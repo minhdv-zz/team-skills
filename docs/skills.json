@@ -53,9 +53,13 @@
   },
   {
     "name": "game-ready-mesh",
-    "title": "Game Ready Mesh",
-    "desc": "Fix/optimize an existing 3D model (Tripo/Meshy/AI mesh, GLB/FBX/OBJ) into a clean game-ready mesh in Blender: topology, edge loops, tri budget, holes, n-gons, pivots, UV, Unity export.",
-    "needs": [],
-    "author": "GameReadyMesh"
+    "title": "Sửa mesh chuẩn game",
+    "desc": "Sửa và tối ưu model 3D có sẵn (Tripo/Meshy/mesh AI, GLB/FBX/OBJ) thành mesh game sạch trong Blender.",
+    "needs": [
+      "Blender MCP"
+    ],
+    "img": "img/game-ready-mesh.jpg",
+    "author": "Kienkhooc",
+    "desc_full": "Đưa model 3D có sẵn (xuất từ Tripo, Meshy hoặc mesh AI, định dạng GLB/FBX/OBJ) về chuẩn game-ready đo được trong Blender: dọn topology và edge loop, giữ số tam giác trong ngân sách, vá lỗ thủng, bỏ n-gon, chỉnh pivot/origin, UV, rồi xuất sang Unity. Làm theo quy trình kiểm tra → lên kế hoạch → sửa → kiểm tra lại → xuất, không báo xong khi chưa kiểm tra lại đạt. Gọi bằng cách nói \"sửa model\", \"tối ưu mesh\", \"retopo\", \"giảm poly\", \"xuất Unity\"."
   }
 ]

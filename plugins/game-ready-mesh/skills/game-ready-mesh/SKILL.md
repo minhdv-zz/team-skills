@@ -1,7 +1,7 @@
 ---
-name: game-ready-mesh
+name: "game-ready-mesh"
 description: "Fix/optimize an existing 3D model (Tripo/Meshy/AI mesh, GLB/FBX/OBJ) into a clean game-ready mesh in Blender: topology, edge loops, tri budget, holes, n-gons, pivots, UV, Unity export."
-author: "GameReadyMesh"
+author: Kienkhooc
 ---
 
 # Game-Ready Mesh
@@ -15,7 +15,7 @@ Blender is driven through the Blender MCP tools (execute_blender_code etc.). The
 Reference baselines: two accepted ships (`Marine_01_ct`, `Pirate_01_ct`). Measured stats and known gaps are in Appendix B. Treat them as the quality bar for *style and density*, not as perfect examples.
 
 ## Reference images
-The images live on the user's computer at `E:\AI_nghiencuu\SKILL\game-ready-mesh\assets\`. When the session is linked to that computer, stage the needed images (device_stage_files) and open them with Read. If the computer is not reachable, say so in one line and rely on the written standard.
+Reference images are optional and are not bundled with this skill. If the user provides an `assets/` folder (loop_flow_hull.png, pirate_wire_*.png, bad_vs_good_topology_*.png), open the relevant ones with Read; otherwise rely on the written standard and the numbers in the appendices.
 
 - **Request is a whole-model fix** ("sửa tổng thể", "fix this model", "make it game-ready", full cleanup): read **all** images in `assets/` first, then audit.
 - **Otherwise read only the images relevant to the request**:

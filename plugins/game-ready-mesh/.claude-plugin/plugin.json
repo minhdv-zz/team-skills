@@ -3,6 +3,6 @@
   "description": "Fix/optimize an existing 3D model (Tripo/Meshy/AI mesh, GLB/FBX/OBJ) into a clean game-ready mesh in Blender: topology, edge loops, tri budget, holes, n-gons, pivots, UV, Unity export.",
   "version": "1.0.0",
   "author": {
-    "name": "GameReadyMesh"
+    "name": "Kienkhooc"
   }
 }
