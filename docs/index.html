@@ -277,7 +277,7 @@
     <h4 id="dtBodyH" style="display:none">Nội dung chi tiết</h4>
     <pre class="dbody" id="dtBody" style="display:none"></pre>
     <div class="row" style="justify-content:space-between">
-      <a class="btn" id="dtGit" target="_blank" rel="noopener noreferrer">Xem trên GitHub</a>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" id="dtGit" target="_blank" rel="noopener noreferrer">Xem trên GitHub</a><button class="danger" id="dtRemove" style="display:none">Xóa khỏi kho chung</button></span>
       <span style="display:flex;gap:8px;flex-wrap:wrap">
         <button id="dtClose">Đóng</button>
         <span id="dtAct"></span>
@@ -812,6 +812,9 @@ function openDetail(i){
     else { b.className='pri'; b.textContent='Cài'; b.onclick=function(){ closeDetail(); installOne(i); }; }
   }
   act.appendChild(b);
+  var rm = $('dtRemove');
+  rm.style.display = (STATE && STATE.owner && (STATE.features || []).indexOf('owner-remove') >= 0) ? '' : 'none';
+  rm.onclick = function(){ removeFromRepo(i); };
   $('dt').classList.add('on');
 
   // the full text lives in the repo: SKILL.md (skills) or README (addons)
@@ -884,6 +887,24 @@ function needUpdate(){
   $('help').open = true;
   $('help').scrollIntoView({behavior:'smooth', block:'start'});
   toast('Team Skills trên máy này là bản cũ. Cập nhật: paseo plugin update team-skills --yes (hoặc copy lời nhờ Claude ở Bước 1).', false);
+}
+function removeFromRepo(i){
+  var s = ITEMS[TAB][i], kind = TAB === 'skills' ? 'skill' : 'addon', tab = TAB;
+  askConfirm('Xóa "' + s.title + '" khỏi kho chung?',
+    'Mọi người sẽ không thấy và không cài được nữa. Bản đã cài sẵn trên máy mỗi người không bị xóa. Có thể khôi phục từ lịch sử Git của repo.',
+    'Xóa khỏi kho chung').then(function(ok){
+    if(!ok) return;
+    closeDetail();
+    toast('Đang xóa...', true);
+    return fetch(LOCAL + '/remove-item', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({kind:kind, name:s.name})})
+      .then(function(r){ if(r.status === 404) throw new Error('Plugin Paseo là bản cũ. Cập nhật: paseo plugin update team-skills --yes'); return r.json(); })
+      .then(function(j){
+        if(!j.ok) throw new Error(j.error || 'Không xóa được.');
+        ITEMS[tab] = ITEMS[tab].filter(function(x){ return x.name !== s.name; });
+        setTab(TAB);
+        toast('Đã xóa ' + s.title + ' khỏi kho chung. Danh sách trên web cập nhật sau 1-2 phút.', true);
+      }).catch(function(e){ toast('Lỗi: ' + e.message, false); });
+  });
 }
 function closeM(){ $('ov').classList.remove('on') }
 

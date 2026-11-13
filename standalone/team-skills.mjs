@@ -1052,8 +1052,108 @@ async function webContributeOnce(input) {
 
 // server/http.ts
 import { createServer } from "node:http";
+
+// server/remove.ts
+var OWNER2 = "minhdv-zz";
+var SKILLS_REPO = `${OWNER2}/team-skills`;
+var ADDONS_REPO = `${OWNER2}/team-blender-addons`;
+var NAME_RE2 = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/;
+var ownerCache = null;
+async function isOwner() {
+  if (ownerCache && Date.now() - ownerCache.at < (ownerCache.value ? 6e5 : 12e4)) return ownerCache.value;
+  let value = false;
+  try {
+    value = await gitSession() !== null;
+  } catch {
+    value = false;
+  }
+  ownerCache = { at: Date.now(), value };
+  return value;
+}
+async function must2(s, method, path, body) {
+  const r = await api(s, method, path, body);
+  if (r.status < 200 || r.status >= 300) throw new Error(`GitHub b\xE1o l\u1ED7i (HTTP ${r.status}) khi g\u1ECDi ${method} ${path.split("?")[0]}: ${String(r.json?.message ?? "").slice(0, 160)}`);
+  return r.json;
+}
+async function readJsonFile(s, repo, path, ref) {
+  const f = await must2(s, "GET", `/repos/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`);
+  return JSON.parse(Buffer.from(String(f.content), "base64").toString("utf8"));
+}
+async function commitChange(s, repo, prefix, edits, message) {
+  const info = await must2(s, "GET", `/repos/${repo}`);
+  if (!info.permissions?.push) throw new Error(`T\xE0i kho\u1EA3n n\xE0y kh\xF4ng c\xF3 quy\u1EC1n ghi v\xE0o ${repo}.`);
+  const branch = String(info.default_branch);
+  const ref = await must2(s, "GET", `/repos/${repo}/git/ref/heads/${encodeURIComponent(branch)}`);
+  const headSha = String(ref.object.sha);
+  const head = await must2(s, "GET", `/repos/${repo}/git/commits/${headSha}`);
+  const entries = [];
+  let removed = 0;
+  if (prefix) {
+    const tree = await must2(s, "GET", `/repos/${repo}/git/trees/${headSha}?recursive=1`);
+    if (tree.truncated) throw new Error("Th\u01B0 m\u1EE5c qu\xE1 l\u1EDBn \u0111\u1EC3 x\xF3a an to\xE0n b\u1EB1ng c\xE1ch n\xE0y.");
+    for (const t of tree.tree) {
+      if (t.type === "blob" && t.path.startsWith(prefix)) {
+        entries.push({ path: t.path, mode: "100644", type: "blob", sha: null });
+        removed++;
+      }
+    }
+  }
+  for (const e of await edits(branch)) entries.push({ path: e.path, mode: "100644", type: "blob", content: e.content });
+  if (entries.length === 0) return 0;
+  const newTree = await must2(s, "POST", `/repos/${repo}/git/trees`, { base_tree: head.tree.sha, tree: entries });
+  const commit = await must2(s, "POST", `/repos/${repo}/git/commits`, { message, tree: newTree.sha, parents: [headSha] });
+  await must2(s, "PATCH", `/repos/${repo}/git/refs/heads/${encodeURIComponent(branch)}`, { sha: commit.sha });
+  return removed;
+}
+var asJson = (v) => JSON.stringify(v, null, 2) + "\n";
+async function removeItem(kind, name) {
+  if (kind !== "skill" && kind !== "addon" || !NAME_RE2.test(name)) return { ok: false, error: "Y\xEAu c\u1EA7u kh\xF4ng h\u1EE3p l\u1EC7." };
+  const s = await gitSession();
+  if (!s) return { ok: false, error: `Ch\u1EC9 ch\u1EE7 repo (${OWNER2}) m\u1EDBi x\xF3a \u0111\u01B0\u1EE3c, v\xE0 m\xE1y n\xE0y c\u1EA7n \u0111\u0103ng nh\u1EADp Git b\u1EB1ng t\xE0i kho\u1EA3n \u0111\xF3.` };
+  try {
+    if (kind === "skill") {
+      let removed2 = 0;
+      removed2 = await commitChange(
+        s,
+        SKILLS_REPO,
+        `plugins/${name}/`,
+        async (ref) => {
+          const skills = await readJsonFile(s, SKILLS_REPO, "docs/skills.json", ref);
+          const mp = JSON.parse(Buffer.from(String((await must2(s, "GET", `/repos/${SKILLS_REPO}/contents/.claude-plugin/marketplace.json?ref=${encodeURIComponent(ref)}`)).content), "base64").toString("utf8"));
+          mp.plugins = (mp.plugins ?? []).filter((p) => p.source !== `./plugins/${name}`);
+          return [
+            { path: "docs/skills.json", content: asJson(skills.filter((x) => x.name !== name)) },
+            { path: ".claude-plugin/marketplace.json", content: asJson(mp) }
+          ];
+        },
+        `Remove skill ${name} (by owner, from Team Tools)`
+      );
+      return { ok: true, removed: removed2 };
+    }
+    const list = await readJsonFile(s, SKILLS_REPO, "docs/addons.json", "main").catch(() => []);
+    const entry = list.find((x) => x.name === name);
+    const folder = String(entry?.folder ?? name);
+    if (!NAME_RE2.test(folder)) return { ok: false, error: "T\xEAn th\u01B0 m\u1EE5c addon kh\xF4ng h\u1EE3p l\u1EC7." };
+    const removed = await commitChange(s, ADDONS_REPO, `addons/${folder}/`, async () => [], `Remove addon ${folder} (by owner, from Team Tools)`);
+    await commitChange(
+      s,
+      SKILLS_REPO,
+      null,
+      async (ref) => {
+        const cur = await readJsonFile(s, SKILLS_REPO, "docs/addons.json", ref);
+        return [{ path: "docs/addons.json", content: asJson(cur.filter((x) => x.name !== name)) }];
+      },
+      `Remove addon ${name} from the website list (by owner, from Team Tools)`
+    );
+    return { ok: true, removed };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// server/http.ts
 var PORT = 47653;
-var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web"];
+var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);
 var ALLOWED_HOSTS = /* @__PURE__ */ new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 function setCors(req, res) {
@@ -1141,7 +1241,7 @@ async function handle(req, res) {
       blender = await listAddons();
     } catch {
     }
-    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, skills, blender });
+    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, owner: await isOwner(), skills, blender });
   }
   if (req.method === "POST" && path === "/uninstall") {
     if (!origin) return send(res, 403, { error: "Origin required" });
@@ -1169,6 +1269,11 @@ async function handle(req, res) {
   if (req.method === "POST" && path === "/contribute") {
     if (!origin) return send(res, 403, { error: "Origin required" });
     return send(res, 200, await webContribute(await readJson(req)));
+  }
+  if (req.method === "POST" && path === "/remove-item") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    const body = await readJson(req);
+    return send(res, 200, await removeItem(String(body.kind), String(body.name)));
   }
   if (req.method === "POST" && path === "/review") {
     if (!origin) return send(res, 403, { error: "Origin required" });
