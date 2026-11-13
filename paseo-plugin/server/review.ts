@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { api, ensureSession, logout, pendingLogin } from "./contribute";
 
 const OWNER = "minhdv-zz";
@@ -6,6 +7,34 @@ const REPOS = new Set([`${OWNER}/team-skills`, `${OWNER}/team-blender-addons`]);
 export type ReviewResult =
   | { ok: true; done: "merged" | "closed"; note?: string }
   | { ok: false; login?: { code: string; url: string } | null; error?: string; outside?: string[] };
+
+type Sess = Parameters<typeof api>[0];
+
+/**
+ * The GitHub sign-in this machine already uses for `git push` (Git Credential Manager). Used only to merge or close
+ * a Pull Request, never stored or sent anywhere else, and only accepted when it belongs to the repo owner.
+ */
+async function gitSession(): Promise<Sess | null> {
+  const token = await new Promise<string>((resolve) => {
+    const child = execFile(
+      "git",
+      ["credential", "fill"],
+      { timeout: 8000, env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" } },
+      (err, stdout) => {
+        if (err) return resolve("");
+        const m = /^password=(.*)$/m.exec(String(stdout));
+        resolve(m ? m[1].trim() : "");
+      },
+    );
+    child.stdin?.end("protocol=https\nhost=github.com\n\n");
+  });
+  if (!token) return null;
+  const s: Sess = { token, login: "", expiresAt: Date.now() + 60_000 };
+  const me = await api(s, "GET", "/user");
+  if (me.status !== 200 || String(me.json?.login ?? "").toLowerCase() !== OWNER) return null;
+  s.login = String(me.json.login);
+  return s;
+}
 
 /** A contribution may only touch its own folder: plugins/<name>/ (skills) or addons/<name>/ (addons). */
 function outsideFiles(repo: string, files: string[]): string[] {
@@ -21,8 +50,12 @@ export async function reviewPr(repo: string, number: number, action: string, all
   if (!REPOS.has(repo) || !Number.isInteger(number) || number < 1) return { ok: false, error: "Yêu cầu không hợp lệ." };
   if (action !== "merge" && action !== "close") return { ok: false, error: "Hành động không hợp lệ." };
 
-  const { session } = await ensureSession(1500);
-  if (!session) return { ok: false, login: pendingLogin() };
+  let session: Sess | null = await gitSession();
+  if (!session) {
+    // No usable Git sign-in on this machine: fall back to signing in with a code.
+    session = (await ensureSession(1500)).session;
+    if (!session) return { ok: false, login: pendingLogin() };
+  }
   if (session.login.toLowerCase() !== OWNER) {
     return { ok: false, error: `Bạn đang đăng nhập GitHub là ${session.login}. Chỉ chủ repo (${OWNER}) mới duyệt được.` };
   }
