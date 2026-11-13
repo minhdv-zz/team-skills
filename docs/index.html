@@ -116,6 +116,9 @@
 
   <details class="help" id="help" open>
     <summary>Chưa kết nối Paseo? Cài plugin một lần</summary>
+    <p><b>Cách nhanh:</b> copy lời nhờ rồi dán vào <b>một cuộc chat Claude trong Paseo</b>. Claude sẽ cài (hoặc cập nhật) plugin giúp bạn, và <b>hỏi bạn đồng ý trước khi chạy</b>.</p>
+    <button class="pri" id="btnPluginPrompt">Copy lời nhờ Claude cài plugin</button>
+    <p style="margin-top:18px"><b>Hoặc làm tay:</b></p>
     <p>Mở Paseo, vào <b>Settings → Plugins</b>, dán nguồn plugin vào ô <b>Plugin source</b> rồi bấm <b>Install plugin</b>:</p>
     <pre id="pluginSrc"></pre>
     <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
@@ -136,6 +139,7 @@
           <b>Cập nhật plugin Paseo</b> (làm một lần)
           <pre id="cmdUpdate">paseo plugin update team-skills</pre>
           <button onclick="copy(cmdUpdate.textContent,this)">Copy lệnh</button>
+          <button class="pri" id="btnPluginPrompt2" style="margin-left:8px">Copy lời nhờ Claude cập nhật plugin</button>
         </li>
         <li>
           <b>Điền thông tin rồi copy lời nhờ Claude</b>
@@ -326,6 +330,29 @@ function buildPrompt(){
   return L.join('\n');
 }
 $('btnPrompt').addEventListener('click', function(){ copy(buildPrompt(), this); });
+function buildPluginPrompt(){
+  var SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
+  var winPaseo = '%LOCALAPPDATA%\\Programs\\Paseo\\resources\\bin\\paseo.cmd';
+  var L = [];
+  L.push('Hãy giúp tôi cài (hoặc cập nhật) plugin Paseo "team-skills" cho trang https://minhdv-zz.github.io/team-skills/ . Làm đúng các bước sau, nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
+  L.push('');
+  L.push('Bước 1 - tìm lệnh paseo: chạy "paseo --version". Nếu không có lệnh paseo, trên Windows dùng đường dẫn đầy đủ ' + winPaseo + ' thay cho "paseo" ở mọi lệnh bên dưới.');
+  L.push('');
+  L.push('Bước 2 - xem đã cài chưa: chạy "paseo plugin ls" và tìm plugin tên team-skills.');
+  L.push('');
+  L.push('Bước 3 - chọn lệnh:');
+  L.push('- Chưa có team-skills: lệnh cài là "paseo plugin install ' + SRC + '".');
+  L.push('- Đã có team-skills: lệnh cập nhật là "paseo plugin update team-skills" (xem trước có bản mới không bằng "paseo plugin update team-skills --check"). Nếu plugin đó được cài từ một thư mục trên máy thay vì từ Git, hãy nói cho tôi biết và đừng gỡ hay cài đè.');
+  L.push('');
+  L.push('Bước 4 - TRƯỚC KHI chạy lệnh cài hoặc cập nhật, hãy cho tôi biết bạn sẽ chạy lệnh nào, và nhắc rõ rằng plugin chạy KHÔNG có sandbox: code của repo minhdv-zz/team-skills sẽ chạy trên máy tôi. Chỉ chạy khi tôi đồng ý rõ ràng.');
+  L.push('');
+  L.push('Bước 5 - kiểm tra sau khi chạy: "paseo plugin ls" phải thấy team-skills ở trạng thái running, và lệnh curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:47653/status phải trả 200.');
+  L.push('');
+  L.push('Bước 6 - báo kết quả ngắn gọn và nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển sang xanh. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
+  return L.join('\n');
+}
+$('btnPluginPrompt').addEventListener('click', function(){ copy(buildPluginPrompt(), this); });
+$('btnPluginPrompt2').addEventListener('click', function(){ copy(buildPluginPrompt(), this); });
 
 function installedOf(name){
   if(!STATE) return false;
