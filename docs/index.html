@@ -169,7 +169,7 @@
   </div>
   <div id="review" style="display:none">
     <h2 style="margin:0 0 6px">Đóng góp chờ duyệt</h2>
-    <div class="fine" style="margin:0 0 14px;font-size:13.5px">Đọc kỹ trước khi duyệt: skill và addon sẽ chạy trên máy của người cài. Bấm <b>Duyệt và gộp</b> hoặc <b>Từ chối</b>, phần còn lại trang tự làm. Lần đầu cần đăng nhập GitHub một lần. Chỉ chủ repo mới duyệt được.</div>
+    <div class="fine" style="margin:0 0 14px;font-size:13.5px">Đọc kỹ trước khi duyệt: skill và addon sẽ chạy trên máy của người cài. Bấm <b>Duyệt và gộp</b> hoặc <b>Từ chối</b>, phần còn lại trang tự làm. Chỉ chủ repo mới duyệt được.</div>
     <div id="rvList"></div>
   </div>
   <div id="contrib" style="display:none">
@@ -390,7 +390,8 @@ function doReview(i, action, allowOutside, skipAsk){
   if(!STATE){ toast('Muốn duyệt tại đây cần cài plugin Paseo (Bước 1). Hoặc bấm Xem thay đổi trên GitHub rồi duyệt ở đó.', false); return; }
   if((STATE.features || []).indexOf('review') < 0){ needUpdate(); return; }
   var bad = p.checks && p.checks.some(function(x){ return ['failure','cancelled','timed_out'].indexOf(x.conclusion) >= 0; });
-  var go = (allowOutside || skipAsk) ? Promise.resolve(true) : askConfirm(
+  var needAsk = action === 'merge' && bad;
+  var go = (allowOutside || skipAsk || !needAsk) ? Promise.resolve(true) : askConfirm(
     (action === 'merge' ? 'Duyệt và gộp' : 'Từ chối') + ' "' + p.title + '"?',
     action === 'merge'
       ? 'Nội dung sẽ vào kho chung, cả team thấy và cài được. Bạn đã đọc kỹ chưa?' + (bad ? '\n\nLƯU Ý: kiểm tra tự động đang báo LỖI.' : '')
