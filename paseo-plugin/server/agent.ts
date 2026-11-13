@@ -2,7 +2,8 @@
  * The contribution workflow, shared by the agent tools (when Paseo exposes them) and the local
  * /agent/* HTTP endpoints (used by the prompt the website generates, through curl).
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { addonRoots, teamNames } from "./handlers";
 import {
@@ -14,6 +15,7 @@ import {
   findSkillSource,
   listDirs,
   logout,
+  pendingLogin,
   skillDirs,
   submitContribution,
   type Kind,
@@ -178,4 +180,80 @@ export function runLogout(): Reply {
   const who = currentLogin();
   const had = logout();
   return reply(had ? `Đã đăng xuất${who ? " tài khoản " + who : ""}.` : "Chưa đăng nhập.");
+}
+
+// ------------------------------------------------------------------ one-click contribution from the web page
+
+/** Make SKILL.md's header valid: name must equal the folder name, and add the author the contributor typed. */
+function patchFrontMatter(text: string, name: string, author: string): string {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+  if (!m) return text;
+  const nl = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = m[1].split(/\r?\n/);
+  const setLine = (key: string, value: string, onlyIfMissing: boolean) => {
+    const i = lines.findIndex((l) => new RegExp("^" + key + "[ \t]*:").test(l));
+    if (i >= 0) {
+      if (!onlyIfMissing || !lines[i].split(":").slice(1).join(":").trim()) lines[i] = `${key}: ${value}`;
+    } else lines.push(`${key}: ${value}`);
+  };
+  setLine("name", name, false);
+  if (author) setLine("author", JSON.stringify(author), true);
+  return "---" + nl + lines.join(nl) + nl + "---" + text.slice(m[0].length);
+}
+
+export interface WebContributeInput {
+  path?: string;
+  author?: string;
+  /** false/absent: only check. true: send (the user ticked the consent box on the page). */
+  confirm?: boolean;
+}
+
+/** Check, and when confirmed submit, a skill/addon found by the local scan. The page never chooses arbitrary folders. */
+export async function webContribute(input: WebContributeInput): Promise<Record<string, unknown>> {
+  const wanted = String(input.path ?? "").split("\\").join("/");
+  const it = (await localItems()).find((x) => x.path === wanted);
+  if (!it) return { ok: false, error: "Mục này không nằm trong danh sách quét trên máy. Tải lại trang rồi thử lại." };
+  if (it.shared) return { ok: false, error: "Mục này đã có trong kho chung." };
+
+  let tmp: string | null = null;
+  try {
+    let src = it.path;
+    const author = String(input.author ?? "").trim().slice(0, 80);
+    if (it.kind === "skill") {
+      const text = readFileSync(join(src, "SKILL.md"), "utf8");
+      const fixed = patchFrontMatter(text, it.name, author);
+      if (fixed !== text) {
+        tmp = mkdtempSync(join(tmpdir(), "team-contrib-"));
+        const dest = join(tmp, it.name);
+        cpSync(src, dest, { recursive: true });
+        writeFileSync(join(dest, "SKILL.md"), fixed);
+        src = dest;
+      }
+    }
+    const checked = checkContribution(it.kind, it.name, src);
+    const errors = checked.issues.filter((i) => i.level === "error").map((i) => i.message);
+    const warnings = checked.issues.filter((i) => i.level === "warning").map((i) => i.message);
+    const base = { ok: true, kind: it.kind, name: it.name, files: checked.files.length, author: checked.author, description: checked.description, errors, warnings };
+
+    if (!input.confirm) return { ...base, stage: "check" };
+    if (errors.length) return { ...base, ok: false, error: "Còn lỗi cần sửa trước khi gửi." };
+
+    const login = await ensureSession(1500);
+    if (!login.session) return { ok: false, login: pendingLogin() };
+    const r = await submitContribution({
+      kind: it.kind,
+      name: it.name,
+      files: checked.files,
+      author: checked.author,
+      description: checked.description,
+      issues: checked.issues,
+      replace: false,
+      s: login.session,
+    });
+    return { ...base, stage: "sent", prUrl: r.prUrl, login: login.session.login };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  } finally {
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+  }
 }

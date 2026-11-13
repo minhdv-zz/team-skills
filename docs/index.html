@@ -186,7 +186,6 @@
           <b>Chọn skill hoặc addon trên máy bạn, bấm Đóng góp</b>
           <div class="fine" style="margin:4px 0 8px;font-size:13.5px">Trang tự quét skill và addon Blender đang có trên máy. Cái nào đã có trong kho chung sẽ hiện <span class="chip ok">Đã đóng góp</span>.</div>
           <div id="localList"></div>
-          <div class="fine">Bấm <b>Đóng góp</b> sẽ copy lời nhờ, dán vào một chat Claude mới (trong Paseo hoặc app khác).</div>
           <details class="alt">
             <summary>Skill nằm trong thư mục dự án, không thấy trong danh sách?</summary>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
@@ -195,10 +194,6 @@
             </div>
             <button id="btnPrompt">Copy lời nhờ Claude</button>
           </details>
-        </li>
-        <li>
-          <b>Làm theo Claude</b>
-          <div class="fine" style="font-size:14px;margin-top:4px">Trả lời câu hỏi, đăng nhập GitHub khi trang được mở, rồi nhận link Pull Request.</div>
         </li>
       </ol>
       <div class="fine" style="border-top:1px solid var(--line);padding-top:10px">Cần có: <b>tên tác giả</b> trong skill/addon &middot; addon phải <b>miễn phí và được chia sẻ lại</b> &middot; không chứa <b>khóa, token, mật khẩu</b>. Hệ thống tự quét.</div>
@@ -299,6 +294,12 @@
       <button id="cfCancel">Hủy</button>
       <button id="cfOk" class="danger">Đồng ý</button>
     </div>
+  </div>
+</div>
+<div class="overlay" id="ct">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ctTitle">
+    <h2 id="ctTitle"></h2>
+    <div id="ctBody"></div>
   </div>
 </div>
 <div id="toast"></div>
@@ -508,8 +509,9 @@ function loadLocal(){
     if(j.ok){ LOCAL_ITEMS = j.items; } else { LOCAL_ITEMS = null; LOCAL_FAIL = j.error || 'err'; }
   }).catch(function(){ LOCAL_ITEMS = null; LOCAL_FAIL = 'err'; });
 }
+var SENT = {};
 function isPendingName(name){
-  return (PENDING || []).some(function(p){ return String(p.title).indexOf('] ' + name + ' - ') >= 0; });
+  return !!SENT[name] || (PENDING || []).some(function(p){ return String(p.title).indexOf('] ' + name + ' - ') >= 0; });
 }
 function renderLocal(){
   var el = $('localList');
@@ -538,8 +540,66 @@ $('localList').addEventListener('click', function(e){
   var b = e.target.closest ? e.target.closest('button[data-i]') : null;
   if(!b || !LOCAL_ITEMS) return;
   var x = LOCAL_ITEMS[Number(b.getAttribute('data-i'))];
-  if(x) copy(buildPrompt(x.kind, x.path), b);
+  if(x) ctStart(x);
 });
+var CT = {item:null, author:''};
+function ctClose(){ $('ct').classList.remove('on'); CT.item = null; }
+function ctShow(html){ $('ctBody').innerHTML = html; }
+function ctMsg(html, cls){ ctShow('<div class="' + (cls || 'warnbox') + '">' + html + '</div><div class="row"><button onclick="ctClose()">Đóng</button></div>'); }
+function ctPost(extra){
+  return fetch(LOCAL + '/contribute', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.assign({path:CT.item.path}, extra))})
+    .then(function(r){ if(r.status === 404) throw new Error('Plugin Paseo là bản cũ, chưa có chức năng này. Cập nhật: paseo plugin update team-skills --yes'); return r.json(); });
+}
+function ctStart(x){
+  CT.item = x;
+  $('ctTitle').textContent = 'Đóng góp: ' + x.name;
+  $('ct').classList.add('on');
+  ctShow('<div class="fine">Đang kiểm tra...</div>');
+  if(!STATE || (STATE.features || []).indexOf('contribute-web') < 0){ ctMsg('Plugin Paseo trên máy là bản cũ. Cập nhật: <code>paseo plugin update team-skills --yes</code> rồi tải lại trang.'); return; }
+  ctPost({}).then(function(j){ if(!j.ok) throw new Error(j.error || 'Không kiểm tra được.'); ctRender(j); })
+    .catch(function(e){ ctMsg(esc(e.message)); });
+}
+function ctRender(j){
+  var needAuthor = j.kind === 'skill' && !j.author;
+  var errs = j.errors.filter(function(m){ return !(needAuthor && m.indexOf("thiếu 'author:'") >= 0); });
+  var saved = ''; try{ saved = localStorage.getItem('tt_author') || ''; }catch(e){}
+  var consent = j.kind === 'addon' ? 'Addon này miễn phí và được phép chia sẻ lại. Tôi đồng ý công khai cho cả team.' : 'Tôi đồng ý công khai skill này cho cả team dùng.';
+  ctShow('<div class="meta" style="margin-bottom:10px">' + (j.kind === 'addon' ? 'Addon Blender' : 'Skill') + ' &middot; ' + j.files + ' file' + (j.author ? ' &middot; Tác giả: ' + esc(j.author) : '') + '</div>'
+    + (errs.length ? '<div class="warnbox" style="margin-bottom:10px"><b>Cần sửa trước khi gửi:</b><br>' + errs.map(esc).join('<br>') + '</div>' : '')
+    + (j.warnings.length ? '<div class="chip wait" style="display:block;border-radius:8px;padding:8px 12px;margin-bottom:10px;white-space:normal"><b>Lưu ý:</b><br>' + j.warnings.slice(0,5).map(esc).join('<br>') + '</div>' : '')
+    + (needAuthor ? '<label style="display:block;margin-bottom:10px">Tên tác giả hiển thị (bắt buộc)<br><input id="ctAuthor" value="' + esc(saved) + '" placeholder="Tên của bạn" style="width:100%;margin-top:6px"></label>' : '')
+    + (errs.length ? '' : '<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="checkbox" id="ctOk" style="margin-top:4px"> <span>' + esc(consent) + '</span></label>')
+    + '<div class="fine">Gửi xong, chủ repo sẽ duyệt rồi mới hiện cho cả team.</div>'
+    + '<div class="row"><button onclick="ctClose()">Hủy</button>' + (errs.length ? '' : '<button class="pri" id="ctSend" disabled>Gửi để duyệt</button>') + '</div>');
+  if(errs.length) return;
+  function upd(){ $('ctSend').disabled = !($('ctOk').checked && (!needAuthor || $('ctAuthor').value.trim().length >= 2)); }
+  $('ctOk').addEventListener('change', upd);
+  if(needAuthor) $('ctAuthor').addEventListener('input', upd);
+  $('ctSend').addEventListener('click', function(){
+    CT.author = needAuthor ? $('ctAuthor').value.trim() : '';
+    if(CT.author){ try{ localStorage.setItem('tt_author', CT.author); }catch(e){} }
+    ctSendNow();
+  });
+}
+function ctSendNow(){
+  var x = CT.item;
+  ctShow('<div class="fine">Đang gửi lên GitHub...</div>');
+  ctPost({confirm:true, author:CT.author}).then(function(j){
+    if(j.login){
+      ctShow('<div class="msg-body">Lần đầu cần đăng nhập GitHub. Mở trang bên dưới, nhập mã này rồi bấm Authorize.</div>'
+        + '<div style="text-align:center;margin-top:12px"><div style="font:700 30px Consolas,monospace;letter-spacing:.1em;background:#0b0f14;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px">' + esc(j.login.code) + '</div>'
+        + '<a class="btn pri" href="' + esc(j.login.url) + '" target="_blank" rel="noopener noreferrer">Mở trang nhập mã GitHub</a> <button id="ctCopy">Copy mã</button></div>'
+        + '<div class="row"><button onclick="ctClose()">Hủy</button><button class="pri" id="ctGo">Đã nhập xong, tiếp tục</button></div>');
+      $('ctCopy').onclick = function(){ copy(j.login.code, this); };
+      $('ctGo').onclick = ctSendNow;
+      return;
+    }
+    if(!j.ok){ ctMsg(esc(j.error || 'Không gửi được.') + (j.errors && j.errors.length ? '<br>' + j.errors.map(esc).join('<br>') : '')); return; }
+    SENT[x.name] = true; renderLocal();
+    ctShow('<div class="msg-body">Đã gửi! Chủ repo sẽ duyệt, được gộp thì cả team thấy trên trang.</div>'
+      + '<div class="row"><a class="btn" href="' + esc(j.prUrl) + '" target="_blank" rel="noopener noreferrer">Xem Pull Request</a><button class="pri" onclick="ctClose()">Xong</button></div>');
+  }).catch(function(e){ ctMsg(esc(e.message)); });
+}
 var STANDALONE_URL = RAW + '/standalone/team-skills.mjs';
 function standaloneLines(){
   var L = [];

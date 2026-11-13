@@ -14,11 +14,11 @@ import {
   type Target,
 } from "./handlers";
 import { listPending, reviewPr } from "./review";
-import { localItems, runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
+import { localItems, runContribute, runListLocal, runLogout, webContribute, type ContributeInput, type WebContributeInput } from "./agent";
 
 export const PORT = 47653;
 /** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
-const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list"];
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 
@@ -147,6 +147,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     } catch (e) {
       return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
     }
+  }
+
+  if (req.method === "POST" && path === "/contribute") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    return send(res, 200, await webContribute((await readJson(req)) as WebContributeInput));
   }
 
   if (req.method === "POST" && path === "/review") {

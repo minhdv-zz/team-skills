@@ -2,7 +2,8 @@
 import { createInterface } from "node:readline";
 
 // server/agent.ts
-import { existsSync as existsSync3, readFileSync as readFileSync2, statSync as statSync2 } from "node:fs";
+import { cpSync as cpSync2, existsSync as existsSync3, mkdtempSync as mkdtempSync2, readFileSync as readFileSync2, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { tmpdir as tmpdir2 } from "node:os";
 import { basename, isAbsolute, join as join3, resolve } from "node:path";
 
 // server/handlers.ts
@@ -867,6 +868,66 @@ function runLogout() {
   const had = logout();
   return reply(had ? `\u0110\xE3 \u0111\u0103ng xu\u1EA5t${who ? " t\xE0i kho\u1EA3n " + who : ""}.` : "Ch\u01B0a \u0111\u0103ng nh\u1EADp.");
 }
+function patchFrontMatter(text, name, author) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+  if (!m) return text;
+  const nl = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = m[1].split(/\r?\n/);
+  const setLine = (key, value, onlyIfMissing) => {
+    const i = lines.findIndex((l) => new RegExp("^" + key + "[ 	]*:").test(l));
+    if (i >= 0) {
+      if (!onlyIfMissing || !lines[i].split(":").slice(1).join(":").trim()) lines[i] = `${key}: ${value}`;
+    } else lines.push(`${key}: ${value}`);
+  };
+  setLine("name", name, false);
+  if (author) setLine("author", JSON.stringify(author), true);
+  return "---" + nl + lines.join(nl) + nl + "---" + text.slice(m[0].length);
+}
+async function webContribute(input) {
+  const wanted = String(input.path ?? "").split("\\").join("/");
+  const it = (await localItems()).find((x) => x.path === wanted);
+  if (!it) return { ok: false, error: "M\u1EE5c n\xE0y kh\xF4ng n\u1EB1m trong danh s\xE1ch qu\xE9t tr\xEAn m\xE1y. T\u1EA3i l\u1EA1i trang r\u1ED3i th\u1EED l\u1EA1i." };
+  if (it.shared) return { ok: false, error: "M\u1EE5c n\xE0y \u0111\xE3 c\xF3 trong kho chung." };
+  let tmp = null;
+  try {
+    let src = it.path;
+    const author = String(input.author ?? "").trim().slice(0, 80);
+    if (it.kind === "skill") {
+      const text = readFileSync2(join3(src, "SKILL.md"), "utf8");
+      const fixed = patchFrontMatter(text, it.name, author);
+      if (fixed !== text) {
+        tmp = mkdtempSync2(join3(tmpdir2(), "team-contrib-"));
+        const dest = join3(tmp, it.name);
+        cpSync2(src, dest, { recursive: true });
+        writeFileSync3(join3(dest, "SKILL.md"), fixed);
+        src = dest;
+      }
+    }
+    const checked = checkContribution(it.kind, it.name, src);
+    const errors = checked.issues.filter((i) => i.level === "error").map((i) => i.message);
+    const warnings = checked.issues.filter((i) => i.level === "warning").map((i) => i.message);
+    const base = { ok: true, kind: it.kind, name: it.name, files: checked.files.length, author: checked.author, description: checked.description, errors, warnings };
+    if (!input.confirm) return { ...base, stage: "check" };
+    if (errors.length) return { ...base, ok: false, error: "C\xF2n l\u1ED7i c\u1EA7n s\u1EEDa tr\u01B0\u1EDBc khi g\u1EEDi." };
+    const login = await ensureSession(1500);
+    if (!login.session) return { ok: false, login: pendingLogin() };
+    const r = await submitContribution({
+      kind: it.kind,
+      name: it.name,
+      files: checked.files,
+      author: checked.author,
+      description: checked.description,
+      issues: checked.issues,
+      replace: false,
+      s: login.session
+    });
+    return { ...base, stage: "sent", prUrl: r.prUrl, login: login.session.login };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  } finally {
+    if (tmp) rmSync3(tmp, { recursive: true, force: true });
+  }
+}
 
 // server/http.ts
 import { createServer } from "node:http";
@@ -978,7 +1039,7 @@ function clearPendingCache() {
 
 // server/http.ts
 var PORT = 47653;
-var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list"];
+var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);
 var ALLOWED_HOSTS = /* @__PURE__ */ new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 function setCors(req, res) {
@@ -1090,6 +1151,10 @@ async function handle(req, res) {
     } catch (e) {
       return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
     }
+  }
+  if (req.method === "POST" && path === "/contribute") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    return send(res, 200, await webContribute(await readJson(req)));
   }
   if (req.method === "POST" && path === "/review") {
     if (!origin) return send(res, 403, { error: "Origin required" });
