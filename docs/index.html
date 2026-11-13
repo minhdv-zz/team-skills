@@ -266,6 +266,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
     <h2 id="cfTitle"></h2>
     <div class="msg-body" id="cfText"></div>
+    <div id="cfExtra" style="display:none;margin-top:12px;text-align:center"></div>
     <div class="row">
       <button id="cfCancel">Hủy</button>
       <button id="cfOk" class="danger">Đồng ý</button>
@@ -338,7 +339,7 @@ function toggleLike(i){
     .then(function(j){
       if(j.login){
         rollback();
-        return askConfirm('Đăng nhập GitHub để thích', 'Trình duyệt vừa mở trang GitHub.\n\nNhập mã: ' + j.login.code + '\nrồi bấm Authorize. Xong quay lại đây và bấm thích lần nữa.', 'Đã hiểu');
+        return askConfirm('Đăng nhập GitHub để thích', 'Bấm nút bên dưới để mở trang GitHub (nếu trình duyệt chưa tự mở), nhập mã này rồi bấm Authorize. Xong quay lại đây và bấm thích lần nữa.', 'Đã hiểu', j.login);
       }
       if(!j.ok) throw new Error(j.error || 'Không thích được.');
       MINE[k] = j.liked; LIKES[k] = j.count; saveMine(); render(); syncDtLike();
@@ -635,11 +636,19 @@ $('dtClose').addEventListener('click', closeDetail);
 $('dt').addEventListener('click', function(e){ if(e.target===this) closeDetail(); });
 
 var CF_DONE = null;
-function askConfirm(title, text, okLabel){
+function askConfirm(title, text, okLabel, extra){
   return new Promise(function(resolve){
     $('cfTitle').textContent = title;
     $('cfText').textContent = text;
     $('cfOk').textContent = okLabel || 'Đồng ý';
+    var ex = $('cfExtra'); ex.innerHTML = ''; ex.style.display = 'none';
+    if(extra){
+      ex.style.display = '';
+      ex.innerHTML = '<div style="font:700 30px Consolas,monospace;letter-spacing:.1em;background:#0b0f14;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px">'+esc(extra.code)+'</div>'
+        + '<a class="btn pri" href="'+esc(extra.url)+'" target="_blank" rel="noopener noreferrer">Mở trang nhập mã GitHub</a> '
+        + '<button id="cfCopy">Copy mã</button>';
+      $('cfCopy').onclick = function(){ copy(extra.code, this); };
+    }
     $('cf').classList.add('on');
     $('cfCancel').focus();
     CF_DONE = function(v){ $('cf').classList.remove('on'); CF_DONE = null; resolve(v); };
