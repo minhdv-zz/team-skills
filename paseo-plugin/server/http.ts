@@ -16,6 +16,8 @@ import {
 import { runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
 
 export const PORT = 47653;
+/** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 
@@ -109,7 +111,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     } catch {
       /* keep empty */
     }
-    return send(res, 200, { ok: true, plugin: "team-skills", skills, blender });
+    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, skills, blender });
   }
 
   if (req.method === "POST" && path === "/uninstall") {

@@ -420,6 +420,7 @@ function render(){
 
   var outdated = !!STATE && !STATE.blender;           // old plugin: /status has no addon info
   var noBlender = !isSk && !!STATE && !outdated && vs.length===0;
+  var canUninstall = !STATE || (STATE.features || []).indexOf('uninstall') >= 0;
   var blocked = !isSk && (outdated || noBlender);
   $('grid').innerHTML = list.map(function(s,i){
     var inst = installedOf(s.name);
@@ -435,6 +436,8 @@ function render(){
       + '<div class="tags">'+tags.map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('')+'</div>'
       + '<div>' + (s.link && !(STATE && s.zip)
           ? '<a class="btn pri" href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Tải về (nội bộ)</a>'
+          : (STATE && inst && !canUninstall)
+            ? '<button onclick="event.stopPropagation();needUpdate()">Cần cập nhật plugin để gỡ</button>'
           : (STATE && inst)
             ? '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();uninstallOne('+i+')">Gỡ cài</button>'
             : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();installOne('+i+')">'+label+'</button>') + '</div></div>';
@@ -445,6 +448,7 @@ function render(){
   $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (làm Bước 1 ở trên).')
     : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills'
     : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
+    : (STATE && !canUninstall) ? 'Đã kết nối plugin Paseo nhưng là bản cũ, chưa gỡ cài được. Cập nhật: paseo plugin update team-skills'
     : (!isSk && STATE.blender && STATE.blender.live) ? 'Đã kết nối Blender đang mở (' + vs[0] + '): addon sẽ được cài và bật trực tiếp.'
     : 'Đã kết nối plugin Paseo trên máy này.';
   var can = on && !blocked && !BUSY;
@@ -457,7 +461,10 @@ function render(){
 function post(path, body){
   BUSY = true; render();
   return fetch(LOCAL + path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
-    .then(function(r){return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; })})
+    .then(function(r){
+      if(r.status === 404) throw new Error('Plugin Paseo trên máy này là bản cũ, chưa có chức năng này. Hãy cập nhật: paseo plugin update team-skills (hoặc dùng nút Copy lời nhờ Claude ở Bước 1).');
+      return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; });
+    })
     .finally(function(){ BUSY=false; });
 }
 function req(extra){
@@ -534,7 +541,8 @@ function openDetail(i){
     b = document.createElement('a'); b.className='btn pri'; b.textContent='Tải về (nội bộ)'; b.href=s.link; b.target='_blank'; b.rel='noopener noreferrer';
   } else {
     b = document.createElement('button');
-    if(STATE && inst){ b.className='danger'; b.textContent='Gỡ cài'; b.onclick=function(){ closeDetail(); uninstallOne(i); }; }
+    if(STATE && inst && !((STATE.features || []).indexOf('uninstall') >= 0)){ b.textContent='Cần cập nhật plugin để gỡ'; b.onclick=function(){ closeDetail(); needUpdate(); }; }
+    else if(STATE && inst){ b.className='danger'; b.textContent='Gỡ cài'; b.onclick=function(){ closeDetail(); uninstallOne(i); }; }
     else { b.className='pri'; b.textContent='Cài'; b.onclick=function(){ closeDetail(); installOne(i); }; }
   }
   act.appendChild(b);
@@ -597,6 +605,11 @@ function bulk(mode){
     toast(j.installed.length ? doneMsg(j) : 'Không có mục nào cần cài.', true);
     return refresh();
   }).catch(function(e){ toast('Lỗi: ' + e.message, false); render(); });
+}
+function needUpdate(){
+  $('help').open = true;
+  $('help').scrollIntoView({behavior:'smooth', block:'start'});
+  toast('Plugin Paseo trên máy này là bản cũ. Cập nhật: paseo plugin update team-skills (hoặc copy lời nhờ Claude ở Bước 1).', false);
 }
 function closeM(){ $('ov').classList.remove('on') }
 

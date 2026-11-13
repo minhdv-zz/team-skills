@@ -406,6 +406,21 @@ export async function teamNames(): Promise<{ skills: Set<string>; addons: Set<st
 
 // ---------------------------------------------------------------- uninstall
 
+/** Remove a folder, retrying on Windows file locks, and explain the usual causes in plain words. */
+function removeFolder(dest: string): void {
+  try {
+    rmSync(dest, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "EBUSY" || code === "EPERM" || code === "EACCES") {
+      throw new Error(
+        "Không xóa được vì có file đang được dùng (" + code + "). Hãy đóng Claude Code hoặc Blender đang mở rồi thử lại. Thư mục: " + dest,
+      );
+    }
+    throw e;
+  }
+}
+
 /** Remove skills from the target skills folder. Only names published in the team list are accepted. */
 export async function uninstallSkills(names: string[], target: Target): Promise<string[]> {
   if (!TARGETS.includes(target)) throw new Error("Invalid target: " + String(target));
@@ -416,7 +431,7 @@ export async function uninstallSkills(names: string[], target: Target): Promise<
   for (const name of names) {
     const dest = join(skillsDir(target), name);
     if (existsSync(dest)) {
-      rmSync(dest, { recursive: true, force: true });
+      removeFolder(dest);
       removed.push(dest);
     }
   }
@@ -460,7 +475,7 @@ export async function uninstallAddons(names: string[], version: string): Promise
         ].join("\n"),
       ).catch(() => "");
     }
-    rmSync(dest, { recursive: true, force: true });
+    removeFolder(dest);
     paths.push(dest);
   }
   return { paths, via: live ? "blender" : "files" };
