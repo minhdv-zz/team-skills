@@ -522,7 +522,7 @@ function renderLocal(){
         + '</div><div style="flex:none">' + act + '</div></div>';
     }).join('') : '<div class="fine" style="margin:0">Không thấy mục nào trên máy.</div>';
     var open = items.filter(function(x){ return !x.shared; }).length;
-    return '<div style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:2px">' + g[1] + ' <span class="fine">(' + items.length + ' trên máy, ' + open + ' chưa đóng góp)</span></div>' + rows + '</div>';
+    return '<div style="border:1px solid var(--line);border-radius:10px;background:#0b0f14;padding:12px 14px;margin-bottom:14px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><h4 style="margin:0;font-size:16px">' + g[1] + '</h4><span class="fine" style="margin:0">' + items.length + ' trên máy &middot; ' + open + ' chưa đóng góp</span></div>' + rows + '</div>';
   }).join('');
 }
 $('localList').addEventListener('click', function(e){
