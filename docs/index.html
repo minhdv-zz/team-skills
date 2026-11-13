@@ -233,7 +233,7 @@ function buildPrompt(){
   L.push('Hãy giúp tôi đóng góp ' + label + ' "' + target + '" lên Team Skills (kho chung của team) thông qua plugin Paseo team-skills đang chạy trên máy này, nghe ở http://127.0.0.1:47653. Làm đúng theo các bước dưới đây. Mọi lệnh curl BẮT BUỘC có header X-Team-Skills: 1. Nói chuyện với tôi bằng tiếng Việt, ngắn gọn.');
   L.push('');
   L.push('Bước 0 - kiểm tra plugin: curl -s -H "X-Team-Skills: 1" http://127.0.0.1:47653/agent/list');
-  L.push('Nếu lỗi kết nối hoặc 403: bảo tôi mở Paseo và chạy "paseo plugin update team-skills", rồi thử lại.');
+  L.push('Nếu lỗi kết nối, 403 hoặc 404 (Not found): plugin chưa chạy hoặc là bản cũ. Bảo tôi mở Paseo và chạy "paseo plugin update team-skills", rồi thử lại.');
   L.push('');
   L.push('Bước 1 - kiểm tra thử, CHƯA gửi gì. Ghi JSON ra một file tạm body.json rồi gửi (dùng dấu / trong đường dẫn):');
   L.push('curl -s -X POST -H "X-Team-Skills: 1" -H "Content-Type: application/json" --data-binary @body.json http://127.0.0.1:47653/agent/contribute');

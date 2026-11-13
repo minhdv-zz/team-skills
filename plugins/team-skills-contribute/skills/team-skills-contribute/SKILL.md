@@ -24,7 +24,7 @@ Mọi lệnh `curl` dưới đây **bắt buộc** có header `X-Team-Skills: 1`
 curl -s -H "X-Team-Skills: 1" http://127.0.0.1:47653/agent/list
 ```
 
-Lỗi kết nối hoặc 403 thì báo người dùng: mở Paseo, rồi chạy `paseo plugin update team-skills` và thử lại. Lệnh này cũng liệt kê skill trong `~/.claude/skills` và addon Blender trên máy.
+Lỗi kết nối, 403 hoặc 404 (Not found) thì plugin chưa chạy hoặc là bản cũ: báo người dùng mở Paseo, chạy `paseo plugin update team-skills` rồi thử lại. Lệnh này cũng liệt kê skill trong `~/.claude/skills` và addon Blender trên máy.
 
 ## Bước 1: xác định thư mục cần gửi
 
