@@ -453,9 +453,11 @@ function render(){
     : 'Đã kết nối plugin Paseo trên máy này.';
   var can = on && !blocked && !BUSY;
   $('btnAll').disabled = !can; $('btnMissing').disabled = !can;
-  $('help').open = !on;
-  $('help').className = 'help step1' + (on ? ' ok' : '');
-  $('helpSum').textContent = on ? 'Plugin Paseo đã kết nối (bấm để xem lại cách cài hoặc cập nhật)' : 'Cài plugin Paseo (làm một lần)';
+  var good = on && canUninstall;   // connected AND recent enough
+  $('help').open = !good;
+  $('help').className = 'help step1' + (good ? ' ok' : '');
+  $('helpSum').textContent = good ? 'Plugin Paseo đã kết nối (bấm để xem lại cách cài hoặc cập nhật)'
+    : (on ? 'Cập nhật plugin Paseo (bản trên máy này đã cũ)' : 'Cài plugin Paseo (làm một lần)');
 }
 
 function post(path, body){
