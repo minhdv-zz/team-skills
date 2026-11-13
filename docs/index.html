@@ -994,12 +994,20 @@ function removeFromRepo(i){
 }
 function closeM(){ $('ov').classList.remove('on') }
 
-var FIRST_REFRESH = true, PERM_DENIED = false, PERM_TIMER = null, PERM_SKIP_TIMER = null;
+var FIRST_REFRESH = true, PERM_DENIED = false, PERM_TIMER = null, PERM_SKIP_TIMER = null, PERM_DONE = false;
+function permState(){
+  var names = ['local-network-access', 'loopback-network'];
+  return Promise.all(names.map(function(n){
+    return (navigator.permissions && navigator.permissions.query ? navigator.permissions.query({name:n}) : Promise.reject())
+      .then(function(p){ return p.state; }).catch(function(){ return 'unknown'; });
+  })).then(function(a){ return a.indexOf('prompt') >= 0 ? 'prompt' : a.indexOf('granted') >= 0 ? 'granted' : 'unknown'; });
+}
 function showPerm(){
   $('perm').classList.add('on');
   PERM_SKIP_TIMER = setTimeout(function(){ $('permSkip').style.display = 'block'; }, 20000);
 }
 function hidePerm(){
+  PERM_DONE = true;
   clearTimeout(PERM_TIMER); clearTimeout(PERM_SKIP_TIMER);
   $('perm').classList.remove('on'); $('permSkip').style.display = 'none';
 }
@@ -1015,7 +1023,14 @@ $('permSkipLink').addEventListener('click', hidePerm);
 
 function refresh(){
   // The browser asks for permission on the first request. If it stays pending, hold the screen with a big notice.
-  if(FIRST_REFRESH){ FIRST_REFRESH = false; PERM_TIMER = setTimeout(showPerm, 250); }
+  if(FIRST_REFRESH){
+    FIRST_REFRESH = false; PERM_DONE = false;
+    // Chỉ hiện thông báo khi trình duyệt thật sự đang hỏi quyền ('prompt'); đã cho phép thì không hiện.
+    permState().then(function(st){
+      if(PERM_DONE || st === 'granted') return;
+      PERM_TIMER = setTimeout(showPerm, st === 'prompt' ? 250 : 2500);
+    });
+  }
   return fetch(LOCAL + '/status').then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
     .then(function(j){ STATE = j; PERM_DENIED = false; })
     .catch(function(){ STATE = null; return permDenied().then(function(d){ PERM_DENIED = d; }); })
