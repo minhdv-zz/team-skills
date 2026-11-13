@@ -103,6 +103,18 @@
   .foot .by{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   .foot button,.foot a.btn{flex:none}
   .card{gap:6px}
+  .cnt{background:#f85149;color:#fff;border-radius:999px;font-size:12px;font-weight:700;padding:0 8px;margin-left:8px}
+  .banner{background:#2a1f55;border:1px solid var(--acc);border-radius:10px;padding:10px 16px;margin-bottom:16px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
+  .banner b{flex:1}
+  .pr{margin-bottom:14px}
+  .pr .meta{color:var(--mut);font-size:13px}
+  .pr .meta a{color:#9d8cff}
+  .chip{display:inline-block;font-size:12px;border-radius:999px;padding:1px 10px;border:1px solid var(--line);color:var(--mut)}
+  .chip.ok{color:var(--ok);border-color:#1f4a2b;background:#12261a}
+  .chip.bad{color:#ffb4ac;border-color:var(--err);background:#3b1219}
+  .chip.wait{color:#e3b341;border-color:#5a4a14;background:#2a2308}
+  .warnbox{background:#3b1219;border:1px solid var(--err);border-radius:8px;padding:10px 12px;font-size:13.5px}
+  .pr details summary{cursor:pointer;color:var(--mut);font-size:13.5px}
 </style>
 </head>
 <body>
@@ -115,8 +127,10 @@
     <button class="tab on" id="tab-skills" onclick="setTab('skills')">Skill</button>
     <button class="tab" id="tab-addons" onclick="setTab('addons')">Addon Blender</button>
     <button class="tab" id="tab-contrib" onclick="setTab('contrib')">Đóng góp</button>
+    <button class="tab" id="tab-review" onclick="setTab('review')">Chờ duyệt<span class="cnt" id="cnt" style="display:none"></span></button>
   </div>
   <div class="main-col">
+  <div class="banner" id="pendBanner"><b id="pendText"></b><button class="pri" onclick="setTab('review')">Xem và duyệt</button></div>
 
   <div id="main">
   <details class="help step1" id="help" open>
@@ -152,6 +166,11 @@
 
 
   <div class="grid" id="grid"></div>
+  </div>
+  <div id="review" style="display:none">
+    <h2 style="margin:0 0 6px">Đóng góp chờ duyệt</h2>
+    <div class="fine" style="margin:0 0 14px;font-size:13.5px">Đọc kỹ trước khi duyệt: skill và addon sẽ chạy trên máy của người cài. Chỉ chủ repo mới duyệt được, và cần plugin Paseo cùng đăng nhập GitHub.</div>
+    <div id="rvList"></div>
   </div>
   <div id="contrib" style="display:none">
     <div class="card" style="border-color:var(--acc);gap:14px">
@@ -279,6 +298,100 @@ var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
 var TAB = 'skills';
+var PENDING = null;
+var PR_REPOS = [{repo:'minhdv-zz/team-skills', kind:'Skill'}, {repo:'minhdv-zz/team-blender-addons', kind:'Addon'}];
+function ghj(url){
+  return fetch('https://api.github.com' + url, {headers:{Accept:'application/vnd.github+json'}})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+function updateBadge(){
+  var n = PENDING ? PENDING.length : 0;
+  $('cnt').style.display = n ? '' : 'none'; $('cnt').textContent = n;
+  document.title = (n ? '(' + n + ') ' : '') + 'Team Tools';
+  $('pendBanner').style.display = (n && TAB !== 'review') ? 'flex' : 'none';
+  $('pendText').textContent = n + ' đóng góp mới đang chờ duyệt';
+}
+function loadPending(){
+  return Promise.all(PR_REPOS.map(function(R){
+    return ghj('/repos/' + R.repo + '/pulls?state=open&per_page=30').then(function(l){
+      return l.map(function(p){ return {repo:R.repo, kind:R.kind, n:p.number, title:p.title, user:p.user.login, url:p.html_url, sha:p.head.sha, at:p.created_at}; });
+    }).catch(function(){ return null; });
+  })).then(function(a){
+    if(a.every(function(x){ return x === null; })) return;       // GitHub unreachable or rate limited: keep what we had
+    PENDING = [].concat.apply([], a.map(function(x){ return x || []; }));
+    updateBadge();
+  });
+}
+function outsideOf(p){
+  var pre = p.repo.indexOf('team-skills') >= 0 ? 'plugins/' : 'addons/', roots = {};
+  p.files.forEach(function(f){ if(f.indexOf(pre) === 0) roots[f.split('/').slice(0,2).join('/')] = 1; });
+  var ks = Object.keys(roots);
+  return p.files.filter(function(f){ return ks.length !== 1 || f.indexOf(ks[0] + '/') !== 0; });
+}
+function checkChip(p){
+  var c = p.checks;
+  if(c === undefined) return '';
+  if(c === null) return '<span class="chip">Không đọc được kết quả kiểm tra</span>';
+  if(!c.length) return '<span class="chip wait">Chưa chạy kiểm tra tự động</span>';
+  if(c.some(function(x){ return x.status !== 'completed'; })) return '<span class="chip wait">Đang kiểm tra...</span>';
+  if(c.some(function(x){ return ['failure','cancelled','timed_out','action_required'].indexOf(x.conclusion) >= 0; })) return '<span class="chip bad">Kiểm tra tự động: LỖI</span>';
+  return '<span class="chip ok">Kiểm tra tự động: đạt</span>';
+}
+function renderReview(){
+  var el = $('rvList');
+  if(PENDING === null){ el.innerHTML = '<div class="fine">Đang tải...</div>'; return; }
+  if(!PENDING.length){ el.innerHTML = '<div class="card"><h3>Không có đóng góp nào đang chờ duyệt</h3><div class="fine">Khi có người gửi skill hoặc addon, nó sẽ hiện ở đây.</div></div>'; return; }
+  el.innerHTML = PENDING.map(function(p, i){
+    var out = p.files ? outsideOf(p) : [];
+    return '<div class="card pr"><h3>' + esc(p.title) + '</h3>'
+      + '<div class="meta">' + esc(p.kind) + ' &middot; gửi bởi <a href="https://github.com/' + esc(p.user) + '" target="_blank" rel="noopener noreferrer">' + esc(p.user) + '</a> &middot; ' + esc(new Date(p.at).toLocaleString('vi-VN')) + '</div>'
+      + '<div class="tags">' + checkChip(p) + (p.files ? '<span class="chip">' + p.files.length + ' file</span>' : '') + '</div>'
+      + (out.length ? '<div class="warnbox"><b>Cẩn thận:</b> đóng góp này sửa cả file ngoài thư mục của nó (' + out.slice(0,5).map(esc).join(', ') + (out.length > 5 ? ', ...' : '') + '). Chỉ duyệt nếu bạn hiểu rõ.</div>' : '')
+      + (p.files ? '<details><summary>Xem danh sách file</summary><pre>' + p.files.slice(0,60).map(esc).join('\n') + (p.files.length > 60 ? '\n... (' + (p.files.length-60) + ' file nữa)' : '') + '</pre></details>' : '')
+      + '<div class="foot"><a class="btn" href="' + esc(p.url) + '/files" target="_blank" rel="noopener noreferrer">Xem thay đổi trên GitHub</a>'
+      + '<span style="display:flex;gap:8px"><button class="danger" onclick="doReview(' + i + ',\'close\')">Từ chối</button><button class="pri" onclick="doReview(' + i + ',\'merge\')">Duyệt và gộp</button></span></div></div>';
+  }).join('');
+}
+function loadReview(){
+  renderReview();
+  loadPending().then(function(){
+    renderReview();
+    return Promise.all((PENDING || []).map(function(p){
+      return Promise.all([
+        ghj('/repos/' + p.repo + '/pulls/' + p.n + '/files?per_page=100').catch(function(){ return null; }),
+        ghj('/repos/' + p.repo + '/commits/' + p.sha + '/check-runs').catch(function(){ return null; })
+      ]).then(function(r){
+        p.files = r[0] ? r[0].map(function(f){ return f.filename; }) : [];
+        p.checks = r[1] ? r[1].check_runs : null;
+      });
+    }));
+  }).then(renderReview);
+}
+function doReview(i, action, allowOutside){
+  var p = PENDING[i];
+  if(!STATE){ toast('Muốn duyệt tại đây cần cài plugin Paseo (Bước 1). Hoặc bấm Xem thay đổi trên GitHub rồi duyệt ở đó.', false); return; }
+  if((STATE.features || []).indexOf('review') < 0){ needUpdate(); return; }
+  var bad = p.checks && p.checks.some(function(x){ return ['failure','cancelled','timed_out'].indexOf(x.conclusion) >= 0; });
+  var go = allowOutside ? Promise.resolve(true) : askConfirm(
+    (action === 'merge' ? 'Duyệt và gộp' : 'Từ chối') + ' "' + p.title + '"?',
+    action === 'merge'
+      ? 'Nội dung sẽ vào kho chung, cả team thấy và cài được. Bạn đã đọc kỹ chưa?' + (bad ? '\n\nLƯU Ý: kiểm tra tự động đang báo LỖI.' : '')
+      : 'Pull Request sẽ bị đóng, nội dung không được thêm.',
+    action === 'merge' ? 'Duyệt và gộp' : 'Từ chối');
+  go.then(function(ok){
+    if(!ok) return;
+    return fetch(LOCAL + '/review', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({repo:p.repo, number:p.n, action:action, allow_outside:!!allowOutside})})
+      .then(function(r){ if(r.status === 404) throw new Error('Plugin Paseo là bản cũ, chưa có chức năng duyệt. Cập nhật: paseo plugin update team-skills --yes'); return r.json(); })
+      .then(function(j){
+        if(j.login) return askConfirm('Đăng nhập GitHub (tài khoản chủ repo)', 'Bấm nút bên dưới để mở trang GitHub (nếu trình duyệt chưa tự mở), nhập mã này rồi bấm Authorize. Xong quay lại đây và bấm lại.', 'Đã hiểu', j.login);
+        if(j.outside) return askConfirm('Có file ngoài thư mục của nó', 'Đóng góp này sửa cả:\n' + j.outside.join('\n') + '\n\nVẫn gộp?', 'Vẫn gộp').then(function(y){ if(y) doReview(i, action, true); });
+        if(!j.ok) throw new Error(j.error || 'Không thực hiện được.');
+        PENDING = PENDING.filter(function(x){ return x !== p; });
+        updateBadge(); renderReview();
+        toast(j.done === 'merged' ? 'Đã duyệt và gộp. Web cập nhật danh sách sau 1-2 phút.' : 'Đã từ chối.', true);
+      });
+  }).catch(function(e){ toast('Lỗi: ' + e.message, false); });
+}
 
 function $(id){return document.getElementById(id)}
 $('pluginSrc').textContent = PLUGIN_SRC;
@@ -301,8 +414,12 @@ function setTab(t){
   $('tab-skills').className='tab'+(t==='skills'?' on':'');
   $('tab-addons').className='tab'+(t==='addons'?' on':'');
   $('tab-contrib').className='tab'+(t==='contrib'?' on':'');
-  $('main').style.display = t==='contrib' ? 'none' : '';
+  $('tab-review').className='tab'+(t==='review'?' on':'');
+  $('main').style.display = (t==='contrib' || t==='review') ? 'none' : '';
   $('contrib').style.display = t==='contrib' ? '' : 'none';
+  $('review').style.display = t==='review' ? '' : 'none';
+  updateBadge();
+  if(t==='review'){ $('sub').textContent=''; loadReview(); return; }
   if(t==='contrib'){ $('sub').innerHTML=''; updateContribLinks(); return; }
   render();
 }
@@ -405,6 +522,7 @@ function installedOf(name){
 }
 
 function render(){
+  if(TAB !== 'skills' && TAB !== 'addons'){ if(TAB === 'review') renderReview(); return; }
   var isSk = TAB==='skills', list = ITEMS[TAB];
   $('sub').textContent = isSk ? 'Cài xong, mở lại Claude Code để dùng.' : 'Cài xong, bật addon trong Edit → Preferences → Add-ons.';
   $('lblTarget').style.display = isSk ? '' : 'none';
@@ -650,7 +768,7 @@ $('version').addEventListener('change', render);
 
 function load(file){ return fetch(file + '?t=' + Date.now()).then(function(r){return r.json()}); }
 Promise.all([load('skills.json'), load('addons.json').catch(function(){return []})]).then(function(a){
-  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); return refresh();
+  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); loadPending(); if(location.hash === '#review') setTab('review'); return refresh();
 }).catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách.</p>' });
 </script>
 </body>
