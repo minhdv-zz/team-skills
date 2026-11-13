@@ -33,6 +33,14 @@
   @keyframes nudge{0%,100%{transform:translate(0,0)}50%{transform:translate(-10px,-10px)}}
   #perm .skip{margin-top:14px;font-size:13px;color:var(--mut);display:none}
   #perm .skip a{color:#9d8cff;cursor:pointer;text-decoration:underline}
+  details.help.step1{border:2px solid var(--acc);background:linear-gradient(135deg,#1c1640,#161b22);box-shadow:0 0 30px #7c5cff55;padding:18px 22px;margin-bottom:20px}
+  details.help.step1 summary{font-size:19px;font-weight:700}
+  details.help.step1 p{color:#d4dbe4}
+  details.help.step1.ok p{color:var(--mut)}
+  details.help.step1 summary::before{content:'BƯỚC 1';display:inline-block;background:var(--acc);color:#fff;font-size:12px;letter-spacing:.06em;padding:3px 10px;border-radius:999px;margin-right:12px;vertical-align:2px}
+  details.help.step1.ok{border-color:#1f4a2b;background:var(--card);box-shadow:none;padding:12px 18px}
+  details.help.step1.ok summary{font-size:15px;font-weight:600}
+  details.help.step1.ok summary::before{content:'XONG';background:#12261a;color:var(--ok);border:1px solid #1f4a2b}
   .modal.wide{width:min(780px,100%);max-height:90vh;overflow:auto}
   .modal .dimg{width:100%;max-height:230px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;display:block;margin-bottom:14px;background:#0b0f14}
   .modal.wide .row{position:sticky;bottom:-20px;background:var(--card);padding:14px 0 4px;margin-top:14px;border-top:1px solid var(--line)}
@@ -98,6 +106,19 @@
   <div class="main-col">
 
   <div id="main">
+  <details class="help step1" id="help" open>
+    <summary id="helpSum">Cài plugin Paseo (làm một lần)</summary>
+    <p><b>Cách nhanh:</b> copy lời nhờ rồi dán vào <b>một cuộc chat Claude trong Paseo</b>. Claude sẽ cài (hoặc cập nhật) plugin giúp bạn, và <b>hỏi bạn đồng ý trước khi chạy</b>.</p>
+    <button class="pri" id="btnPluginPrompt">Copy lời nhờ Claude cài plugin</button>
+    <p style="margin-top:18px"><b>Hoặc làm tay:</b></p>
+    <p>Mở Paseo, vào <b>Settings → Plugins</b>, dán nguồn plugin vào ô <b>Plugin source</b> rồi bấm <b>Install plugin</b>:</p>
+    <pre id="pluginSrc"></pre>
+    <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
+    <p>Hoặc dùng dòng lệnh: <code id="pluginCmd"></code></p>
+    <p>Sau khi plugin chạy, tải lại trang này. Chấm tròn ở trên sẽ chuyển sang xanh.</p>
+    <p>Đã cài plugin từ trước mà nút Cài addon không bấm được? Plugin được ghim theo phiên bản, hãy cập nhật: <code>paseo plugin update team-skills</code></p>
+  </details>
+
   <div class="bar">
     <span class="dot" id="dot"></span>
     <span class="st" id="status">Đang kiểm tra plugin Paseo...</span>
@@ -114,18 +135,6 @@
     <button id="btnAll" class="pri" disabled onclick="bulk('all')">Cài tất cả</button>
   </div>
 
-  <details class="help" id="help" open>
-    <summary>Chưa kết nối Paseo? Cài plugin một lần</summary>
-    <p><b>Cách nhanh:</b> copy lời nhờ rồi dán vào <b>một cuộc chat Claude trong Paseo</b>. Claude sẽ cài (hoặc cập nhật) plugin giúp bạn, và <b>hỏi bạn đồng ý trước khi chạy</b>.</p>
-    <button class="pri" id="btnPluginPrompt">Copy lời nhờ Claude cài plugin</button>
-    <p style="margin-top:18px"><b>Hoặc làm tay:</b></p>
-    <p>Mở Paseo, vào <b>Settings → Plugins</b>, dán nguồn plugin vào ô <b>Plugin source</b> rồi bấm <b>Install plugin</b>:</p>
-    <pre id="pluginSrc"></pre>
-    <button onclick="copy(pluginSrc.textContent,this)">Copy</button>
-    <p>Hoặc dùng dòng lệnh: <code id="pluginCmd"></code></p>
-    <p>Sau khi plugin chạy, tải lại trang này. Chấm tròn ở trên sẽ chuyển sang xanh.</p>
-    <p>Đã cài plugin từ trước mà nút Cài addon không bấm được? Plugin được ghim theo phiên bản, hãy cập nhật: <code>paseo plugin update team-skills</code></p>
-  </details>
 
   <div class="grid" id="grid"></div>
   </div>
@@ -401,7 +410,7 @@ function render(){
 
   var on = !!STATE;
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
-  $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (xem hướng dẫn bên dưới).')
+  $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (làm Bước 1 ở trên).')
     : (!isSk && outdated) ? 'Plugin Paseo trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills'
     : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
     : (!isSk && STATE.blender && STATE.blender.live) ? 'Đã kết nối Blender đang mở (' + vs[0] + '): addon sẽ được cài và bật trực tiếp.'
@@ -409,6 +418,8 @@ function render(){
   var can = on && !blocked && !BUSY;
   $('btnAll').disabled = !can; $('btnMissing').disabled = !can;
   $('help').open = !on;
+  $('help').className = 'help step1' + (on ? ' ok' : '');
+  $('helpSum').textContent = on ? 'Plugin Paseo đã kết nối (bấm để xem lại cách cài hoặc cập nhật)' : 'Cài plugin Paseo (làm một lần)';
 }
 
 function post(path, body){
