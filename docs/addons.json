@@ -70,16 +70,16 @@
   },
   {
     "name": "uvpackmaster4",
-    "title": "UVPackmaster 4",
-    "desc": "Xếp (pack) UV island tối ưu diện tích. Gói tải trên Drive nội bộ là bản 3.3.2 gồm engine và addon, cần cài tay.",
+    "title": "UVPackmaster 4.1.3",
+    "desc": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Gói tải trên Drive nội bộ gồm cả addon và engine, giải nén rồi chép vào Blender.",
     "license": "Bản quyền riêng",
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/s/YRqPojRmxHMY2ir",
+    "link": "https://drive.horusvn.com/s/eAM9CawW8Tfkonb",
     "author": "glukoz",
     "img": "img/uvpackmaster4.jpg",
-    "desc_full": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM.\n\nGói tải trên Drive nội bộ hiện là bản 3.3.2, là file RAR (file RAR) gồm engine và addon, nên cần cài tay, plugin Paseo không cài tự động được:\n1. Giải nén, chạy file uvpm-engine-pro-3.3.2-windows-x64.exe (Next, Install).\n2. Kéo file uvpackmaster3-addon-3.3.2.zip vào cửa sổ Blender (hoặc Edit > Preferences > Install from Disk) rồi tick bật addon.\n3. Edit > Preferences > Add-ons > UVPackmaster 3 > Activate license (cần giấy phép hợp lệ của hãng).\n4. Khởi động lại Blender, mở UV Editor, tab UVPackmaster.\n\nNếu Windows Defender chặn file engine thì cho phép file đó.",
+    "desc_full": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Bản 4.1.3.\n\nGói tải trên Drive nội bộ là file RAR chứa thư mục uvpackmaster4 (đã gồm cả addon và engine, khoảng 9.000 file), nên plugin Paseo không cài tự động được. Cài tay:\n1. Tải về và giải nén, được thư mục uvpackmaster4.\n2. Chép nguyên thư mục uvpackmaster4 vào thư mục addon của Blender: %APPDATA%\\Blender Foundation\\Blender\\<phiên bản>\\scripts\\addons (ví dụ phiên bản 5.2).\n3. Mở Blender, vào Edit > Preferences > Add-ons, tick bật UVPackmaster 4.\n4. Nếu báo chưa có engine thì bấm Set Engine Path và trỏ tới thư mục engine4 nằm trong thư mục uvpackmaster4 vừa chép.\n5. Kích hoạt giấy phép của bạn (cần giấy phép hợp lệ của hãng).\n\nNếu Windows Defender chặn một số file engine thì cho phép chúng.",
     "folder": "uvpackmaster4"
   },
   {
