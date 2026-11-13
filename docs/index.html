@@ -102,6 +102,10 @@
   .foot{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:auto;padding-top:4px}
   .foot .by{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   .foot button,.foot a.btn{flex:none}
+  .star{background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:4px 9px;font-size:13px;cursor:pointer;flex:none;display:inline-flex;gap:5px;align-items:center}
+  .star:hover:not(:disabled){border-color:#f5c542;color:#f5c542}
+  .star.on{border-color:#f5c542;color:#f5c542}
+  .star:disabled{opacity:.5;cursor:not-allowed}
   .card{gap:6px}
   details.help.step1>summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   #btnUpd{margin-left:auto;font-size:14px;font-weight:600;padding:6px 14px}
@@ -312,6 +316,33 @@ var LOCAL = 'http://127.0.0.1:47653';
 var PLUGIN_SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
 var INSTALL = '& ([scriptblock]::Create((irm ' + RAW + '/install.ps1)))';
 var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
+var STAR_API = '';     // URL của Cloudflare Worker (stars-worker). Để trống thì ẩn nút sao.
+var STARS = {};        // name -> {n:số sao, mine:bool}
+var MACHINE = '';
+
+var STAR_BUSY = {};   // key đang gửi, chống bấm chồng      // tên máy lấy từ plugin /whoami
+function starKey(s){ return TAB + ':' + s.name; }
+function loadStars(){
+  if(!STAR_API) return Promise.resolve();
+  return fetch(LOCAL + '/whoami').then(function(r){ return r.json(); }).then(function(j){ MACHINE = j.machine || ''; }).catch(function(){ MACHINE = ''; })
+    .then(function(){ return fetch(STAR_API + '/stars?machine=' + encodeURIComponent(MACHINE) + '&v=' + (localStorage.getItem('starV') || 0)); })
+    .then(function(r){ return r.json(); }).then(function(j){ var ns = j.stars || {}; Object.keys(STAR_BUSY).forEach(function(k){ ns[k] = STARS[k]; }); STARS = ns; }).catch(function(){});
+}
+function starBtn(s){
+  if(!STAR_API) return '';
+  var st = STARS[starKey(s)] || {n:0, mine:false};
+  return '<button class="star'+(st.mine?' on':'')+'" data-k="'+esc(starKey(s))+'" '+(MACHINE?'':'disabled title="'+(STATE?'Cần cập nhật plugin để đánh sao':'Cần plugin Team Skills chạy trên máy này để đánh sao')+'"')+' onclick="event.stopPropagation();toggleStar(this.dataset.k)">'+(st.mine?'★':'☆')+' '+st.n+'</button>';
+}
+function toggleStar(key){
+  if(!MACHINE || STAR_BUSY[key]) return;
+  STAR_BUSY[key] = true; try{ localStorage.setItem('starV', Date.now()); }catch(e){}
+  var st = STARS[key] || {n:0, mine:false};
+  var on = !st.mine;
+  STARS[key] = {n:Math.max(0, st.n + (on?1:-1)), mine:on}; render();
+  fetch(STAR_API + '/star', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:key, machine:MACHINE, on:on})})
+    .then(function(r){ if(!r.ok) throw new Error(); delete STAR_BUSY[key]; })
+    .catch(function(){ delete STAR_BUSY[key]; STARS[key] = st; render(); });
+}
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
 var TAB = 'skills';
@@ -754,7 +785,7 @@ function render(){
     return '<div class="card click" onclick="openDetail('+i+')">' + thumb
       + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3>'
       + '<p class="d">'+esc(s.desc)+'</p>'
-      + '<div class="foot"><span class="by">'+(s.author ? esc(s.author) : '')+'</span>' + act + '</div></div>';
+      + '<div class="foot"><span class="by">'+(s.author ? esc(s.author) : '')+'</span>' + ((TAB==='skills'||TAB==='addons') ? starBtn(s) : '') + act + '</div></div>';
   }).join('');
 
   var on = !!STATE;
@@ -988,7 +1019,7 @@ function refresh(){
   return fetch(LOCAL + '/status').then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
     .then(function(j){ STATE = j; PERM_DENIED = false; })
     .catch(function(){ STATE = null; return permDenied().then(function(d){ PERM_DENIED = d; }); })
-    .then(function(){ hidePerm(); render(); });
+    .then(function(){ hidePerm(); render(); if(!MACHINE) return loadStars().then(render); });
 }
 $('target').addEventListener('change', render);
 $('version').addEventListener('change', render);

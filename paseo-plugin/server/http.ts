@@ -1,3 +1,4 @@
+import { hostname } from "node:os";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
   allAddonNames,
@@ -20,7 +21,7 @@ import { localItems, runContribute, runListLocal, runLogout, webContribute, type
 
 export const PORT = 47653;
 /** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
-const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update"];
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 
@@ -111,6 +112,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     } catch (e) {
       return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
     }
+  }
+
+  if (req.method === "GET" && path === "/whoami") {
+    // The machine name is the identity used for stars (no sign-in).
+    return send(res, 200, { ok: true, machine: hostname() });
   }
 
   if (req.method === "GET" && path === "/status") {

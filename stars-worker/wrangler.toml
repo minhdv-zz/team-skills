@@ -1,0 +1,7 @@
+name = "team-skills-stars"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[[kv_namespaces]]
+binding = "STARS"
+id = "THAY_BANG_ID_KV"
