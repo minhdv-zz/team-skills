@@ -4,11 +4,12 @@ Ai cũng đóng góp được, cần một tài khoản GitHub. Mọi đóng gó
 
 ## Cách nhanh nhất: nhờ Claude trong Paseo
 
-1. Cài và cập nhật plugin: `paseo plugin update team-skills`. Cài skill **Đóng góp lên Team Skills** (`team-skills-contribute`) từ trang web (tab Skill).
-2. Mở một cuộc chat **mới** trong Paseo (nên mở trong thư mục dự án nếu skill nằm ở `.claude/skills` của dự án) và nhắn, ví dụ: `Hãy dùng skill team-skills-contribute để đóng góp skill tên-skill-của-bạn lên Team Skills` (hoặc addon).
-3. Claude làm theo skill đó: gọi cổng cục bộ của plugin (`http://127.0.0.1:47653/agent/...`) để kiểm tra, **hỏi bạn trước khi dọn** nội dung (ví dụ đường dẫn riêng), hỏi bạn đồng ý công khai, rồi gửi.
-4. Chưa đăng nhập GitHub thì plugin mở trang `github.com/login/device`. Nhập mã hiện ra, bấm **Authorize**. Token chỉ nằm trong bộ nhớ, hết hạn sau khoảng 8 giờ. Thu hồi: https://github.com/settings/applications
-5. Plugin tự tạo bản sao (nếu bạn chưa có quyền ghi), nhánh, commit và Pull Request, rồi báo link.
+1. Cập nhật plugin: `paseo plugin update team-skills`.
+2. Mở trang https://minhdv-zz.github.io/team-skills/ → tab **Đóng góp** → chọn loại, điền tên hoặc đường dẫn thư mục → bấm **Copy lời nhờ Claude**.
+3. Mở một cuộc chat **mới** trong Paseo (nên mở trong thư mục dự án nếu skill nằm ở `.claude/skills` của dự án) và dán lời nhờ vào. Không cần cài thêm skill nào.
+4. Claude làm theo các bước trong lời nhờ: gọi cổng cục bộ của plugin (`http://127.0.0.1:47653/agent/...`) để kiểm tra, **hỏi bạn trước khi dọn** nội dung (ví dụ đường dẫn riêng), hỏi bạn đồng ý công khai, rồi gửi. Paseo sẽ hỏi quyền chạy lệnh `curl`, bạn bấm cho phép.
+5. Chưa đăng nhập GitHub thì plugin mở trang `github.com/login/device`. Nhập mã hiện ra, bấm **Authorize**. Token chỉ nằm trong bộ nhớ, hết hạn sau khoảng 8 giờ. Thu hồi: https://github.com/settings/applications
+6. Plugin tự tạo bản sao (nếu bạn chưa có quyền ghi), nhánh, commit và Pull Request, rồi Claude báo link.
 
 Tên người đóng góp là tài khoản GitHub bạn đăng nhập. Vẫn cần tài khoản GitHub, và chủ repo duyệt từng Pull Request.
 

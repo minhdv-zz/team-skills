@@ -1,8 +1,0 @@
-{
-  "name": "team-skills-contribute",
-  "description": "Dùng khi người dùng muốn đóng góp, chia sẻ, đăng hoặc gửi một skill Claude hoặc một addon Blender lên Team Skills (kho chung của team).",
-  "version": "1.0.0",
-  "author": {
-    "name": "hoidz"
-  }
-}

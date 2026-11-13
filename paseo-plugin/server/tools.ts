@@ -4,7 +4,7 @@ import { runContribute, runListLocal, runLogout } from "./agent";
 
 // These tools are attached to agent sessions by the plugin. Some Paseo setups do not expose plugin tools
 // to the agent, so the same workflow is also reachable through the /agent/* endpoints (see http.ts and the
-// team-skills-contribute skill), which is the path the team actually relies on.
+// prompt copied from the website's Contribute tab), which is the path the team actually relies on.
 
 const listLocal = defineAgentTool({
   name: "team_skills_list_local",

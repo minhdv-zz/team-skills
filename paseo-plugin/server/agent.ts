@@ -1,6 +1,6 @@
 /**
  * The contribution workflow, shared by the agent tools (when Paseo exposes them) and the local
- * /agent/* HTTP endpoints (used by the team-skills-contribute skill through curl).
+ * /agent/* HTTP endpoints (used by the prompt the website generates, through curl).
  */
 import { existsSync, statSync } from "node:fs";
 import { basename, isAbsolute, resolve } from "node:path";
