@@ -991,7 +991,19 @@ function patchFrontMatter(text, name, author) {
   if (author) setLine("author", JSON.stringify(author), true);
   return "---" + nl + lines.join(nl) + nl + "---" + text.slice(m[0].length);
 }
+var recentSends = /* @__PURE__ */ new Map();
 async function webContribute(input) {
+  if (!input.confirm) return webContributeOnce(input);
+  const key = String(input.path ?? "").split("\\").join("/");
+  const prev = recentSends.get(key);
+  if (prev && Date.now() - prev.at < 12e4) return prev.result;
+  const result = webContributeOnce(input);
+  recentSends.set(key, { at: Date.now(), result });
+  const r = await result;
+  if (r.ok !== true) recentSends.delete(key);
+  return r;
+}
+async function webContributeOnce(input) {
   const wanted = String(input.path ?? "").split("\\").join("/");
   const it = (await localItems()).find((x) => x.path === wanted);
   if (!it) return { ok: false, error: "M\u1EE5c n\xE0y kh\xF4ng n\u1EB1m trong danh s\xE1ch qu\xE9t tr\xEAn m\xE1y. T\u1EA3i l\u1EA1i trang r\u1ED3i th\u1EED l\u1EA1i." };

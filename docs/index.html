@@ -583,6 +583,8 @@ function ctRender(j){
 }
 function ctSendNow(){
   var x = CT.item;
+  if(CT.sending) return;
+  CT.sending = true;
   ctShow('<div class="fine">Đang gửi lên GitHub...</div>');
   ctPost({confirm:true, author:CT.author}).then(function(j){
     if(j.login){
@@ -598,7 +600,7 @@ function ctSendNow(){
     SENT[x.name] = true; renderLocal();
     ctShow('<div class="msg-body">Đã gửi! Chủ repo sẽ duyệt, được gộp thì cả team thấy trên trang.</div>'
       + '<div class="row"><a class="btn" href="' + esc(j.prUrl) + '" target="_blank" rel="noopener noreferrer">Xem Pull Request</a><button class="pri" onclick="ctClose()">Xong</button></div>');
-  }).catch(function(e){ ctMsg(esc(e.message)); });
+  }).catch(function(e){ ctMsg(esc(e.message)); }).finally(function(){ CT.sending = false; });
 }
 var STANDALONE_URL = RAW + '/standalone/team-skills.mjs';
 function standaloneLines(){

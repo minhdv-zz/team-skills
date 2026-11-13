@@ -210,7 +210,22 @@ export interface WebContributeInput {
 }
 
 /** Check, and when confirmed submit, a skill/addon found by the local scan. The page never chooses arbitrary folders. */
+const recentSends = new Map<string, { at: number; result: Promise<Record<string, unknown>> }>();
+
 export async function webContribute(input: WebContributeInput): Promise<Record<string, unknown>> {
+  if (!input.confirm) return webContributeOnce(input);
+  // A repeated or retried request for the same item must not open a second Pull Request.
+  const key = String(input.path ?? "").split("\\").join("/");
+  const prev = recentSends.get(key);
+  if (prev && Date.now() - prev.at < 120_000) return prev.result;
+  const result = webContributeOnce(input);
+  recentSends.set(key, { at: Date.now(), result });
+  const r = await result;
+  if (r.ok !== true) recentSends.delete(key); // failed or needs sign-in: allow trying again
+  return r;
+}
+
+async function webContributeOnce(input: WebContributeInput): Promise<Record<string, unknown>> {
   const wanted = String(input.path ?? "").split("\\").join("/");
   const it = (await localItems()).find((x) => x.path === wanted);
   if (!it) return { ok: false, error: "Mục này không nằm trong danh sách quét trên máy. Tải lại trang rồi thử lại." };
