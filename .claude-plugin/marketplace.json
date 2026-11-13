@@ -18,6 +18,11 @@
       "name": "tb-hoidz",
       "source": "./plugins/tb-hoidz",
       "description": "Texture existing Blender game models with palette-strip gradient UV mapping from a concept image. Use only when the user explicitly invokes /tb-hoidz, $tb-hoidz or tb-hoidz. Do not trigger for generic"
+    },
+    {
+      "name": "team-skills-contribute",
+      "source": "./plugins/team-skills-contribute",
+      "description": "Đóng góp skill hoặc addon Blender lên Team Skills."
     }
   ]
 }

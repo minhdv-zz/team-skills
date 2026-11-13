@@ -4,9 +4,9 @@ Ai cũng đóng góp được, cần một tài khoản GitHub. Mọi đóng gó
 
 ## Cách nhanh nhất: nhờ Claude trong Paseo
 
-1. Cài và cập nhật plugin: `paseo plugin update team-skills`.
-2. Mở một cuộc chat **mới** trong Paseo và nhắn, ví dụ: `Hãy đóng góp skill tên-skill-của-bạn lên Team Skills` (hoặc `đóng góp addon <tên> ...`).
-3. Claude dùng các công cụ của plugin (`team_skills_list_local`, `team_skills_contribute`, `team_skills_logout`): kiểm tra, tự sửa lỗi nhỏ sau khi hỏi bạn, hỏi bạn đồng ý công khai, rồi gửi.
+1. Cài và cập nhật plugin: `paseo plugin update team-skills`. Cài skill **Đóng góp lên Team Skills** (`team-skills-contribute`) từ trang web (tab Skill).
+2. Mở một cuộc chat **mới** trong Paseo (nên mở trong thư mục dự án nếu skill nằm ở `.claude/skills` của dự án) và nhắn, ví dụ: `Hãy dùng skill team-skills-contribute để đóng góp skill tên-skill-của-bạn lên Team Skills` (hoặc addon).
+3. Claude làm theo skill đó: gọi cổng cục bộ của plugin (`http://127.0.0.1:47653/agent/...`) để kiểm tra, **hỏi bạn trước khi dọn** nội dung (ví dụ đường dẫn riêng), hỏi bạn đồng ý công khai, rồi gửi.
 4. Chưa đăng nhập GitHub thì plugin mở trang `github.com/login/device`. Nhập mã hiện ra, bấm **Authorize**. Token chỉ nằm trong bộ nhớ, hết hạn sau khoảng 8 giờ. Thu hồi: https://github.com/settings/applications
 5. Plugin tự tạo bản sao (nếu bạn chưa có quyền ghi), nhánh, commit và Pull Request, rồi báo link.
 

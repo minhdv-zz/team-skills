@@ -99,15 +99,15 @@
 
       <ol class="steps">
         <li>
-          <b>Cập nhật plugin Paseo</b> (làm một lần)
+          <b>Chuẩn bị (làm một lần):</b> cập nhật plugin Paseo, rồi cài skill <b>Đóng góp lên Team Skills</b> (tab <i>Skill</i> → bấm <i>Cài</i>)
           <pre id="cmdUpdate">paseo plugin update team-skills</pre>
           <button onclick="copy(cmdUpdate.textContent,this)">Copy lệnh</button>
         </li>
         <li>
-          <b>Mở một cuộc chat mới trong Paseo</b> và nhắn Claude
-          <pre id="chatSkill">Hãy đóng góp skill tên-skill-của-bạn lên Team Skills</pre>
+          <b>Mở một cuộc chat mới trong Paseo</b> (cạnh thư mục dự án chứa skill, nếu có) và nhắn Claude
+          <pre id="chatSkill">Hãy dùng skill team-skills-contribute để đóng góp skill tên-skill-của-bạn lên Team Skills</pre>
           <button onclick="copy(chatSkill.textContent,this)">Copy câu mẫu (skill)</button>
-          <pre id="chatAddon" style="margin-top:10px">Hãy đóng góp addon Blender tên-addon-của-bạn lên Team Skills</pre>
+          <pre id="chatAddon" style="margin-top:10px">Hãy dùng skill team-skills-contribute để đóng góp addon Blender tên-addon-của-bạn lên Team Skills</pre>
           <button onclick="copy(chatAddon.textContent,this)">Copy câu mẫu (addon)</button>
         </li>
         <li>

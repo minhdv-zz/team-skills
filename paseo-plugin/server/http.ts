@@ -11,6 +11,7 @@ import {
   TARGETS,
   type Target,
 } from "./handlers";
+import { runContribute, runListLocal, runLogout, type ContributeInput } from "./agent";
 
 export const PORT = 47653;
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
@@ -72,6 +73,30 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
 
   const path = (req.url ?? "/").split("?")[0];
+
+  if (path.startsWith("/agent/")) {
+    // Reserved for local tools (the agent's curl). Browsers always send an Origin header on cross-origin
+    // requests and a custom header forces a CORS preflight that is never approved, so web pages cannot use it.
+    if (origin || req.headers["x-team-skills"] !== "1") return send(res, 403, { error: "Not allowed" });
+    const plain = (status: number, text: string) => {
+      res.statusCode = status;
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.end(text);
+    };
+    if (req.method === "GET" && path === "/agent/list") {
+      const r = await runListLocal();
+      return plain(r.isError ? 422 : 200, r.text);
+    }
+    if (req.method === "POST" && path === "/agent/contribute") {
+      const r = await runContribute((await readJson(req)) as unknown as ContributeInput);
+      return plain(r.isError ? 422 : 200, r.text);
+    }
+    if (req.method === "POST" && path === "/agent/logout") {
+      const r = runLogout();
+      return plain(200, r.text);
+    }
+    return send(res, 404, { error: "Not found" });
+  }
 
   if (req.method === "GET" && path === "/status") {
     const { skills } = await listSkills();

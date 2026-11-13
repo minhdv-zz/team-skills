@@ -29,5 +29,14 @@
     ],
     "img": "img/tb-hoidz.jpg",
     "author": "hoidz"
+  },
+  {
+    "name": "team-skills-contribute",
+    "title": "Đóng góp lên Team Skills",
+    "desc": "Nhờ Claude kiểm tra, dọn dẹp và gửi skill hoặc addon của bạn lên kho chung (tự đăng nhập GitHub, tự mở Pull Request).",
+    "needs": [
+      "Plugin Paseo team-skills"
+    ],
+    "author": "hoidz"
   }
 ]

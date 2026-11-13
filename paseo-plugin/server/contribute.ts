@@ -185,7 +185,8 @@ export function checkContribution(kind: Kind, name: string, src: string): Checke
       for (const [re, label] of SECRET_PATTERNS) {
         if (re.test(text)) err(`${f.rel}: có vẻ chứa ${label}. Hãy xóa trước khi gửi.`);
       }
-      if (/[A-Za-z]:\\Users\\[^\\\s]+\\/.test(text)) warn(`${f.rel}: có đường dẫn riêng (C:\\Users\\...). Nên dùng đường dẫn chung.`);
+      const abs = /\b[A-Za-z]:[\/](?!Windows\b|Program Files\b)[^\s"'`)\]]{3,}/.exec(text);
+      if (abs) warn(`${f.rel}: có đường dẫn riêng của máy bạn (ví dụ ${abs[0].slice(0, 60)}). Nên thay bằng đường dẫn chung hoặc để skill hỏi người dùng.`);
     }
   }
   return { files, issues, author, description };
