@@ -6,7 +6,7 @@
  * Nothing is merged automatically: the repository owner reviews every Pull Request.
  */
 import { execFile } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -207,13 +207,49 @@ interface Pending {
   done: Promise<Session | null>;
 }
 
-let session: Session | null = null;
+/** Only the repo owner's sign-in is remembered on disk (so approving needs no code each time). Others stay in memory. */
+const OWNER_LOGIN = "minhdv-zz";
+const SESSION_FILE = join(homedir(), ".team-skills", "owner-session.json");
+
+function loadSavedSession(): Session | null {
+  try {
+    const j = JSON.parse(readFileSync(SESSION_FILE, "utf8"));
+    if (j && typeof j.token === "string" && String(j.login).toLowerCase() === OWNER_LOGIN) {
+      return { token: j.token, login: String(j.login), expiresAt: Date.now() + 3650 * 86400_000 };
+    }
+  } catch {
+    /* none saved */
+  }
+  return null;
+}
+
+function saveSession(s: Session): void {
+  if (s.login.toLowerCase() !== OWNER_LOGIN) return;
+  try {
+    mkdirSync(join(homedir(), ".team-skills"), { recursive: true });
+    writeFileSync(SESSION_FILE, JSON.stringify({ token: s.token, login: s.login }), { mode: 0o600 });
+    try {
+      chmodSync(SESSION_FILE, 0o600);
+    } catch {
+      /* Windows */
+    }
+  } catch {
+    /* keep working from memory */
+  }
+}
+
+let session: Session | null = loadSavedSession();
 let pending: Pending | null = null;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function logout(): boolean {
   const had = session !== null || pending !== null;
+  try {
+    rmSync(SESSION_FILE, { force: true });
+  } catch {
+    /* ignore */
+  }
   session = null;
   pending = null;
   return had;
@@ -264,9 +300,11 @@ async function startDeviceFlow(): Promise<Pending> {
         const s: Session = {
           token: String(r.access_token),
           login: String(u.login),
-          expiresAt: Date.now() + Number(r.expires_in ?? 28800) * 1000,
+          // OAuth App tokens do not expire (no expires_in); keep them for the life of the plugin process.
+          expiresAt: Date.now() + Number(r.expires_in ?? 3650 * 86400) * 1000,
         };
         session = s;
+        saveSession(s);
         return s;
       }
       if (r.error === "slow_down") interval += 5;

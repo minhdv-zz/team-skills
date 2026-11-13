@@ -1,4 +1,4 @@
-import { api, ensureSession, pendingLogin } from "./contribute";
+import { api, ensureSession, logout, pendingLogin } from "./contribute";
 
 const OWNER = "minhdv-zz";
 const REPOS = new Set([`${OWNER}/team-skills`, `${OWNER}/team-blender-addons`]);
@@ -28,6 +28,10 @@ export async function reviewPr(repo: string, number: number, action: string, all
   }
 
   const pr = await api(session, "GET", `/repos/${repo}/pulls/${number}`);
+  if (pr.status === 401) {
+    logout();
+    return { ok: false, error: "Phiên đăng nhập GitHub đã hết hạn. Bấm lại để đăng nhập." };
+  }
   if (pr.status !== 200) return { ok: false, error: `Không đọc được Pull Request #${number} (HTTP ${pr.status}).` };
   if (pr.json.state !== "open") return { ok: false, error: `Pull Request #${number} không còn ở trạng thái mở.` };
 
