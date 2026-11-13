@@ -3,6 +3,7 @@ import { installSkillRpc, listSkillsRpc } from "./shared/rpc";
 import { installSkill, listSkills } from "./server/handlers";
 import { startHttp } from "./server/http";
 import { contributeTools } from "./server/tools";
+import { startAutoUpdate } from "./server/updater";
 
 export default function contribute(server: PluginServerContext) {
   server.handle(listSkillsRpc, listSkills);
@@ -17,8 +18,10 @@ export default function contribute(server: PluginServerContext) {
   });
 
   const stopHttp = startHttp();
+  const stopUpdate = startAutoUpdate();
   return () => {
     removeHook();
     stopHttp();
+    stopUpdate();
   };
 }

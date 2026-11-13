@@ -103,6 +103,8 @@
   .foot .by{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   .foot button,.foot a.btn{flex:none}
   .card{gap:6px}
+  details.help.step1>summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  #btnUpd{margin-left:auto;font-size:14px;font-weight:600;padding:6px 14px}
   .cnt{background:#f85149;color:#fff;border-radius:999px;font-size:12px;font-weight:700;padding:0 8px;margin-left:8px}
   .banner{background:#2a1f55;border:1px solid var(--acc);border-radius:10px;padding:10px 16px;margin-bottom:16px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
   .banner b{flex:1}
@@ -134,7 +136,7 @@
 
   <div id="main">
   <details class="help step1" id="help" open>
-    <summary id="helpSum">Cài Team Skills (làm một lần)</summary>
+    <summary><span id="helpSum">Cài Team Skills (làm một lần)</span><button id="btnUpd" style="display:none">Cập nhật plugin</button></summary>
     <p>Bấm copy, rồi dán vào chat của app AI bạn đang dùng (Paseo, Claude Code, Cursor, Codex, ...). AI sẽ tự nhận ra app của bạn, cài đúng cách và kiểm tra giúp.</p>
     <button class="pri big" id="btnPluginPrompt">Copy lời nhờ cài</button>
     <div class="fine">Chương trình chạy không có sandbox, trên máy của bạn. Dán vào chat nghĩa là bạn đồng ý cài.</div>
@@ -313,6 +315,37 @@ var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
 var STATE = null;      // from plugin /status (null = not connected)
 var BUSY = false;
 var TAB = 'skills';
+var NEEDED = ['install','uninstall','addons-live','review','pending','local-list','contribute-web','owner-remove','self-update'];
+function pluginOutdated(){ return !!STATE && NEEDED.some(function(f){ return (STATE.features || []).indexOf(f) < 0; }); }
+var UPDATING = false;
+function waitNew(old){
+  var t0 = Date.now();
+  return new Promise(function(resolve){
+    (function poll(){
+      fetch(LOCAL + '/status').then(function(r){ return r.json(); }).then(function(j){
+        if(j.startedAt && j.startedAt !== old) resolve(true);
+        else if(Date.now() - t0 > 45000) resolve(false);
+        else setTimeout(poll, 2500);
+      }).catch(function(){ if(Date.now() - t0 > 45000) resolve(false); else setTimeout(poll, 2500); });
+    })();
+  });
+}
+function updatePlugin(ev){
+  ev.preventDefault(); ev.stopPropagation();
+  if(UPDATING) return;
+  var old = STATE && STATE.startedAt;
+  UPDATING = true; render();
+  fetch(LOCAL + '/self-update', {method:'POST'})
+    .then(function(r){ if(r.status === 404) throw new Error('OLD'); return r.json(); })
+    .then(function(j){ if(!j.ok) throw new Error(j.error || 'Không cập nhật được.'); toast('Đang tải bản mới, khoảng 10-30 giây...', true); return waitNew(old); })
+    .then(function(changed){ toast(changed ? 'Đã cập nhật plugin lên bản mới nhất.' : 'Plugin đã là bản mới nhất.', true); })
+    .catch(function(e){
+      if(e.message === 'OLD'){ $('help').open = true; toast('Plugin bản cũ chưa tự cập nhật được. Bấm Copy lời nhờ cài plugin, dán vào chat một lần. Từ sau cập nhật bằng nút này.', false); }
+      else toast('Lỗi: ' + e.message, false);
+    })
+    .finally(function(){ UPDATING = false; refresh(); });
+}
+$('btnUpd').addEventListener('click', updatePlugin);
 var PENDING = null, PEND_FAIL = false;
 var PR_REPOS = [{repo:'minhdv-zz/team-skills', kind:'Skill'}, {repo:'minhdv-zz/team-blender-addons', kind:'Addon'}];
 function ghj(url){
@@ -717,7 +750,12 @@ function render(){
     : 'Đã kết nối Team Skills trên máy này.';
   var can = on && !blocked && !BUSY;
   $('btnAll').disabled = !can; $('btnMissing').disabled = !can;
-  var good = on && canUninstall;   // connected AND recent enough
+  var good = on && canUninstall && !pluginOutdated();   // connected AND recent enough
+  var ub = $('btnUpd'), od = pluginOutdated();
+  ub.style.display = on ? '' : 'none';
+  ub.className = od ? 'pri' : '';
+  ub.textContent = UPDATING ? 'Đang cập nhật...' : (od ? 'Cập nhật ngay (bản cũ)' : 'Cập nhật plugin');
+  ub.disabled = UPDATING;
   $('help').open = !good;
   $('help').className = 'help step1' + (good ? ' ok' : '');
   $('helpSum').textContent = good ? 'Team Skills đã kết nối (bấm để xem lại cách cài hoặc cập nhật)'

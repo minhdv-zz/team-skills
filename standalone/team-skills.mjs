@@ -1151,9 +1151,37 @@ async function removeItem(kind, name) {
   }
 }
 
+// server/updater.ts
+import { spawn } from "node:child_process";
+import { existsSync as existsSync4 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join4 } from "node:path";
+var STARTED_AT = Date.now();
+var OPT_OUT = join4(homedir3(), ".team-skills", "no-auto-update");
+function paseoCommand() {
+  if (process.platform === "win32") {
+    const p = join4(process.env.LOCALAPPDATA ?? "", "Programs", "Paseo", "resources", "bin", "paseo.cmd");
+    return existsSync4(p) ? `"${p}"` : null;
+  }
+  return "paseo";
+}
+function runUpdate() {
+  const cmd = paseoCommand();
+  if (!cmd) return { ok: false, error: "Kh\xF4ng t\xECm th\u1EA5y l\u1EC7nh paseo tr\xEAn m\xE1y n\xE0y (c\xF3 th\u1EC3 kh\xF4ng ch\u1EA1y qua Paseo). H\xE3y d\xF9ng n\xFAt Copy l\u1EDDi nh\u1EDD c\xE0i \u1EDF \u0111\u1EA7u trang." };
+  try {
+    const child = spawn(`${cmd} plugin update team-skills --yes`, { shell: true, detached: true, stdio: "ignore", windowsHide: true });
+    child.on("error", () => {
+    });
+    child.unref();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 // server/http.ts
 var PORT = 47653;
-var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove"];
+var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);
 var ALLOWED_HOSTS = /* @__PURE__ */ new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 function setCors(req, res) {
@@ -1241,7 +1269,7 @@ async function handle(req, res) {
       blender = await listAddons();
     } catch {
     }
-    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, owner: await isOwner(), skills, blender });
+    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, startedAt: STARTED_AT, owner: await isOwner(), skills, blender });
   }
   if (req.method === "POST" && path === "/uninstall") {
     if (!origin) return send(res, 403, { error: "Origin required" });
@@ -1269,6 +1297,10 @@ async function handle(req, res) {
   if (req.method === "POST" && path === "/contribute") {
     if (!origin) return send(res, 403, { error: "Origin required" });
     return send(res, 200, await webContribute(await readJson(req)));
+  }
+  if (req.method === "POST" && path === "/self-update") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    return send(res, 200, runUpdate());
   }
   if (req.method === "POST" && path === "/remove-item") {
     if (!origin) return send(res, 403, { error: "Origin required" });

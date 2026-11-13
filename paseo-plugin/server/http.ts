@@ -15,11 +15,12 @@ import {
 } from "./handlers";
 import { listPending, reviewPr } from "./review";
 import { isOwner, removeItem } from "./remove";
+import { runUpdate, STARTED_AT } from "./updater";
 import { localItems, runContribute, runListLocal, runLogout, webContribute, type ContributeInput, type WebContributeInput } from "./agent";
 
 export const PORT = 47653;
 /** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
-const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove"];
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 
@@ -121,7 +122,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     } catch {
       /* keep empty */
     }
-    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, owner: await isOwner(), skills, blender });
+    return send(res, 200, { ok: true, plugin: "team-skills", features: FEATURES, startedAt: STARTED_AT, owner: await isOwner(), skills, blender });
   }
 
   if (req.method === "POST" && path === "/uninstall") {
@@ -153,6 +154,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.method === "POST" && path === "/contribute") {
     if (!origin) return send(res, 403, { error: "Origin required" });
     return send(res, 200, await webContribute((await readJson(req)) as WebContributeInput));
+  }
+
+  if (req.method === "POST" && path === "/self-update") {
+    if (!origin) return send(res, 403, { error: "Origin required" });
+    return send(res, 200, runUpdate());
   }
 
   if (req.method === "POST" && path === "/remove-item") {
