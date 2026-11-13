@@ -551,25 +551,42 @@ function renderLocal(){
   if(!STATE){ el.innerHTML = '<div class="warnbox">Chưa kết nối Team Skills trên máy này nên chưa quét được. Làm bước 1 (Paseo) hoặc mục "Dùng app khác" bên dưới, rồi tải lại trang.</div>'; return; }
   if(LOCAL_FAIL === 'old'){ el.innerHTML = '<div class="warnbox">Plugin trên máy là bản cũ, chưa quét được. Làm bước 1 để cập nhật rồi tải lại trang.</div>'; return; }
   if(!LOCAL_ITEMS){ el.innerHTML = LOCAL_FAIL ? '<div class="warnbox">Không quét được: ' + esc(LOCAL_FAIL) + '</div>' : '<div class="fine">Đang quét máy...</div>'; return; }
-  var groups = [['skill','Skill'],['addon','Addon Blender']];
-  el.innerHTML = groups.map(function(g){
-    var items = LOCAL_ITEMS.filter(function(x){ return x.kind === g[0]; });
-    items.sort(function(a,b){ return (a.shared - b.shared) || a.name.localeCompare(b.name); });
-    var rows = items.length ? items.map(function(x){
-      var idx = LOCAL_ITEMS.indexOf(x);
-      var act = x.shared ? '<span class="chip ok">Đã đóng góp</span>'
-        : isPendingName(x.name) ? '<span class="chip wait">Đang chờ duyệt</span>'
-        : '<button class="pri" data-i="' + idx + '">Đóng góp</button>';
-      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)">'
-        + '<div style="flex:1;min-width:0"><div style="font-weight:600">' + esc(x.name) + '</div>'
-        + (x.description ? '<div class="fine" style="margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.description) + '</div>' : '')
-        + '</div><div style="flex:none">' + act + '</div></div>';
-    }).join('') : '<div class="fine" style="margin:0">Không thấy mục nào trên máy.</div>';
-    var open = items.filter(function(x){ return !x.shared; }).length;
-    return '<div style="border:1px solid var(--line);border-radius:10px;background:#0b0f14;padding:12px 14px;margin-bottom:14px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><h4 style="margin:0;font-size:16px">' + g[1] + '</h4><span class="fine" style="margin:0">' + items.length + ' trên máy &middot; ' + open + ' chưa đóng góp</span></div>' + rows + '</div>';
+  if(!el.querySelector('#lRows')){
+    el.innerHTML = '<div id="lTabs" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"></div>'
+      + '<input id="lSearch" type="search" placeholder="Tìm theo tên hoặc mô tả..." autocomplete="off" style="width:100%;margin-bottom:6px">'
+      + '<div id="lRows"></div>';
+    $('lSearch').addEventListener('input', function(){ LQ = this.value; renderLocalRows(); });
+  }
+  renderLocalRows();
+}
+var LTAB = 'skill', LQ = '';
+function renderLocalRows(){
+  if(!LOCAL_ITEMS || !$('lRows')) return;
+  var tabs = [['skill','Skill'],['addon','Addon Blender']];
+  $('lTabs').innerHTML = tabs.map(function(t){
+    var all = LOCAL_ITEMS.filter(function(x){ return x.kind === t[0]; });
+    var open = all.filter(function(x){ return !x.shared && !isPendingName(x.name); }).length;
+    return '<button class="tab' + (LTAB === t[0] ? ' on' : '') + '" data-t="' + t[0] + '">' + t[1] + ' <span style="opacity:.8;font-weight:400">' + all.length + (open ? ' &middot; ' + open + ' chưa đóng góp' : '') + '</span></button>';
   }).join('');
+  var q = LQ.trim().toLowerCase();
+  var items = LOCAL_ITEMS.filter(function(x){
+    return x.kind === LTAB && (!q || (x.name + ' ' + (x.description || '')).toLowerCase().indexOf(q) >= 0);
+  });
+  items.sort(function(x,y){ return (x.shared - y.shared) || x.name.localeCompare(y.name); });
+  $('lRows').innerHTML = items.length ? items.map(function(x){
+    var idx = LOCAL_ITEMS.indexOf(x);
+    var act = x.shared ? '<span class="chip ok">Đã đóng góp</span>'
+      : isPendingName(x.name) ? '<span class="chip wait">Đang chờ duyệt</span>'
+      : '<button class="pri" data-i="' + idx + '">Đóng góp</button>';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)">'
+      + '<div style="flex:1;min-width:0"><div style="font-weight:600">' + esc(x.name) + '</div>'
+      + (x.description ? '<div class="fine" style="margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.description) + '</div>' : '')
+      + '</div><div style="flex:none">' + act + '</div></div>';
+  }).join('') : '<div class="fine" style="margin:8px 0 0">' + (q ? 'Không có mục nào khớp "' + esc(LQ.trim()) + '".' : 'Không thấy mục nào trên máy.') + '</div>';
 }
 $('localList').addEventListener('click', function(e){
+  var tb = e.target.closest ? e.target.closest('button[data-t]') : null;
+  if(tb){ LTAB = tb.getAttribute('data-t'); renderLocalRows(); return; }
   var b = e.target.closest ? e.target.closest('button[data-i]') : null;
   if(!b || !LOCAL_ITEMS) return;
   var x = LOCAL_ITEMS[Number(b.getAttribute('data-i'))];
