@@ -2,8 +2,8 @@
  * The contribution workflow, shared by the agent tools (when Paseo exposes them) and the local
  * /agent/* HTTP endpoints (used by the prompt the website generates, through curl).
  */
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { addonRoots, teamNames } from "./handlers";
 import { gitSession } from "./review";
@@ -14,6 +14,7 @@ import {
   ensureSession,
   findAddonSource,
   findSkillSource,
+  hashDir,
   listDirs,
   logout,
   pendingLogin,
@@ -49,15 +50,27 @@ export interface LocalItem {
   author: string;
   /** Already in the shared team list. */
   shared: boolean;
+  /** Skills only: `version:` from SKILL.md, "" when not declared. */
+  version?: string;
+  /** Skills only: content fingerprint. Different hash under the same name = a different version. */
+  hash?: string;
+  /** Skills only: the scanned folder it was found in, with the home folder written as ~. */
+  source?: string;
+  /** Skills only: last modified time (ms since epoch). */
+  mtime?: number;
+  /** Skills only: other folders holding an identical copy. */
+  copies?: string[];
+  /** Skills only: how many different versions of this name exist on the machine (shown when > 1). */
+  variants?: number;
 }
 
-function skillInfo(dir: string): { description: string; author: string } {
+function skillInfo(dir: string): { description: string; author: string; version: string } {
   try {
     const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(join(dir, "SKILL.md"), "utf8"));
     const get = (k: string) => new RegExp("^" + k + "[ \t]*:[ \t]*(.*)$", "m").exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "") ?? "";
-    return { description: get("description").slice(0, 200), author: get("author") };
+    return { description: get("description").slice(0, 200), author: get("author"), version: get("version").slice(0, 40) };
   } catch {
-    return { description: "", author: "" };
+    return { description: "", author: "", version: "" };
   }
 }
 
@@ -66,14 +79,44 @@ export async function localItems(): Promise<LocalItem[]> {
   const team = await teamNames();
   const out: LocalItem[] = [];
   const seen = new Set<string>();
+  const home = homedir().split("\\").join("/");
+  const byName = new Map<string, LocalItem[]>();
+  const seenReal = new Set<string>();
   for (const root of skillDirs()) {
     for (const name of listDirs(root)) {
       const dir = join(root, name);
-      if (!NAME_RE.test(name) || seen.has("skill:" + name) || !existsSync(join(dir, "SKILL.md"))) continue;
-      seen.add("skill:" + name);
-      out.push({ kind: "skill", name, path: dir.split("\\").join("/"), ...skillInfo(dir), shared: team.skills.has(name) });
+      if (!NAME_RE.test(name) || !existsSync(join(dir, "SKILL.md"))) continue;
+      let real = dir;
+      try {
+        real = realpathSync(dir);
+      } catch {
+        /* keep the plain path */
+      }
+      if (seenReal.has(real.toLowerCase())) continue; // same real folder reached through a symlink: not a copy
+      seenReal.add(real.toLowerCase());
+      const hash = hashDir(dir);
+      const list = byName.get(name) ?? [];
+      const same = list.find((i) => i.hash === hash);
+      const path = dir.split("\\").join("/");
+      if (same) {
+        (same.copies ??= []).push(path); // identical copy elsewhere: same version, show once
+        continue;
+      }
+      let mtime = 0;
+      try {
+        mtime = statSync(join(dir, "SKILL.md")).mtimeMs;
+      } catch {
+        /* ignore */
+      }
+      const rootSlash = root.split("\\").join("/");
+      const source = rootSlash.toLowerCase().startsWith(home.toLowerCase()) ? "~" + rootSlash.slice(home.length) : rootSlash;
+      const item: LocalItem = { kind: "skill", name, path, ...skillInfo(dir), shared: team.skills.has(name), hash, source, mtime };
+      list.push(item);
+      byName.set(name, list);
+      out.push(item);
     }
   }
+  for (const list of byName.values()) if (list.length > 1) for (const i of list) i.variants = list.length;
   for (const root of await addonRoots()) {
     for (const name of listDirs(root)) {
       const dir = join(root, name);

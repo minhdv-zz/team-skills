@@ -2,391 +2,54 @@
 import { createInterface } from "node:readline";
 
 // server/agent.ts
-import { cpSync as cpSync2, existsSync as existsSync3, mkdtempSync as mkdtempSync2, readFileSync as readFileSync2, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import { tmpdir as tmpdir2 } from "node:os";
-import { basename, isAbsolute, join as join3, resolve } from "node:path";
+import { cpSync as cpSync2, existsSync as existsSync3, mkdtempSync as mkdtempSync2, readFileSync as readFileSync2, realpathSync, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { homedir as homedir3, tmpdir as tmpdir2 } from "node:os";
+import { basename, isAbsolute as isAbsolute2, join as join3, resolve } from "node:path";
 
 // server/handlers.ts
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync2, mkdtempSync, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { createConnection } from "node:net";
-import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
-var SITE = "https://minhdv-zz.github.io/team-skills";
-var SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
-var ADDONS_ZIP = "https://codeload.github.com/minhdv-zz/team-blender-addons/zip/refs/heads/main";
-var ZIP_HOSTS = /* @__PURE__ */ new Set(["drive.horusvn.com"]);
-var BLENDER_PORT = 9876;
-var TARGETS = ["claude", "claude-api"];
-var TARGET_DIRS = { claude: ".claude", "claude-api": ".claude-api" };
-function skillsDir(target) {
-  return join(homedir(), TARGET_DIRS[target], "skills");
-}
-async function fetchJson(file) {
-  const res = await fetch(SITE + "/" + file + "?t=" + Date.now());
-  if (!res.ok) throw new Error("Cannot load " + file + " (HTTP " + res.status + ")");
-  return await res.json();
-}
-function winTar() {
-  return join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
-}
-async function fetchRepo(url, tmp) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
-  const zipPath = join(tmp, "repo.zip");
-  writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
-  const out = join(tmp, "x");
-  mkdirSync(out);
-  if (process.platform === "win32") {
-    execFileSync(winTar(), ["-xf", zipPath, "-C", out]);
-  } else {
-    execFileSync("unzip", ["-q", zipPath, "-d", out]);
-  }
-  return join(out, readdirSync(out)[0]);
-}
-async function listSkills() {
-  const list = await fetchJson("skills.json");
-  return {
-    skills: list.map((s) => ({
-      name: s.name,
-      title: s.title,
-      desc: s.desc,
-      needs: s.needs ?? [],
-      installed: {
-        claude: existsSync(join(skillsDir("claude"), s.name)),
-        "claude-api": existsSync(join(skillsDir("claude-api"), s.name))
-      }
-    }))
-  };
-}
-async function installSkills(names, target) {
-  if (!TARGETS.includes(target)) throw new Error("Invalid target: " + String(target));
-  const list = await fetchJson("skills.json");
-  const allowed = new Set(list.map((s) => s.name));
-  for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
-  if (names.length === 0) return [];
-  const tmp = mkdtempSync(join(tmpdir(), "team-skills-"));
-  try {
-    const root = await fetchRepo(SKILLS_ZIP, tmp);
-    const destRoot = skillsDir(target);
-    mkdirSync(destRoot, { recursive: true });
-    const done = [];
-    for (const name of names) {
-      const src = join(root, "plugins", name, "skills", name);
-      if (!existsSync(src)) throw new Error("Skill folder not found in repository: " + name);
-      const dest = join(destRoot, name);
-      rmSync(dest, { recursive: true, force: true });
-      cpSync(src, dest, { recursive: true });
-      done.push(dest);
-    }
-    return done;
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
-}
-async function missingSkills(target) {
-  const { skills } = await listSkills();
-  return skills.filter((s) => !s.installed[target]).map((s) => s.name);
-}
-async function allSkillNames() {
-  return (await listSkills()).skills.map((s) => s.name);
-}
-function blenderCall(type, params, timeoutMs) {
-  return new Promise((resolve2, reject) => {
-    const sock = createConnection({ host: "127.0.0.1", port: BLENDER_PORT });
-    let buf = "";
-    let settled = false;
-    const finish = (fn) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      sock.destroy();
-      fn();
-    };
-    const timer = setTimeout(() => finish(() => reject(new Error("Blender did not answer in time"))), timeoutMs);
-    sock.on("connect", () => sock.write(JSON.stringify({ type, params })));
-    sock.on("data", (d) => {
-      buf += d.toString("utf8");
-      try {
-        const msg = JSON.parse(buf);
-        finish(() => resolve2(msg));
-      } catch {
-      }
-    });
-    sock.on("error", (e) => finish(() => reject(e)));
-  });
-}
-async function blenderRun(code, timeoutMs = 3e4) {
-  const r = await blenderCall("execute_code", { code }, timeoutMs);
-  if (r.status !== "success") throw new Error("Blender: " + String(r.message ?? "error").slice(0, 400));
-  return String(r.result?.result ?? "");
-}
-async function liveBlender() {
-  try {
-    const ping = await blenderCall("ping", {}, 1500);
-    if (ping.status !== "success") return null;
-    const out = await blenderRun(
-      [
-        "import bpy, os, json",
-        "p = bpy.utils.user_resource('SCRIPTS', path='addons', create=True)",
-        "print(json.dumps({'version': '%d.%d' % tuple(bpy.app.version[:2]), 'path': p, 'dirs': sorted(os.listdir(p))}))"
-      ].join("\n"),
-      8e3
-    );
-    const j = JSON.parse(out.trim().split("\n").pop() ?? "{}");
-    return { version: String(j.version), addonsPath: String(j.path), dirs: j.dirs ?? [] };
-  } catch {
-    return null;
-  }
-}
-async function enableInBlender(folder) {
-  const code = [
-    "import bpy, addon_utils, json",
-    "folder = " + JSON.stringify(folder),
-    "res = {'enabled': False, 'note': ''}",
-    "try:",
-    "    mods = {m.__name__: m for m in addon_utils.modules(refresh=True)}",
-    "    mod = mods.get(folder)",
-    "    active = set(bpy.context.preferences.addons.keys())",
-    "    if mod is None:",
-    "        res['note'] = 'Blender did not find the addon after copying'",
-    "    elif folder in active:",
-    "        res['enabled'] = True; res['note'] = 'already enabled'",
-    "    else:",
-    "        disp = getattr(mod, 'bl_info', {}).get('name')",
-    "        dup = [n for n, m in mods.items() if n != folder and n in active and disp and getattr(m, 'bl_info', {}).get('name') == disp]",
-    "        if dup:",
-    "            res['note'] = 'not enabled: an addon with the same name is already enabled (' + dup[0] + ')'",
-    "        else:",
-    "            addon_utils.enable(folder, default_set=True, persistent=True)",
-    "            res['enabled'] = folder in set(bpy.context.preferences.addons.keys())",
-    "            res['note'] = '' if res['enabled'] else 'enable failed, see the Blender console'",
-    "            try:",
-    "                bpy.ops.wm.save_userpref()",
-    "            except Exception:",
-    "                pass",
-    "except Exception as e:",
-    "    res['note'] = 'error: ' + str(e)[:200]",
-    "print(json.dumps(res))"
-  ].join("\n");
-  try {
-    const out = await blenderRun(code);
-    const j = JSON.parse(out.trim().split("\n").pop() ?? "{}");
-    return { enabled: Boolean(j.enabled), note: String(j.note ?? "") };
-  } catch (e) {
-    return { enabled: false, note: e instanceof Error ? e.message : String(e) };
-  }
-}
-function blenderRoot() {
-  return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "Blender Foundation", "Blender");
-}
-function blenderVersions() {
-  try {
-    return readdirSync(blenderRoot(), { withFileTypes: true }).filter((d) => d.isDirectory() && /^\d+\.\d+$/.test(d.name)).map((d) => d.name).sort((a, b) => {
-      const [am, an] = a.split(".").map(Number);
-      const [bm, bn] = b.split(".").map(Number);
-      return bm - am || bn - an;
-    });
-  } catch {
-    return [];
-  }
-}
-function addonsDir(version) {
-  return join(blenderRoot(), version, "scripts", "addons");
-}
-async function installableAddons() {
-  return (await fetchJson("addons.json")).filter((a) => !a.link || a.zip);
-}
-async function knownAddons() {
-  return fetchJson("addons.json");
-}
-var folderOf = (a) => a.folder ?? a.name;
-async function listAddons() {
-  const live = await liveBlender();
-  const versions = live ? [live.version] : blenderVersions();
-  const list = await knownAddons();
-  return {
-    /** True when a running Blender answered on the MCP socket; installs then go through it. */
-    live: live !== null,
-    versions,
-    addons: list.map((a) => ({
-      name: a.name,
-      title: a.title,
-      desc: a.desc,
-      license: a.license ?? "",
-      needs: a.needs ?? [],
-      installed: Object.fromEntries(
-        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync(join(addonsDir(v), folderOf(a)))])
-      )
-    }))
-  };
-}
-async function fetchZip(url, folder, tmp) {
-  const u = new URL(url);
-  if (u.protocol !== "https:" || !ZIP_HOSTS.has(u.hostname)) throw new Error("Download host not allowed: " + u.hostname);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
-  const zipPath = join(tmp, folder + ".zip");
-  writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
-  const tar = winTar();
-  const listing = execFileSync(tar, ["-tf", zipPath], { maxBuffer: 64 * 1024 * 1024 }).toString("utf8").split(/\r?\n/).filter(Boolean);
-  for (const entry of listing) {
-    const norm = entry.split("\\").join("/");
-    if (norm.startsWith("/") || /^[A-Za-z]:/.test(norm) || norm.split("/").includes("..")) throw new Error("Unsafe path in zip: " + entry);
-    if (norm.split("/")[0] !== folder) throw new Error("Zip must contain only the folder '" + folder + "' (found '" + entry + "')");
-  }
-  const out = join(tmp, "z-" + folder);
-  mkdirSync(out);
-  execFileSync(tar, ["-xf", zipPath, "-C", out]);
-  return out;
-}
-async function installAddons(names, version) {
-  const live = await liveBlender();
-  if (live ? version !== live.version : !blenderVersions().includes(version)) {
-    throw new Error("Blender " + version + " not found on this machine");
-  }
-  const list = await installableAddons();
-  const byName = new Map(list.map((a) => [a.name, a]));
-  for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
-  if (names.length === 0) return { paths: [], via: live ? "blender" : "files", notes: [] };
-  const tmp = mkdtempSync(join(tmpdir(), "team-addons-"));
-  try {
-    const destRoot = live ? live.addonsPath : addonsDir(version);
-    mkdirSync(destRoot, { recursive: true });
-    let repoRoot = null;
-    const paths = [];
-    const notes = [];
-    for (const name of names) {
-      const entry = byName.get(name);
-      const folder = folderOf(entry);
-      let src;
-      if (entry.zip) {
-        src = join(await fetchZip(entry.zip, folder, tmp), folder);
-      } else {
-        repoRoot ??= await fetchRepo(ADDONS_ZIP, tmp);
-        src = join(repoRoot, "addons", name);
-      }
-      if (!existsSync(src)) throw new Error("Addon folder not found: " + name);
-      const dest = join(destRoot, folder);
-      rmSync(dest, { recursive: true, force: true });
-      cpSync(src, dest, { recursive: true });
-      paths.push(dest);
-      if (live) {
-        const r = await enableInBlender(folder);
-        notes.push({ name, enabled: r.enabled, note: r.note });
-      }
-    }
-    return { paths, via: live ? "blender" : "files", notes };
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
-}
-async function missingAddons(version) {
-  const { addons } = await listAddons();
-  return addons.filter((a) => !a.installed[version]).map((a) => a.name);
-}
-async function allAddonNames() {
-  return (await listAddons()).addons.map((a) => a.name);
-}
-async function addonRoots() {
-  const live = await liveBlender();
-  const roots = live ? [live.addonsPath] : [];
-  for (const v of blenderVersions()) roots.push(addonsDir(v));
-  return [...new Set(roots)];
-}
-async function teamNames() {
-  const out = { skills: /* @__PURE__ */ new Set(), addons: /* @__PURE__ */ new Set() };
-  try {
-    for (const s of await fetchJson("skills.json")) out.skills.add(s.name);
-    for (const a of await fetchJson("addons.json")) {
-      out.addons.add(a.name);
-      if (a.folder) out.addons.add(a.folder);
-    }
-  } catch {
-  }
-  return out;
-}
-function removeFolder(dest) {
-  try {
-    rmSync(dest, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
-  } catch (e) {
-    const code = e.code;
-    if (code === "EBUSY" || code === "EPERM" || code === "EACCES") {
-      throw new Error(
-        "Kh\xF4ng x\xF3a \u0111\u01B0\u1EE3c v\xEC c\xF3 file \u0111ang \u0111\u01B0\u1EE3c d\xF9ng (" + code + "). H\xE3y \u0111\xF3ng Claude Code ho\u1EB7c Blender \u0111ang m\u1EDF r\u1ED3i th\u1EED l\u1EA1i. Th\u01B0 m\u1EE5c: " + dest
-      );
-    }
-    throw e;
-  }
-}
-async function uninstallSkills(names, target) {
-  if (!TARGETS.includes(target)) throw new Error("Invalid target: " + String(target));
-  const list = await fetchJson("skills.json");
-  const allowed = new Set(list.map((s) => s.name));
-  for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
-  const removed = [];
-  for (const name of names) {
-    const dest = join(skillsDir(target), name);
-    if (existsSync(dest)) {
-      removeFolder(dest);
-      removed.push(dest);
-    }
-  }
-  return removed;
-}
-async function uninstallAddons(names, version) {
-  const live = await liveBlender();
-  if (live ? version !== live.version : !blenderVersions().includes(version)) {
-    throw new Error("Blender " + version + " not found on this machine");
-  }
-  const list = await knownAddons();
-  const byName = new Map(list.map((a) => [a.name, a]));
-  for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
-  const destRoot = live ? live.addonsPath : addonsDir(version);
-  const paths = [];
-  for (const name of names) {
-    const folder = folderOf(byName.get(name));
-    const dest = join(destRoot, folder);
-    if (!existsSync(dest)) continue;
-    if (live) {
-      await blenderRun(
-        [
-          "import bpy, addon_utils",
-          "folder = " + JSON.stringify(folder),
-          "try:",
-          "    addon_utils.disable(folder, default_set=True)",
-          "except Exception:",
-          "    pass",
-          "try:",
-          "    bpy.ops.wm.save_userpref()",
-          "except Exception:",
-          "    pass",
-          "print('ok')"
-        ].join("\n")
-      ).catch(() => "");
-    }
-    removeFolder(dest);
-    paths.push(dest);
-  }
-  return { paths, via: live ? "blender" : "files" };
-}
-
-// server/review.ts
-import { execFile as execFile2 } from "node:child_process";
+import { homedir as homedir2, tmpdir } from "node:os";
+import { join as join2 } from "node:path";
 
 // server/contribute.ts
 import { execFile } from "node:child_process";
-import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readdirSync as readdirSync2, readFileSync, rmSync as rmSync2, statSync, writeFileSync as writeFileSync2 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join2 } from "node:path";
+import { createHash } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { isAbsolute, join } from "node:path";
 var CLIENT_ID = "Ov23liAkygpxdyD0Snri";
 var REPOS = {
   skill: { repo: "minhdv-zz/team-skills", base: (n) => `plugins/${n}/skills/${n}` },
   addon: { repo: "minhdv-zz/team-blender-addons", base: (n) => `addons/${n}` }
 };
 var NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/;
+function extraDirs(key) {
+  try {
+    const cfg = JSON.parse(readFileSync(join(homedir(), ".team-skills", "config.json"), "utf8").replace(/^\uFEFF/, ""));
+    const list = cfg?.[key];
+    if (!Array.isArray(list)) return [];
+    return list.filter((x) => typeof x === "string" && x.trim() !== "").map((x) => x.startsWith("~") ? join(homedir(), x.slice(1)) : x).filter((x) => isAbsolute(x));
+  } catch {
+    return [];
+  }
+}
 function skillDirs() {
-  return [join2(homedir2(), ".claude", "skills"), join2(homedir2(), ".claude-api", "skills")];
+  const codex = join(process.env.CODEX_HOME || join(homedir(), ".codex"), "skills");
+  return [.../* @__PURE__ */ new Set([join(homedir(), ".claude", "skills"), join(homedir(), ".claude-api", "skills"), codex, ...extraDirs("skillDirs")])];
+}
+function hashDir(root) {
+  const h = createHash("sha1");
+  try {
+    for (const f of walk(root).sort((a, b) => a.rel < b.rel ? -1 : 1)) {
+      h.update(f.rel + "\0");
+      if (f.size <= 5 * 1024 * 1024) h.update(readFileSync(f.abs));
+      else h.update(String(f.size));
+    }
+  } catch {
+  }
+  return h.digest("hex").slice(0, 12);
 }
 function isDirLink(p) {
   try {
@@ -397,22 +60,22 @@ function isDirLink(p) {
 }
 function listDirs(root) {
   try {
-    return readdirSync2(root, { withFileTypes: true }).filter((d) => !d.name.startsWith(".") && (d.isDirectory() || d.isSymbolicLink() && isDirLink(join2(root, d.name)))).map((d) => d.name);
+    return readdirSync(root, { withFileTypes: true }).filter((d) => !d.name.startsWith(".") && (d.isDirectory() || d.isSymbolicLink() && isDirLink(join(root, d.name)))).map((d) => d.name);
   } catch {
     return [];
   }
 }
 function findSkillSource(name) {
   for (const root of skillDirs()) {
-    const p = join2(root, name);
-    if (existsSync2(join2(p, "SKILL.md"))) return p;
+    const p = join(root, name);
+    if (existsSync(join(p, "SKILL.md"))) return p;
   }
   return null;
 }
 function findAddonSource(name, roots) {
   for (const root of roots) {
-    const p = join2(root, name);
-    if (existsSync2(join2(p, "__init__.py")) || existsSync2(join2(p, "blender_manifest.toml"))) return p;
+    const p = join(root, name);
+    if (existsSync(join(p, "__init__.py")) || existsSync(join(p, "blender_manifest.toml"))) return p;
   }
   return null;
 }
@@ -435,12 +98,17 @@ var MAX_TOTAL = 40 * 1024 * 1024;
 function walk(root) {
   const out = [];
   const rec = (dir, rel) => {
-    for (const d of readdirSync2(dir, { withFileTypes: true })) {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
       if (d.name === ".git" || d.name === "__pycache__" || d.name === "node_modules") continue;
-      const abs = join2(dir, d.name);
+      const abs = join(dir, d.name);
       const r = rel ? rel + "/" + d.name : d.name;
       if (d.isDirectory()) rec(abs, r);
-      else if (d.isFile() && !d.name.endsWith(".pyc")) out.push({ rel: r, abs, size: statSync(abs).size });
+      else if (d.isFile() && !d.name.endsWith(".pyc")) {
+        try {
+          out.push({ rel: r, abs, size: statSync(abs).size });
+        } catch {
+        }
+      }
     }
   };
   rec(root, "");
@@ -457,13 +125,13 @@ function frontMatter(text) {
   return out;
 }
 function addonAuthor(src) {
-  const init = join2(src, "__init__.py");
-  if (existsSync2(init)) {
+  const init = join(src, "__init__.py");
+  if (existsSync(init)) {
     const m = /["']author["']\s*:\s*["']([^"']+)["']/.exec(readFileSync(init, "utf8"));
     if (m && m[1].trim()) return m[1].trim();
   }
-  const mf = join2(src, "blender_manifest.toml");
-  if (existsSync2(mf)) {
+  const mf = join(src, "blender_manifest.toml");
+  if (existsSync(mf)) {
     const m = /^(?:maintainer|author)\s*=\s*"([^"]+)"/m.exec(readFileSync(mf, "utf8"));
     if (m) return m[1].replace(/\s*<[^>]*>/, "").trim();
   }
@@ -483,8 +151,8 @@ function checkContribution(kind, name, src) {
   let author = "";
   let description = "";
   if (kind === "skill") {
-    const md = join2(src, "SKILL.md");
-    if (!existsSync2(md)) {
+    const md = join(src, "SKILL.md");
+    if (!existsSync(md)) {
       err("Thi\u1EBFu SKILL.md.");
     } else {
       const fm = frontMatter(readFileSync(md, "utf8"));
@@ -499,12 +167,12 @@ function checkContribution(kind, name, src) {
       }
     }
   } else {
-    if (!existsSync2(join2(src, "__init__.py")) && !existsSync2(join2(src, "blender_manifest.toml"))) {
+    if (!existsSync(join(src, "__init__.py")) && !existsSync(join(src, "blender_manifest.toml"))) {
       err("Addon c\u1EA7n __init__.py ho\u1EB7c blender_manifest.toml ngay trong th\u01B0 m\u1EE5c.");
     }
     author = addonAuthor(src);
     if (!author) err("Addon ch\u01B0a c\xF3 t\xEAn t\xE1c gi\u1EA3 (bl_info 'author' ho\u1EB7c maintainer trong blender_manifest.toml).");
-    if (!readdirSync2(src).some((f) => LICENSE_NAMES.has(f.toLowerCase()))) {
+    if (!readdirSync(src).some((f) => LICENSE_NAMES.has(f.toLowerCase()))) {
       err("Thi\u1EBFu file gi\u1EA5y ph\xE9p (LICENSE). Ch\u1EC9 nh\u1EADn addon mi\u1EC5n ph\xED v\xE0 \u0111\u01B0\u1EE3c ph\xE9p chia s\u1EBB l\u1EA1i.");
     }
   }
@@ -525,7 +193,7 @@ function checkContribution(kind, name, src) {
   return { files, issues, author, description };
 }
 var OWNER_LOGIN = "minhdv-zz";
-var SESSION_FILE = join2(homedir2(), ".team-skills", "owner-session.json");
+var SESSION_FILE = join(homedir(), ".team-skills", "owner-session.json");
 function loadSavedSession() {
   try {
     const j = JSON.parse(readFileSync(SESSION_FILE, "utf8"));
@@ -539,8 +207,8 @@ function loadSavedSession() {
 function saveSession(s) {
   if (s.login.toLowerCase() !== OWNER_LOGIN) return;
   try {
-    mkdirSync2(join2(homedir2(), ".team-skills"), { recursive: true });
-    writeFileSync2(SESSION_FILE, JSON.stringify({ token: s.token, login: s.login }), { mode: 384 });
+    mkdirSync(join(homedir(), ".team-skills"), { recursive: true });
+    writeFileSync(SESSION_FILE, JSON.stringify({ token: s.token, login: s.login }), { mode: 384 });
     try {
       chmodSync(SESSION_FILE, 384);
     } catch {
@@ -554,7 +222,7 @@ var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function logout() {
   const had = session !== null || pending !== null;
   try {
-    rmSync2(SESSION_FILE, { force: true });
+    rmSync(SESSION_FILE, { force: true });
   } catch {
   }
   session = null;
@@ -747,7 +415,369 @@ async function submitContribution(opts) {
   return { prUrl: String(pr.html_url), branch, direct: work === upstream };
 }
 
+// server/handlers.ts
+var SITE = "https://minhdv-zz.github.io/team-skills";
+var SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
+var ADDONS_ZIP = "https://codeload.github.com/minhdv-zz/team-blender-addons/zip/refs/heads/main";
+var ZIP_HOSTS = /* @__PURE__ */ new Set(["drive.horusvn.com"]);
+var BLENDER_PORT = 9876;
+var TARGETS = ["claude", "claude-api"];
+var TARGET_DIRS = { claude: ".claude", "claude-api": ".claude-api" };
+function skillsDir(target) {
+  return join2(homedir2(), TARGET_DIRS[target], "skills");
+}
+async function fetchJson(file) {
+  const res = await fetch(SITE + "/" + file + "?t=" + Date.now());
+  if (!res.ok) throw new Error("Cannot load " + file + " (HTTP " + res.status + ")");
+  return await res.json();
+}
+function winTar() {
+  return join2(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+}
+async function fetchRepo(url, tmp) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
+  const zipPath = join2(tmp, "repo.zip");
+  writeFileSync2(zipPath, Buffer.from(await res.arrayBuffer()));
+  const out = join2(tmp, "x");
+  mkdirSync2(out);
+  if (process.platform === "win32") {
+    execFileSync(winTar(), ["-xf", zipPath, "-C", out]);
+  } else {
+    execFileSync("unzip", ["-q", zipPath, "-d", out]);
+  }
+  return join2(out, readdirSync2(out)[0]);
+}
+async function listSkills() {
+  const list = await fetchJson("skills.json");
+  return {
+    skills: list.map((s) => ({
+      name: s.name,
+      title: s.title,
+      desc: s.desc,
+      needs: s.needs ?? [],
+      installed: {
+        claude: existsSync2(join2(skillsDir("claude"), s.name)),
+        "claude-api": existsSync2(join2(skillsDir("claude-api"), s.name))
+      }
+    }))
+  };
+}
+async function installSkills(names, target) {
+  if (!TARGETS.includes(target)) throw new Error("Invalid target: " + String(target));
+  const list = await fetchJson("skills.json");
+  const allowed = new Set(list.map((s) => s.name));
+  for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
+  if (names.length === 0) return [];
+  const tmp = mkdtempSync(join2(tmpdir(), "team-skills-"));
+  try {
+    const root = await fetchRepo(SKILLS_ZIP, tmp);
+    const destRoot = skillsDir(target);
+    mkdirSync2(destRoot, { recursive: true });
+    const done = [];
+    for (const name of names) {
+      const src = join2(root, "plugins", name, "skills", name);
+      if (!existsSync2(src)) throw new Error("Skill folder not found in repository: " + name);
+      const dest = join2(destRoot, name);
+      rmSync2(dest, { recursive: true, force: true });
+      cpSync(src, dest, { recursive: true });
+      done.push(dest);
+    }
+    return done;
+  } finally {
+    rmSync2(tmp, { recursive: true, force: true });
+  }
+}
+async function missingSkills(target) {
+  const { skills } = await listSkills();
+  return skills.filter((s) => !s.installed[target]).map((s) => s.name);
+}
+async function allSkillNames() {
+  return (await listSkills()).skills.map((s) => s.name);
+}
+function blenderCall(type, params, timeoutMs) {
+  return new Promise((resolve2, reject) => {
+    const sock = createConnection({ host: "127.0.0.1", port: BLENDER_PORT });
+    let buf = "";
+    let settled = false;
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      sock.destroy();
+      fn();
+    };
+    const timer = setTimeout(() => finish(() => reject(new Error("Blender did not answer in time"))), timeoutMs);
+    sock.on("connect", () => sock.write(JSON.stringify({ type, params })));
+    sock.on("data", (d) => {
+      buf += d.toString("utf8");
+      try {
+        const msg = JSON.parse(buf);
+        finish(() => resolve2(msg));
+      } catch {
+      }
+    });
+    sock.on("error", (e) => finish(() => reject(e)));
+  });
+}
+async function blenderRun(code, timeoutMs = 3e4) {
+  const r = await blenderCall("execute_code", { code }, timeoutMs);
+  if (r.status !== "success") throw new Error("Blender: " + String(r.message ?? "error").slice(0, 400));
+  return String(r.result?.result ?? "");
+}
+async function liveBlender() {
+  try {
+    const ping = await blenderCall("ping", {}, 1500);
+    if (ping.status !== "success") return null;
+    const out = await blenderRun(
+      [
+        "import bpy, os, json",
+        "p = bpy.utils.user_resource('SCRIPTS', path='addons', create=True)",
+        "print(json.dumps({'version': '%d.%d' % tuple(bpy.app.version[:2]), 'path': p, 'dirs': sorted(os.listdir(p))}))"
+      ].join("\n"),
+      8e3
+    );
+    const j = JSON.parse(out.trim().split("\n").pop() ?? "{}");
+    return { version: String(j.version), addonsPath: String(j.path), dirs: j.dirs ?? [] };
+  } catch {
+    return null;
+  }
+}
+async function enableInBlender(folder) {
+  const code = [
+    "import bpy, addon_utils, json",
+    "folder = " + JSON.stringify(folder),
+    "res = {'enabled': False, 'note': ''}",
+    "try:",
+    "    mods = {m.__name__: m for m in addon_utils.modules(refresh=True)}",
+    "    mod = mods.get(folder)",
+    "    active = set(bpy.context.preferences.addons.keys())",
+    "    if mod is None:",
+    "        res['note'] = 'Blender did not find the addon after copying'",
+    "    elif folder in active:",
+    "        res['enabled'] = True; res['note'] = 'already enabled'",
+    "    else:",
+    "        disp = getattr(mod, 'bl_info', {}).get('name')",
+    "        dup = [n for n, m in mods.items() if n != folder and n in active and disp and getattr(m, 'bl_info', {}).get('name') == disp]",
+    "        if dup:",
+    "            res['note'] = 'not enabled: an addon with the same name is already enabled (' + dup[0] + ')'",
+    "        else:",
+    "            addon_utils.enable(folder, default_set=True, persistent=True)",
+    "            res['enabled'] = folder in set(bpy.context.preferences.addons.keys())",
+    "            res['note'] = '' if res['enabled'] else 'enable failed, see the Blender console'",
+    "            try:",
+    "                bpy.ops.wm.save_userpref()",
+    "            except Exception:",
+    "                pass",
+    "except Exception as e:",
+    "    res['note'] = 'error: ' + str(e)[:200]",
+    "print(json.dumps(res))"
+  ].join("\n");
+  try {
+    const out = await blenderRun(code);
+    const j = JSON.parse(out.trim().split("\n").pop() ?? "{}");
+    return { enabled: Boolean(j.enabled), note: String(j.note ?? "") };
+  } catch (e) {
+    return { enabled: false, note: e instanceof Error ? e.message : String(e) };
+  }
+}
+function blenderRoot() {
+  return join2(process.env.APPDATA ?? join2(homedir2(), "AppData", "Roaming"), "Blender Foundation", "Blender");
+}
+function blenderVersions() {
+  try {
+    return readdirSync2(blenderRoot(), { withFileTypes: true }).filter((d) => d.isDirectory() && /^\d+\.\d+$/.test(d.name)).map((d) => d.name).sort((a, b) => {
+      const [am, an] = a.split(".").map(Number);
+      const [bm, bn] = b.split(".").map(Number);
+      return bm - am || bn - an;
+    });
+  } catch {
+    return [];
+  }
+}
+function addonsDir(version) {
+  return join2(blenderRoot(), version, "scripts", "addons");
+}
+async function installableAddons() {
+  return (await fetchJson("addons.json")).filter((a) => !a.link || a.zip);
+}
+async function knownAddons() {
+  return fetchJson("addons.json");
+}
+var folderOf = (a) => a.folder ?? a.name;
+async function listAddons() {
+  const live = await liveBlender();
+  const versions = live ? [live.version] : blenderVersions();
+  const list = await knownAddons();
+  return {
+    /** True when a running Blender answered on the MCP socket; installs then go through it. */
+    live: live !== null,
+    versions,
+    addons: list.map((a) => ({
+      name: a.name,
+      title: a.title,
+      desc: a.desc,
+      license: a.license ?? "",
+      needs: a.needs ?? [],
+      installed: Object.fromEntries(
+        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync2(join2(addonsDir(v), folderOf(a)))])
+      )
+    }))
+  };
+}
+async function fetchZip(url, folder, tmp) {
+  const u = new URL(url);
+  if (u.protocol !== "https:" || !ZIP_HOSTS.has(u.hostname)) throw new Error("Download host not allowed: " + u.hostname);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
+  const zipPath = join2(tmp, folder + ".zip");
+  writeFileSync2(zipPath, Buffer.from(await res.arrayBuffer()));
+  const tar = winTar();
+  const listing = execFileSync(tar, ["-tf", zipPath], { maxBuffer: 64 * 1024 * 1024 }).toString("utf8").split(/\r?\n/).filter(Boolean);
+  for (const entry of listing) {
+    const norm = entry.split("\\").join("/");
+    if (norm.startsWith("/") || /^[A-Za-z]:/.test(norm) || norm.split("/").includes("..")) throw new Error("Unsafe path in zip: " + entry);
+    if (norm.split("/")[0] !== folder) throw new Error("Zip must contain only the folder '" + folder + "' (found '" + entry + "')");
+  }
+  const out = join2(tmp, "z-" + folder);
+  mkdirSync2(out);
+  execFileSync(tar, ["-xf", zipPath, "-C", out]);
+  return out;
+}
+async function installAddons(names, version) {
+  const live = await liveBlender();
+  if (live ? version !== live.version : !blenderVersions().includes(version)) {
+    throw new Error("Blender " + version + " not found on this machine");
+  }
+  const list = await installableAddons();
+  const byName = new Map(list.map((a) => [a.name, a]));
+  for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
+  if (names.length === 0) return { paths: [], via: live ? "blender" : "files", notes: [] };
+  const tmp = mkdtempSync(join2(tmpdir(), "team-addons-"));
+  try {
+    const destRoot = live ? live.addonsPath : addonsDir(version);
+    mkdirSync2(destRoot, { recursive: true });
+    let repoRoot = null;
+    const paths = [];
+    const notes = [];
+    for (const name of names) {
+      const entry = byName.get(name);
+      const folder = folderOf(entry);
+      let src;
+      if (entry.zip) {
+        src = join2(await fetchZip(entry.zip, folder, tmp), folder);
+      } else {
+        repoRoot ??= await fetchRepo(ADDONS_ZIP, tmp);
+        src = join2(repoRoot, "addons", name);
+      }
+      if (!existsSync2(src)) throw new Error("Addon folder not found: " + name);
+      const dest = join2(destRoot, folder);
+      rmSync2(dest, { recursive: true, force: true });
+      cpSync(src, dest, { recursive: true });
+      paths.push(dest);
+      if (live) {
+        const r = await enableInBlender(folder);
+        notes.push({ name, enabled: r.enabled, note: r.note });
+      }
+    }
+    return { paths, via: live ? "blender" : "files", notes };
+  } finally {
+    rmSync2(tmp, { recursive: true, force: true });
+  }
+}
+async function missingAddons(version) {
+  const { addons } = await listAddons();
+  return addons.filter((a) => !a.installed[version]).map((a) => a.name);
+}
+async function allAddonNames() {
+  return (await listAddons()).addons.map((a) => a.name);
+}
+async function addonRoots() {
+  const live = await liveBlender();
+  const roots = live ? [live.addonsPath] : [];
+  for (const v of blenderVersions()) roots.push(addonsDir(v));
+  roots.push(...extraDirs("addonDirs"));
+  return [...new Set(roots)];
+}
+async function teamNames() {
+  const out = { skills: /* @__PURE__ */ new Set(), addons: /* @__PURE__ */ new Set() };
+  try {
+    for (const s of await fetchJson("skills.json")) out.skills.add(s.name);
+    for (const a of await fetchJson("addons.json")) {
+      out.addons.add(a.name);
+      if (a.folder) out.addons.add(a.folder);
+    }
+  } catch {
+  }
+  return out;
+}
+function removeFolder(dest) {
+  try {
+    rmSync2(dest, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
+  } catch (e) {
+    const code = e.code;
+    if (code === "EBUSY" || code === "EPERM" || code === "EACCES") {
+      throw new Error(
+        "Kh\xF4ng x\xF3a \u0111\u01B0\u1EE3c v\xEC c\xF3 file \u0111ang \u0111\u01B0\u1EE3c d\xF9ng (" + code + "). H\xE3y \u0111\xF3ng Claude Code ho\u1EB7c Blender \u0111ang m\u1EDF r\u1ED3i th\u1EED l\u1EA1i. Th\u01B0 m\u1EE5c: " + dest
+      );
+    }
+    throw e;
+  }
+}
+async function uninstallSkills(names, target) {
+  if (!TARGETS.includes(target)) throw new Error("Invalid target: " + String(target));
+  const list = await fetchJson("skills.json");
+  const allowed = new Set(list.map((s) => s.name));
+  for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
+  const removed = [];
+  for (const name of names) {
+    const dest = join2(skillsDir(target), name);
+    if (existsSync2(dest)) {
+      removeFolder(dest);
+      removed.push(dest);
+    }
+  }
+  return removed;
+}
+async function uninstallAddons(names, version) {
+  const live = await liveBlender();
+  if (live ? version !== live.version : !blenderVersions().includes(version)) {
+    throw new Error("Blender " + version + " not found on this machine");
+  }
+  const list = await knownAddons();
+  const byName = new Map(list.map((a) => [a.name, a]));
+  for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
+  const destRoot = live ? live.addonsPath : addonsDir(version);
+  const paths = [];
+  for (const name of names) {
+    const folder = folderOf(byName.get(name));
+    const dest = join2(destRoot, folder);
+    if (!existsSync2(dest)) continue;
+    if (live) {
+      await blenderRun(
+        [
+          "import bpy, addon_utils",
+          "folder = " + JSON.stringify(folder),
+          "try:",
+          "    addon_utils.disable(folder, default_set=True)",
+          "except Exception:",
+          "    pass",
+          "try:",
+          "    bpy.ops.wm.save_userpref()",
+          "except Exception:",
+          "    pass",
+          "print('ok')"
+        ].join("\n")
+      ).catch(() => "");
+    }
+    removeFolder(dest);
+    paths.push(dest);
+  }
+  return { paths, via: live ? "blender" : "files" };
+}
+
 // server/review.ts
+import { execFile as execFile2 } from "node:child_process";
 var OWNER = "minhdv-zz";
 var REPOS2 = /* @__PURE__ */ new Set([`${OWNER}/team-skills`, `${OWNER}/team-blender-addons`]);
 async function gitSession(requireOwner = true) {
@@ -858,23 +888,51 @@ function skillInfo(dir) {
   try {
     const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync2(join3(dir, "SKILL.md"), "utf8"));
     const get = (k) => new RegExp("^" + k + "[ 	]*:[ 	]*(.*)$", "m").exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "") ?? "";
-    return { description: get("description").slice(0, 200), author: get("author") };
+    return { description: get("description").slice(0, 200), author: get("author"), version: get("version").slice(0, 40) };
   } catch {
-    return { description: "", author: "" };
+    return { description: "", author: "", version: "" };
   }
 }
 async function localItems() {
   const team = await teamNames();
   const out = [];
   const seen = /* @__PURE__ */ new Set();
+  const home = homedir3().split("\\").join("/");
+  const byName = /* @__PURE__ */ new Map();
+  const seenReal = /* @__PURE__ */ new Set();
   for (const root of skillDirs()) {
     for (const name of listDirs(root)) {
       const dir = join3(root, name);
-      if (!NAME_RE.test(name) || seen.has("skill:" + name) || !existsSync3(join3(dir, "SKILL.md"))) continue;
-      seen.add("skill:" + name);
-      out.push({ kind: "skill", name, path: dir.split("\\").join("/"), ...skillInfo(dir), shared: team.skills.has(name) });
+      if (!NAME_RE.test(name) || !existsSync3(join3(dir, "SKILL.md"))) continue;
+      let real = dir;
+      try {
+        real = realpathSync(dir);
+      } catch {
+      }
+      if (seenReal.has(real.toLowerCase())) continue;
+      seenReal.add(real.toLowerCase());
+      const hash = hashDir(dir);
+      const list = byName.get(name) ?? [];
+      const same = list.find((i) => i.hash === hash);
+      const path = dir.split("\\").join("/");
+      if (same) {
+        (same.copies ??= []).push(path);
+        continue;
+      }
+      let mtime = 0;
+      try {
+        mtime = statSync2(join3(dir, "SKILL.md")).mtimeMs;
+      } catch {
+      }
+      const rootSlash = root.split("\\").join("/");
+      const source = rootSlash.toLowerCase().startsWith(home.toLowerCase()) ? "~" + rootSlash.slice(home.length) : rootSlash;
+      const item = { kind: "skill", name, path, ...skillInfo(dir), shared: team.skills.has(name), hash, source, mtime };
+      list.push(item);
+      byName.set(name, list);
+      out.push(item);
     }
   }
+  for (const list of byName.values()) if (list.length > 1) for (const i of list) i.variants = list.length;
   for (const root of await addonRoots()) {
     for (const name of listDirs(root)) {
       const dir = join3(root, name);
@@ -909,7 +967,7 @@ async function runContribute(input) {
   let src = null;
   let name = input.name?.trim() ?? "";
   if (input.path) {
-    if (!isAbsolute(input.path)) return reply("path ph\u1EA3i l\xE0 \u0111\u01B0\u1EDDng d\u1EABn tuy\u1EC7t \u0111\u1ED1i t\u1EDBi th\u01B0 m\u1EE5c skill/addon.", true);
+    if (!isAbsolute2(input.path)) return reply("path ph\u1EA3i l\xE0 \u0111\u01B0\u1EDDng d\u1EABn tuy\u1EC7t \u0111\u1ED1i t\u1EDBi th\u01B0 m\u1EE5c skill/addon.", true);
     const p = resolve(input.path);
     if (!existsSync3(p) || !statSync2(p).isDirectory()) return reply(`Kh\xF4ng th\u1EA5y th\u01B0 m\u1EE5c: ${p}`, true);
     src = p;
@@ -1051,6 +1109,7 @@ async function webContributeOnce(input) {
 }
 
 // server/http.ts
+import { hostname } from "node:os";
 import { createServer } from "node:http";
 
 // server/remove.ts
@@ -1154,10 +1213,10 @@ async function removeItem(kind, name) {
 // server/updater.ts
 import { spawn } from "node:child_process";
 import { existsSync as existsSync4 } from "node:fs";
-import { homedir as homedir3 } from "node:os";
+import { homedir as homedir4 } from "node:os";
 import { join as join4 } from "node:path";
 var STARTED_AT = Date.now();
-var OPT_OUT = join4(homedir3(), ".team-skills", "no-auto-update");
+var OPT_OUT = join4(homedir4(), ".team-skills", "no-auto-update");
 function paseoCommand() {
   if (process.platform === "win32") {
     const p = join4(process.env.LOCALAPPDATA ?? "", "Programs", "Paseo", "resources", "bin", "paseo.cmd");
@@ -1181,7 +1240,7 @@ function runUpdate() {
 
 // server/http.ts
 var PORT = 47653;
-var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update"];
+var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);
 var ALLOWED_HOSTS = /* @__PURE__ */ new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 function setCors(req, res) {
@@ -1257,10 +1316,13 @@ async function handle(req, res) {
   }
   if (req.method === "GET" && path === "/local") {
     try {
-      return send(res, 200, { ok: true, items: await localItems() });
+      return send(res, 200, { ok: true, items: await localItems(), scanned: skillDirs().map((d) => d.split("\\").join("/")) });
     } catch (e) {
       return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
     }
+  }
+  if (req.method === "GET" && path === "/whoami") {
+    return send(res, 200, { ok: true, machine: hostname() });
   }
   if (req.method === "GET" && path === "/status") {
     const { skills } = await listSkills();

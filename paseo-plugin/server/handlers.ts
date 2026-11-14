@@ -5,6 +5,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RpcInput } from "@getpaseo/plugin";
 import { installSkillRpc } from "../shared/rpc";
+import { extraDirs } from "./contribute";
 
 const SITE = "https://minhdv-zz.github.io/team-skills";
 const SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
@@ -391,6 +392,7 @@ export async function addonRoots(): Promise<string[]> {
   const live = await liveBlender();
   const roots = live ? [live.addonsPath] : [];
   for (const v of blenderVersions()) roots.push(addonsDir(v));
+  roots.push(...extraDirs("addonDirs"));
   return [...new Set(roots)];
 }
 

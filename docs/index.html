@@ -189,6 +189,7 @@
           <div id="localList"></div>
           <details class="alt">
             <summary>Skill nằm trong thư mục dự án, không thấy trong danh sách?</summary>
+            <div class="fine" style="margin:8px 0">Trang đang quét: <span id="scannedDirs">...</span><br>Muốn quét thêm thư mục, tạo file <code>%USERPROFILE%\.team-skills\config.json</code> dạng <code>{"skillDirs": ["D:/AI/skills"], "addonDirs": []}</code> rồi tải lại trang. Cùng tên mà nội dung khác nhau thì hiện thành nhiều dòng; thêm dòng <code>version: 1.1</code> vào đầu SKILL.md để dễ phân biệt.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
               <select id="cKind"><option value="skill">Skill</option><option value="addon">Addon Blender</option></select>
               <input id="cWhat" placeholder="Ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
@@ -559,13 +560,13 @@ function buildPrompt(kindArg, whatArg){
   return L.join('\n');
 }
 $('btnPrompt').addEventListener('click', function(){ copy(buildPrompt(), this); });
-var LOCAL_ITEMS = null, LOCAL_FAIL = '';
+var LOCAL_ITEMS = null, LOCAL_FAIL = '', LOCAL_SCANNED = [];
 function loadLocal(){
   LOCAL_FAIL = '';
   if(!STATE){ LOCAL_ITEMS = null; return Promise.resolve(); }
   if((STATE.features || []).indexOf('local-list') < 0){ LOCAL_ITEMS = null; LOCAL_FAIL = 'old'; return Promise.resolve(); }
   return fetch(LOCAL + '/local').then(function(r){ return r.json(); }).then(function(j){
-    if(j.ok){ LOCAL_ITEMS = j.items; } else { LOCAL_ITEMS = null; LOCAL_FAIL = j.error || 'err'; }
+    if(j.ok){ LOCAL_ITEMS = j.items; LOCAL_SCANNED = j.scanned || []; } else { LOCAL_ITEMS = null; LOCAL_FAIL = j.error || 'err'; }
   }).catch(function(){ LOCAL_ITEMS = null; LOCAL_FAIL = 'err'; });
 }
 var SENT = {};
@@ -583,6 +584,7 @@ function renderLocal(){
       + '<div id="lRows"></div>';
     $('lSearch').addEventListener('input', function(){ LQ = this.value; renderLocalRows(); });
   }
+  var sd = $('scannedDirs'); if(sd) sd.textContent = (LOCAL_SCANNED || []).join(' ; ') || '(chưa rõ)';
   renderLocalRows();
 }
 var LTAB = 'skill', LQ = '';
@@ -606,7 +608,9 @@ function renderLocalRows(){
       : '<button class="pri" data-i="' + idx + '">Đóng góp</button>';
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)">'
       + '<div style="flex:1;min-width:0"><div style="font-weight:600">' + esc(x.name) + '</div>'
+      + (x.version || x.variants > 1 ? '<span class="chip' + (x.variants > 1 ? ' wait' : '') + '" style="margin-left:8px;font-weight:400">' + (x.version ? 'v' + esc(x.version) : '') + (x.variants > 1 ? (x.version ? ' &middot; ' : '') + 'có ' + x.variants + ' bản khác nhau trên máy' : '') + '</span>' : '')
       + (x.description ? '<div class="fine" style="margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.description) + '</div>' : '')
+      + (x.source ? '<div class="fine" style="margin:2px 0 0;font-size:12px;opacity:.75" title="' + esc(x.path) + '">Thư mục: ' + esc(x.source) + (x.mtime ? ' &middot; sửa ' + new Date(x.mtime).toLocaleDateString('vi-VN') : '') + (x.copies && x.copies.length ? ' &middot; giống ' + x.copies.length + ' bản ở thư mục khác' : '') + '</div>' : '')
       + '</div><div style="flex:none">' + act + '</div></div>';
   }).join('') : '<div class="fine" style="margin:8px 0 0">' + (q ? 'Không có mục nào khớp "' + esc(LQ.trim()) + '".' : 'Không thấy mục nào trên máy.') + '</div>';
 }

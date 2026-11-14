@@ -6,9 +6,10 @@
  * Nothing is merged automatically: the repository owner reviews every Pull Request.
  */
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 
 /** Public client id of the "Team Skills" GitHub OAuth App (device flow enabled). Not a secret. */
 export const CLIENT_ID = "Ov23liAkygpxdyD0Snri";
@@ -24,8 +25,40 @@ export const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/;
 
 // ------------------------------------------------------------------ local sources
 
+/** Optional per-machine settings: ~/.team-skills/config.json -> {"skillDirs": ["D:/AI/skills"], "addonDirs": ["D:/blender/addons"]}. */
+export function extraDirs(key: "skillDirs" | "addonDirs"): string[] {
+  try {
+    const cfg = JSON.parse(readFileSync(join(homedir(), ".team-skills", "config.json"), "utf8").replace(/^\uFEFF/, ""));
+    const list: unknown = cfg?.[key];
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((x): x is string => typeof x === "string" && x.trim() !== "")
+      .map((x) => (x.startsWith("~") ? join(homedir(), x.slice(1)) : x))
+      .filter((x) => isAbsolute(x));
+  } catch {
+    return [];
+  }
+}
+
+/** The two original folders come first (so existing behaviour is unchanged), then Codex's, then the ones from config.json. */
 export function skillDirs(): string[] {
-  return [join(homedir(), ".claude", "skills"), join(homedir(), ".claude-api", "skills")];
+  const codex = join(process.env.CODEX_HOME || join(homedir(), ".codex"), "skills");
+  return [...new Set([join(homedir(), ".claude", "skills"), join(homedir(), ".claude-api", "skills"), codex, ...extraDirs("skillDirs")])];
+}
+
+/** Content fingerprint of a folder: two copies with the same hash are identical, so they are the same version. */
+export function hashDir(root: string): string {
+  const h = createHash("sha1");
+  try {
+    for (const f of walk(root).sort((a, b) => (a.rel < b.rel ? -1 : 1))) {
+      h.update(f.rel + "\0");
+      if (f.size <= 5 * 1024 * 1024) h.update(readFileSync(f.abs));
+      else h.update(String(f.size));
+    }
+  } catch {
+    /* unreadable: hash what we have */
+  }
+  return h.digest("hex").slice(0, 12);
 }
 
 function isDirLink(p: string): boolean {
@@ -93,7 +126,7 @@ const SECRET_PATTERNS: [RegExp, string][] = [
 const MAX_FILES = 600;
 const MAX_TOTAL = 40 * 1024 * 1024;
 
-function walk(root: string): FileEntry[] {
+export function walk(root: string): FileEntry[] {
   const out: FileEntry[] = [];
   const rec = (dir: string, rel: string) => {
     for (const d of readdirSync(dir, { withFileTypes: true })) {
@@ -101,7 +134,13 @@ function walk(root: string): FileEntry[] {
       const abs = join(dir, d.name);
       const r = rel ? rel + "/" + d.name : d.name;
       if (d.isDirectory()) rec(abs, r);
-      else if (d.isFile() && !d.name.endsWith(".pyc")) out.push({ rel: r, abs, size: statSync(abs).size });
+      else if (d.isFile() && !d.name.endsWith(".pyc")) {
+        try {
+          out.push({ rel: r, abs, size: statSync(abs).size });
+        } catch {
+          /* unreadable file: skip it */
+        }
+      }
     }
   };
   rec(root, "");
