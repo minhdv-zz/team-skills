@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,15 +14,17 @@ const ZIP_HOSTS = new Set(["drive.horusvn.com"]);
 /** Default port of the "MCP for Blender" addon's local socket server. */
 const BLENDER_PORT = 9876;
 
-export type Target = "claude" | "claude-api";
-export const TARGETS: readonly Target[] = ["claude", "claude-api"];
-const TARGET_DIRS: Record<Target, string> = { claude: ".claude", "claude-api": ".claude-api" };
+export type Target = "claude" | "claude-api" | "codex";
+export const TARGETS: readonly Target[] = ["claude", "claude-api", "codex"];
+const TARGET_DIRS: Record<Target, string> = { claude: ".claude", "claude-api": ".claude-api", codex: ".codex" };
 
 interface SkillEntry {
   name: string;
   title: string;
   desc: string;
   needs?: string[];
+  /** Optional: copied from SKILL.md `version:` by scripts/sync.py. */
+  version?: string;
 }
 
 interface AddonEntry {
@@ -40,7 +42,18 @@ interface AddonEntry {
 }
 
 function skillsDir(target: Target): string {
+  if (target === "codex") return join(process.env.CODEX_HOME || join(homedir(), TARGET_DIRS.codex), "skills");
   return join(homedir(), TARGET_DIRS[target], "skills");
+}
+
+/** `version:` of the SKILL.md installed in a folder ("" when missing or not declared). */
+function installedVersion(dir: string): string {
+  try {
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(join(dir, "SKILL.md"), "utf8"));
+    return /^version[ \t]*:[ \t]*(.*)$/m.exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "").slice(0, 40) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 async function fetchJson<T>(file: string): Promise<T> {
@@ -79,9 +92,16 @@ export async function listSkills() {
       title: s.title,
       desc: s.desc,
       needs: s.needs ?? [],
+      version: s.version ?? "",
       installed: {
         claude: existsSync(join(skillsDir("claude"), s.name)),
         "claude-api": existsSync(join(skillsDir("claude-api"), s.name)),
+        codex: existsSync(join(skillsDir("codex"), s.name)),
+      },
+      installedVersion: {
+        claude: installedVersion(join(skillsDir("claude"), s.name)),
+        "claude-api": installedVersion(join(skillsDir("claude-api"), s.name)),
+        codex: installedVersion(join(skillsDir("codex"), s.name)),
       },
     })),
   };

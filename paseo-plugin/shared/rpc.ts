@@ -1,14 +1,16 @@
 import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
-export const targetSchema = z.enum(["claude", "claude-api"]);
+export const targetSchema = z.enum(["claude", "claude-api", "codex"]);
 
 export const skillItemSchema = z.object({
   name: z.string(),
   title: z.string(),
   desc: z.string(),
   needs: z.array(z.string()),
-  installed: z.object({ claude: z.boolean(), "claude-api": z.boolean() }),
+  version: z.string().optional(),
+  installed: z.object({ claude: z.boolean(), "claude-api": z.boolean(), codex: z.boolean().optional() }),
+  installedVersion: z.record(z.string(), z.string()).optional(),
 });
 
 export const listSkillsRpc = defineRpc({

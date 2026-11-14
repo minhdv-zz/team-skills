@@ -102,6 +102,11 @@ def sync_skills():
     skills = load(sk_path, [])
     have = {s["name"] for s in skills}
     out = [s for s in skills if s["name"] in meta]
+    # keep `version` in step with SKILL.md (only when the skill declares one)
+    for s in out:
+        v = meta[s["name"]].get("version")
+        if v and s.get("version") != v:
+            s["version"] = v
     for n, fm in meta.items():
         if n not in have:
             entry = {
@@ -111,6 +116,8 @@ def sync_skills():
                 "needs": [],
                 "author": fm.get("author", ""),
             }
+            if fm.get("version"):
+                entry["version"] = fm["version"]
             if os.path.isfile(os.path.join(ROOT, "docs", "img", n + ".jpg")):
                 entry["img"] = f"img/{n}.jpg"
             out.append(entry)

@@ -161,6 +161,7 @@
       <select id="target">
         <option value="claude">Claude Code (~/.claude/skills)</option>
         <option value="claude-api">Hồ sơ Claude API (~/.claude-api/skills)</option>
+        <option value="codex" id="optCodex">Codex (~/.codex/skills)</option>
       </select>
     </label>
     <label id="lblVersion" style="display:none">Blender
@@ -584,7 +585,8 @@ function renderLocal(){
       + '<div id="lRows"></div>';
     $('lSearch').addEventListener('input', function(){ LQ = this.value; renderLocalRows(); });
   }
-  var sd = $('scannedDirs'); if(sd) sd.textContent = (LOCAL_SCANNED || []).join(' ; ') || '(chưa rõ)';
+  var sd = $('scannedDirs');
+  if(sd) sd.textContent = (STATE.features || []).indexOf('local-variants') < 0 ? '(plugin bản cũ: cập nhật plugin để xem thư mục đã quét, nhiều phiên bản và thư mục tùy chỉnh)' : ((LOCAL_SCANNED || []).join(' ; ') || '(chưa rõ)');
   renderLocalRows();
 }
 var LTAB = 'skill', LQ = '';
@@ -750,6 +752,26 @@ function installedOf(name){
   return false;
 }
 
+function cmpVer(a, b){
+  var x = String(a).split(/[^0-9]+/).filter(Boolean).map(Number), y = String(b).split(/[^0-9]+/).filter(Boolean).map(Number);
+  for(var i = 0; i < Math.max(x.length, y.length); i++){ var d = (x[i] || 0) - (y[i] || 0); if(d) return d; }
+  return 0;
+}
+// true when the team list has a newer version than the copy installed in the chosen folder (both must declare one)
+function updateOf(s){
+  if(!STATE || TAB !== 'skills' || !s.version) return false;
+  for(var i = 0; i < STATE.skills.length; i++){
+    if(STATE.skills[i].name !== s.name) continue;
+    var iv = (STATE.skills[i].installedVersion || {})[target()];
+    return !!iv && cmpVer(s.version, iv) > 0;
+  }
+  return false;
+}
+function updateOne(i){
+  var s = ITEMS[TAB][i];
+  askConfirm('Cập nhật "' + s.title + '" lên v' + s.version + '?', 'Bản đang cài sẽ bị thay bằng bản mới từ kho chung. Nếu bạn đã sửa riêng trên máy thì phần sửa sẽ mất.', 'Cập nhật').then(function(ok){ if(ok) installOne(i); });
+}
+
 function render(){
   if(TAB === 'contrib'){ if(LOCAL_ITEMS || LOCAL_FAIL) renderLocal(); else loadLocal().then(function(){ if(TAB==='contrib') renderLocal(); }); return; }
   if(TAB !== 'skills' && TAB !== 'addons'){ if(TAB === 'review') renderReview(); return; }
@@ -757,6 +779,11 @@ function render(){
   $('sub').textContent = isSk ? 'Cài xong, mở lại Claude Code để dùng.' : 'Cài xong, bật addon trong Edit → Preferences → Add-ons.';
   $('lblTarget').style.display = isSk ? '' : 'none';
   $('lblVersion').style.display = isSk ? 'none' : '';
+
+  var oc = $('optCodex');   // old plugins reject the codex target: hide it there
+  var codexOk = !STATE || (STATE.features || []).indexOf('target-codex') >= 0;
+  oc.hidden = !codexOk; oc.disabled = !codexOk;
+  if(!codexOk && $('target').value === 'codex') $('target').value = 'claude';
 
   var vs = (STATE && STATE.blender) ? STATE.blender.versions : [];
   var cur = $('version').value;
@@ -778,10 +805,10 @@ function render(){
           : (STATE && inst && !canUninstall)
             ? '<button onclick="event.stopPropagation();needUpdate()">Cần cập nhật plugin</button>'
           : (STATE && inst)
-            ? '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();uninstallOne('+i+')">Gỡ cài</button>'
+            ? (updateOf(s) ? '<button class="pri" '+(BUSY?'disabled':'')+' onclick="event.stopPropagation();updateOne('+i+')">Cập nhật</button> ' : '') + '<button class="danger" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();uninstallOne('+i+')">Gỡ cài</button>'
             : '<button class="pri" '+((BUSY||blocked)?'disabled':'')+' onclick="event.stopPropagation();installOne('+i+')">'+label+'</button>';
     return '<div class="card click" onclick="openDetail('+i+')">' + thumb
-      + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+'</h3>'
+      + '<h3>'+esc(s.title)+(inst?'<span class="badge">đã cài</span>':'')+(inst && updateOf(s) ? '<span class="chip wait">có bản mới v'+esc(s.version)+'</span>' : '')+'</h3>'
       + '<p class="d">'+esc(s.desc)+'</p>'
       + '<div class="foot"><span class="by">'+(s.author ? esc(s.author) : '')+'</span>' + ((TAB==='skills'||TAB==='addons') ? starBtn(s) : '') + act + '</div></div>';
   }).join('');
@@ -824,7 +851,7 @@ function req(extra){
 }
 function doneMsg(j){
   var n = j.installed.length;
-  if(TAB==='skills') return n+' skill đã cài. Mở lại Claude Code để nhận skill.';
+  if(TAB==='skills') return n+' skill đã cài. Mở lại ' + (target()==='codex' ? 'Codex' : 'Claude Code') + ' để nhận skill.';
   if(j.via==='blender'){
     var on = (j.notes||[]).filter(function(x){return x.enabled}).length;
     var skipped = (j.notes||[]).filter(function(x){return !x.enabled});
@@ -841,7 +868,7 @@ function installOne(i){
     $('mQuickT').textContent = 'AI sẽ cài Team Skills (nếu chưa có) và cài luôn "' + s.title + '" cho bạn, không cần làm tay.';
     $('mTitle').textContent=s.title; $('mId').textContent=s.name;
     if(TAB==='skills'){
-      var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : '';
+      var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : target()==='codex' ? ' -Dest "$env:USERPROFILE\\.codex\\skills"' : '';
       $('mText').textContent='Hoặc dán lệnh này vào PowerShell để chỉ cài skill (không cần plugin):';
       $('mCmd').textContent = INSTALL + ' ' + s.name + dest;
     } else {
@@ -873,7 +900,7 @@ function openDetail(i){
   $('dtTitle').textContent = s.title;
   $('dtBadge').style.display = inst ? '' : 'none';
   $('dtId').textContent = s.name;
-  $('dtMeta').textContent = [s.author ? 'Tác giả: '+s.author : '', s.license ? 'Giấy phép: '+s.license : ''].filter(Boolean).join('   •   ');
+  $('dtMeta').textContent = [s.author ? 'Tác giả: '+s.author : '', s.version ? 'Phiên bản: '+s.version : '', s.license ? 'Giấy phép: '+s.license : ''].filter(Boolean).join('   •   ');
   $('dtTags').innerHTML = (s.needs||[]).map(function(n){return '<span class="tag">'+esc(n)+'</span>'}).join('');
   $('dtDesc').textContent = s.desc_full || s.desc;
   $('dtBody').style.display = 'none'; $('dtBodyH').style.display = 'none';
@@ -896,6 +923,11 @@ function openDetail(i){
     else { b.className='pri'; b.textContent='Cài'; b.onclick=function(){ closeDetail(); installOne(i); }; }
   }
   act.appendChild(b);
+  if(isSk && STATE && inst && updateOf(s)){
+    var u = document.createElement('button'); u.className = 'pri'; u.textContent = 'Cập nhật lên v' + s.version; u.style.marginRight = '8px';
+    u.onclick = function(){ closeDetail(); updateOne(i); };
+    act.insertBefore(u, b);
+  }
   var rm = $('dtRemove');
   rm.style.display = (STATE && STATE.owner && (STATE.features || []).indexOf('owner-remove') >= 0) ? '' : 'none';
   rm.onclick = function(){ removeFromRepo(i); };
@@ -946,7 +978,7 @@ document.addEventListener('keydown', function(e){ if(e.key!=='Escape') return; i
 
 function uninstallOne(i){
   var s = ITEMS[TAB][i];
-  var where = TAB==='skills' ? (target()==='claude-api' ? '~/.claude-api/skills' : '~/.claude/skills') : 'Blender ' + version();
+  var where = TAB==='skills' ? (target()==='claude-api' ? '~/.claude-api/skills' : target()==='codex' ? '~/.codex/skills' : '~/.claude/skills') : 'Blender ' + version();
   var paid = s.license && /riêng/i.test(s.license);
   var body = 'Thư mục của nó trong ' + where + ' sẽ bị XÓA. Nếu bạn đã sửa riêng trên máy thì phần sửa sẽ mất.'
     + (paid ? '\n\nĐây là addon trả phí: gỡ rồi muốn dùng lại phải tải lại từ Drive nội bộ.' : '')

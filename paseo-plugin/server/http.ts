@@ -22,7 +22,7 @@ import { localItems, runContribute, runListLocal, runLogout, webContribute, type
 
 export const PORT = 47653;
 /** Capabilities of this plugin build. The web page checks them to detect an outdated plugin on a machine. */
-const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants"];
+const FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants", "skill-versions", "target-codex"];
 const ALLOWED_ORIGINS = new Set(["https://minhdv-zz.github.io"]);
 const ALLOWED_HOSTS = new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 

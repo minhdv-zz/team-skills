@@ -2,13 +2,13 @@
 import { createInterface } from "node:readline";
 
 // server/agent.ts
-import { cpSync as cpSync2, existsSync as existsSync3, mkdtempSync as mkdtempSync2, readFileSync as readFileSync2, realpathSync, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { cpSync as cpSync2, existsSync as existsSync3, mkdtempSync as mkdtempSync2, readFileSync as readFileSync3, realpathSync, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir3, tmpdir as tmpdir2 } from "node:os";
 import { basename, isAbsolute as isAbsolute2, join as join3, resolve } from "node:path";
 
 // server/handlers.ts
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync2, mkdtempSync, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync2, mkdtempSync, readdirSync as readdirSync2, readFileSync as readFileSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir as homedir2, tmpdir } from "node:os";
 import { join as join2 } from "node:path";
@@ -421,10 +421,19 @@ var SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/hea
 var ADDONS_ZIP = "https://codeload.github.com/minhdv-zz/team-blender-addons/zip/refs/heads/main";
 var ZIP_HOSTS = /* @__PURE__ */ new Set(["drive.horusvn.com"]);
 var BLENDER_PORT = 9876;
-var TARGETS = ["claude", "claude-api"];
-var TARGET_DIRS = { claude: ".claude", "claude-api": ".claude-api" };
+var TARGETS = ["claude", "claude-api", "codex"];
+var TARGET_DIRS = { claude: ".claude", "claude-api": ".claude-api", codex: ".codex" };
 function skillsDir(target) {
+  if (target === "codex") return join2(process.env.CODEX_HOME || join2(homedir2(), TARGET_DIRS.codex), "skills");
   return join2(homedir2(), TARGET_DIRS[target], "skills");
+}
+function installedVersion(dir) {
+  try {
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync2(join2(dir, "SKILL.md"), "utf8"));
+    return /^version[ \t]*:[ \t]*(.*)$/m.exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "").slice(0, 40) ?? "";
+  } catch {
+    return "";
+  }
 }
 async function fetchJson(file) {
   const res = await fetch(SITE + "/" + file + "?t=" + Date.now());
@@ -456,9 +465,16 @@ async function listSkills() {
       title: s.title,
       desc: s.desc,
       needs: s.needs ?? [],
+      version: s.version ?? "",
       installed: {
         claude: existsSync2(join2(skillsDir("claude"), s.name)),
-        "claude-api": existsSync2(join2(skillsDir("claude-api"), s.name))
+        "claude-api": existsSync2(join2(skillsDir("claude-api"), s.name)),
+        codex: existsSync2(join2(skillsDir("codex"), s.name))
+      },
+      installedVersion: {
+        claude: installedVersion(join2(skillsDir("claude"), s.name)),
+        "claude-api": installedVersion(join2(skillsDir("claude-api"), s.name)),
+        codex: installedVersion(join2(skillsDir("codex"), s.name))
       }
     }))
   };
@@ -886,7 +902,7 @@ function clearPendingCache() {
 var reply = (text, isError = false) => ({ text, isError });
 function skillInfo(dir) {
   try {
-    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync2(join3(dir, "SKILL.md"), "utf8"));
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync3(join3(dir, "SKILL.md"), "utf8"));
     const get = (k) => new RegExp("^" + k + "[ 	]*:[ 	]*(.*)$", "m").exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "") ?? "";
     return { description: get("description").slice(0, 200), author: get("author"), version: get("version").slice(0, 40) };
   } catch {
@@ -1071,7 +1087,7 @@ async function webContributeOnce(input) {
     let src = it.path;
     const author = String(input.author ?? "").trim().slice(0, 80);
     if (it.kind === "skill") {
-      const text = readFileSync2(join3(src, "SKILL.md"), "utf8");
+      const text = readFileSync3(join3(src, "SKILL.md"), "utf8");
       const fixed = patchFrontMatter(text, it.name, author);
       if (fixed !== text) {
         tmp = mkdtempSync2(join3(tmpdir2(), "team-contrib-"));
@@ -1240,7 +1256,7 @@ function runUpdate() {
 
 // server/http.ts
 var PORT = 47653;
-var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants"];
+var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants", "skill-versions", "target-codex"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);
 var ALLOWED_HOSTS = /* @__PURE__ */ new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 function setCors(req, res) {
