@@ -1,11 +1,11 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { RpcInput } from "@getpaseo/plugin";
 import { installSkillRpc } from "../shared/rpc";
 import { extraDirs } from "./contribute";
-import { addonsDir, blenderVersions, zipExtract, zipList } from "./platform";
+import { addonsDir, blenderVersions, extensionIds, zipExtract, zipList } from "./platform";
 
 const SITE = "https://minhdv-zz.github.io/team-skills";
 const SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
@@ -271,6 +271,8 @@ export async function listAddons() {
   const live = await liveBlender();
   const versions = live ? [live.version] : blenderVersions();
   const list = await knownAddons();
+  // An addon installed as a Blender 4.2+ extension lives in extensions/<repo>/, not in scripts/addons.
+  const exts = new Map(versions.map((v) => [v, extensionIds(v, live && v === live.version ? dirname(dirname(live.addonsPath)) : undefined)]));
   return {
     /** True when a running Blender answered on the MCP socket; installs then go through it. */
     live: live !== null,
@@ -282,7 +284,10 @@ export async function listAddons() {
       license: a.license ?? "",
       needs: a.needs ?? [],
       installed: Object.fromEntries(
-        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync(join(addonsDir(v), folderOf(a)))]),
+        versions.map((v) => [
+          v,
+          (live ? live.dirs.includes(folderOf(a)) : existsSync(join(addonsDir(v), folderOf(a)))) || exts.get(v)!.has(folderOf(a)),
+        ]),
       ),
     })),
   };

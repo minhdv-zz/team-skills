@@ -59,6 +59,29 @@ export function addonsDir(version: string): string {
   return join(root, version, "scripts", "addons");
 }
 
+/**
+ * Ids of the Blender 4.2+ extensions installed for one version: folders in `extensions/<repository>/`.
+ * `versionDir` is the version folder of the running Blender when it is known (it can live outside the default roots).
+ */
+export function extensionIds(version: string, versionDir?: string): Set<string> {
+  const dirs = new Set(blenderRoots().map((r) => join(r, version)));
+  if (versionDir) dirs.add(versionDir);
+  const ids = new Set<string>();
+  for (const dir of dirs) {
+    try {
+      for (const repo of readdirSync(join(dir, "extensions"), { withFileTypes: true })) {
+        if (!repo.isDirectory() || repo.name.startsWith(".")) continue;
+        for (const ext of readdirSync(join(dir, "extensions", repo.name), { withFileTypes: true })) {
+          if (ext.isDirectory() && !ext.name.startsWith(".")) ids.add(ext.name);
+        }
+      }
+    } catch {
+      /* no extensions folder for this version */
+    }
+  }
+  return ids;
+}
+
 // ------------------------------------------------------------------ zip files
 
 const NO_ZIP_TOOL =

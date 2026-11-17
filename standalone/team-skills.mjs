@@ -10,7 +10,7 @@ import { basename, isAbsolute as isAbsolute2, join as join4, resolve } from "nod
 import { cpSync, existsSync as existsSync3, mkdirSync as mkdirSync2, mkdtempSync, readdirSync as readdirSync3, readFileSync as readFileSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir as homedir3, tmpdir } from "node:os";
-import { join as join3 } from "node:path";
+import { dirname, join as join3 } from "node:path";
 
 // server/contribute.ts
 import { execFile } from "node:child_process";
@@ -461,6 +461,23 @@ function addonsDir(version) {
   const root = roots.find((r) => existsSync2(join2(r, version))) ?? roots[0];
   return join2(root, version, "scripts", "addons");
 }
+function extensionIds(version, versionDir) {
+  const dirs = new Set(blenderRoots().map((r) => join2(r, version)));
+  if (versionDir) dirs.add(versionDir);
+  const ids = /* @__PURE__ */ new Set();
+  for (const dir of dirs) {
+    try {
+      for (const repo of readdirSync2(join2(dir, "extensions"), { withFileTypes: true })) {
+        if (!repo.isDirectory() || repo.name.startsWith(".")) continue;
+        for (const ext of readdirSync2(join2(dir, "extensions", repo.name), { withFileTypes: true })) {
+          if (ext.isDirectory() && !ext.name.startsWith(".")) ids.add(ext.name);
+        }
+      }
+    } catch {
+    }
+  }
+  return ids;
+}
 var NO_ZIP_TOOL = process.platform === "linux" ? "M\xE1y ch\u01B0a c\xF3 c\xF4ng c\u1EE5 gi\u1EA3i n\xE9n zip. C\xE0i m\u1ED9t trong hai: unzip (sudo apt install unzip) ho\u1EB7c python3." : "Kh\xF4ng t\xECm th\u1EA5y c\xF4ng c\u1EE5 gi\u1EA3i n\xE9n zip (tar/unzip) tr\xEAn m\xE1y n\xE0y.";
 var PY_LIST = "import sys, zipfile\nprint('\\n'.join(zipfile.ZipFile(sys.argv[1]).namelist()))";
 var PY_EXTRACT = "import sys, zipfile\nzipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])";
@@ -695,6 +712,7 @@ async function listAddons() {
   const live = await liveBlender();
   const versions = live ? [live.version] : blenderVersions();
   const list = await knownAddons();
+  const exts = new Map(versions.map((v) => [v, extensionIds(v, live && v === live.version ? dirname(dirname(live.addonsPath)) : void 0)]));
   return {
     /** True when a running Blender answered on the MCP socket; installs then go through it. */
     live: live !== null,
@@ -706,7 +724,10 @@ async function listAddons() {
       license: a.license ?? "",
       needs: a.needs ?? [],
       installed: Object.fromEntries(
-        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync3(join3(addonsDir(v), folderOf(a)))])
+        versions.map((v) => [
+          v,
+          (live ? live.dirs.includes(folderOf(a)) : existsSync3(join3(addonsDir(v), folderOf(a)))) || exts.get(v).has(folderOf(a))
+        ])
       )
     }))
   };
