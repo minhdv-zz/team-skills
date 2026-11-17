@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
@@ -6,6 +5,7 @@ import { join } from "node:path";
 import type { RpcInput } from "@getpaseo/plugin";
 import { installSkillRpc } from "../shared/rpc";
 import { extraDirs } from "./contribute";
+import { addonsDir, blenderVersions, zipExtract, zipList } from "./platform";
 
 const SITE = "https://minhdv-zz.github.io/team-skills";
 const SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
@@ -62,10 +62,6 @@ async function fetchJson<T>(file: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-function winTar(): string {
-  return join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
-}
-
 /** Download a repository zip and extract it into tmp. Returns the extracted repo root folder. */
 async function fetchRepo(url: string, tmp: string): Promise<string> {
   const res = await fetch(url);
@@ -74,11 +70,7 @@ async function fetchRepo(url: string, tmp: string): Promise<string> {
   writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
   const out = join(tmp, "x");
   mkdirSync(out);
-  if (process.platform === "win32") {
-    execFileSync(winTar(), ["-xf", zipPath, "-C", out]);
-  } else {
-    execFileSync("unzip", ["-q", zipPath, "-d", out]);
-  }
+  zipExtract(zipPath, out);
   return join(out, readdirSync(out)[0]);
 }
 
@@ -263,30 +255,6 @@ async function enableInBlender(folder: string): Promise<EnableResult> {
 
 // ---------------------------------------------------------------- blender addons
 
-function blenderRoot(): string {
-  return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "Blender Foundation", "Blender");
-}
-
-/** Blender versions that have a user config folder on this machine, newest first. */
-export function blenderVersions(): string[] {
-  try {
-    return readdirSync(blenderRoot(), { withFileTypes: true })
-      .filter((d) => d.isDirectory() && /^\d+\.\d+$/.test(d.name))
-      .map((d) => d.name)
-      .sort((a, b) => {
-        const [am, an] = a.split(".").map(Number);
-        const [bm, bn] = b.split(".").map(Number);
-        return bm - am || bn - an;
-      });
-  } catch {
-    return [];
-  }
-}
-
-function addonsDir(version: string): string {
-  return join(blenderRoot(), version, "scripts", "addons");
-}
-
 /** Entries the plugin can install: repo addons, or link entries that also publish a direct zip. */
 async function installableAddons(): Promise<AddonEntry[]> {
   return (await fetchJson<AddonEntry[]>("addons.json")).filter((a) => !a.link || a.zip);
@@ -328,19 +296,14 @@ async function fetchZip(url: string, folder: string, tmp: string): Promise<strin
   if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
   const zipPath = join(tmp, folder + ".zip");
   writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
-  const tar = winTar();
-  const listing = execFileSync(tar, ["-tf", zipPath], { maxBuffer: 64 * 1024 * 1024 })
-    .toString("utf8")
-    .split(/\r?\n/)
-    .filter(Boolean);
-  for (const entry of listing) {
+  for (const entry of zipList(zipPath)) {
     const norm = entry.split("\\").join("/");
     if (norm.startsWith("/") || /^[A-Za-z]:/.test(norm) || norm.split("/").includes("..")) throw new Error("Unsafe path in zip: " + entry);
     if (norm.split("/")[0] !== folder) throw new Error("Zip must contain only the folder '" + folder + "' (found '" + entry + "')");
   }
   const out = join(tmp, "z-" + folder);
   mkdirSync(out);
-  execFileSync(tar, ["-xf", zipPath, "-C", out]);
+  zipExtract(zipPath, out);
   return out;
 }
 

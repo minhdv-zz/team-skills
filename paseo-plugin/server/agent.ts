@@ -7,6 +7,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { addonRoots, teamNames } from "./handlers";
 import { gitSession } from "./review";
+import { pathKey, toSlash } from "./platform";
 import {
   NAME_RE,
   checkContribution,
@@ -79,7 +80,7 @@ export async function localItems(): Promise<LocalItem[]> {
   const team = await teamNames();
   const out: LocalItem[] = [];
   const seen = new Set<string>();
-  const home = homedir().split("\\").join("/");
+  const home = toSlash(homedir());
   const byName = new Map<string, LocalItem[]>();
   const seenReal = new Set<string>();
   for (const root of skillDirs()) {
@@ -92,12 +93,12 @@ export async function localItems(): Promise<LocalItem[]> {
       } catch {
         /* keep the plain path */
       }
-      if (seenReal.has(real.toLowerCase())) continue; // same real folder reached through a symlink: not a copy
-      seenReal.add(real.toLowerCase());
+      if (seenReal.has(pathKey(real))) continue; // same real folder reached through a symlink: not a copy
+      seenReal.add(pathKey(real));
       const hash = hashDir(dir);
       const list = byName.get(name) ?? [];
       const same = list.find((i) => i.hash === hash);
-      const path = dir.split("\\").join("/");
+      const path = toSlash(dir);
       if (same) {
         (same.copies ??= []).push(path); // identical copy elsewhere: same version, show once
         continue;
@@ -108,8 +109,8 @@ export async function localItems(): Promise<LocalItem[]> {
       } catch {
         /* ignore */
       }
-      const rootSlash = root.split("\\").join("/");
-      const source = rootSlash.toLowerCase().startsWith(home.toLowerCase()) ? "~" + rootSlash.slice(home.length) : rootSlash;
+      const rootSlash = toSlash(root);
+      const source = pathKey(rootSlash).startsWith(pathKey(home)) ? "~" + rootSlash.slice(home.length) : rootSlash;
       const item: LocalItem = { kind: "skill", name, path, ...skillInfo(dir), shared: team.skills.has(name), hash, source, mtime };
       list.push(item);
       byName.set(name, list);
@@ -123,7 +124,7 @@ export async function localItems(): Promise<LocalItem[]> {
       if (!NAME_RE.test(name) || seen.has("addon:" + name)) continue;
       if (!existsSync(join(dir, "__init__.py")) && !existsSync(join(dir, "blender_manifest.toml"))) continue;
       seen.add("addon:" + name);
-      out.push({ kind: "addon", name, path: dir.split("\\").join("/"), description: "", author: "", shared: team.addons.has(name) });
+      out.push({ kind: "addon", name, path: toSlash(dir), description: "", author: "", shared: team.addons.has(name) });
     }
   }
   return out;
@@ -258,7 +259,7 @@ const recentSends = new Map<string, { at: number; result: Promise<Record<string,
 export async function webContribute(input: WebContributeInput): Promise<Record<string, unknown>> {
   if (!input.confirm) return webContributeOnce(input);
   // A repeated or retried request for the same item must not open a second Pull Request.
-  const key = String(input.path ?? "").split("\\").join("/");
+  const key = toSlash(String(input.path ?? ""));
   const prev = recentSends.get(key);
   if (prev && Date.now() - prev.at < 120_000) return prev.result;
   const result = webContributeOnce(input);
@@ -269,7 +270,7 @@ export async function webContribute(input: WebContributeInput): Promise<Record<s
 }
 
 async function webContributeOnce(input: WebContributeInput): Promise<Record<string, unknown>> {
-  const wanted = String(input.path ?? "").split("\\").join("/");
+  const wanted = toSlash(String(input.path ?? ""));
   const it = (await localItems()).find((x) => x.path === wanted);
   if (!it) return { ok: false, error: "Mục này không nằm trong danh sách quét trên máy. Tải lại trang rồi thử lại." };
   if (it.shared) return { ok: false, error: "Mục này đã có trong kho chung." };

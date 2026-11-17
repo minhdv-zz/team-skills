@@ -2,16 +2,15 @@
 import { createInterface } from "node:readline";
 
 // server/agent.ts
-import { cpSync as cpSync2, existsSync as existsSync3, mkdtempSync as mkdtempSync2, readFileSync as readFileSync3, realpathSync, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import { homedir as homedir3, tmpdir as tmpdir2 } from "node:os";
-import { basename, isAbsolute as isAbsolute2, join as join3, resolve } from "node:path";
+import { cpSync as cpSync2, existsSync as existsSync4, mkdtempSync as mkdtempSync2, readFileSync as readFileSync3, realpathSync, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { homedir as homedir4, tmpdir as tmpdir2 } from "node:os";
+import { basename, isAbsolute as isAbsolute2, join as join4, resolve } from "node:path";
 
 // server/handlers.ts
-import { execFileSync } from "node:child_process";
-import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync2, mkdtempSync, readdirSync as readdirSync2, readFileSync as readFileSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { cpSync, existsSync as existsSync3, mkdirSync as mkdirSync2, mkdtempSync, readdirSync as readdirSync3, readFileSync as readFileSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { createConnection } from "node:net";
-import { homedir as homedir2, tmpdir } from "node:os";
-import { join as join2 } from "node:path";
+import { homedir as homedir3, tmpdir } from "node:os";
+import { join as join3 } from "node:path";
 
 // server/contribute.ts
 import { execFile } from "node:child_process";
@@ -186,7 +185,7 @@ function checkContribution(kind, name, src) {
       for (const [re, label] of SECRET_PATTERNS) {
         if (re.test(text)) err(`${f.rel}: c\xF3 v\u1EBB ch\u1EE9a ${label}. H\xE3y x\xF3a tr\u01B0\u1EDBc khi g\u1EEDi.`);
       }
-      const abs = /\b[A-Za-z]:[\/](?!Windows\b|Program Files\b)[^\s"'`)\]]{3,}/.exec(text);
+      const abs = /\b[A-Za-z]:[\/](?!Windows\b|Program Files\b)[^\s"'`)\]]{3,}|(?<![\w.~-])\/(?:home|Users)\/[^\s"'`)\]\/]+\/[^\s"'`)\]]{2,}/.exec(text);
       if (abs) warn(`${f.rel}: c\xF3 \u0111\u01B0\u1EDDng d\u1EABn ri\xEAng c\u1EE7a m\xE1y b\u1EA1n (v\xED d\u1EE5 ${abs[0].slice(0, 60)}). N\xEAn thay b\u1EB1ng \u0111\u01B0\u1EDDng d\u1EABn chung ho\u1EB7c \u0111\u1EC3 skill h\u1ECFi ng\u01B0\u1EDDi d\xF9ng.`);
     }
   }
@@ -415,6 +414,101 @@ async function submitContribution(opts) {
   return { prUrl: String(pr.html_url), branch, direct: work === upstream };
 }
 
+// server/platform.ts
+import { execFileSync } from "node:child_process";
+import { existsSync as existsSync2, readdirSync as readdirSync2 } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { delimiter, join as join2 } from "node:path";
+var isWin = process.platform === "win32";
+var isMac = process.platform === "darwin";
+function toSlash(p) {
+  return isWin ? p.split("\\").join("/") : p;
+}
+function pathKey(p) {
+  return isWin || isMac ? p.toLowerCase() : p;
+}
+function blenderRoots() {
+  const home = homedir2();
+  if (isWin) return [join2(process.env.APPDATA ?? join2(home, "AppData", "Roaming"), "Blender Foundation", "Blender")];
+  if (isMac) return [join2(home, "Library", "Application Support", "Blender")];
+  const xdg = process.env.XDG_CONFIG_HOME;
+  return [
+    join2(xdg && xdg.startsWith("/") ? xdg : join2(home, ".config"), "blender"),
+    join2(home, ".var", "app", "org.blender.Blender", "config", "blender"),
+    // Flatpak
+    join2(home, "snap", "blender", "current", ".config", "blender")
+    // Snap
+  ];
+}
+function blenderVersions() {
+  const found = /* @__PURE__ */ new Set();
+  for (const root of blenderRoots()) {
+    try {
+      for (const d of readdirSync2(root, { withFileTypes: true })) {
+        if (d.isDirectory() && /^\d+\.\d+$/.test(d.name)) found.add(d.name);
+      }
+    } catch {
+    }
+  }
+  return [...found].sort((a, b) => {
+    const [am, an] = a.split(".").map(Number);
+    const [bm, bn] = b.split(".").map(Number);
+    return bm - am || bn - an;
+  });
+}
+function addonsDir(version) {
+  const roots = blenderRoots();
+  const root = roots.find((r) => existsSync2(join2(r, version))) ?? roots[0];
+  return join2(root, version, "scripts", "addons");
+}
+var NO_ZIP_TOOL = process.platform === "linux" ? "M\xE1y ch\u01B0a c\xF3 c\xF4ng c\u1EE5 gi\u1EA3i n\xE9n zip. C\xE0i m\u1ED9t trong hai: unzip (sudo apt install unzip) ho\u1EB7c python3." : "Kh\xF4ng t\xECm th\u1EA5y c\xF4ng c\u1EE5 gi\u1EA3i n\xE9n zip (tar/unzip) tr\xEAn m\xE1y n\xE0y.";
+var PY_LIST = "import sys, zipfile\nprint('\\n'.join(zipfile.ZipFile(sys.argv[1]).namelist()))";
+var PY_EXTRACT = "import sys, zipfile\nzipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])";
+function tryRun(cmd, args) {
+  try {
+    return execFileSync(cmd, args, { maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  } catch (e) {
+    if (e.code === "ENOENT") return null;
+    throw e;
+  }
+}
+function winTar() {
+  return join2(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+}
+function zipList(zipPath) {
+  const out = isWin ? tryRun(winTar(), ["-tf", zipPath]) ?? tryRun("tar", ["-tf", zipPath]) : tryRun("unzip", ["-Z1", zipPath]) ?? tryRun("bsdtar", ["-tf", zipPath]) ?? tryRun("python3", ["-I", "-c", PY_LIST, zipPath]);
+  if (!out) throw new Error(NO_ZIP_TOOL);
+  return out.toString("utf8").split(/\r?\n/).filter(Boolean);
+}
+function zipExtract(zipPath, outDir) {
+  const done = isWin ? tryRun(winTar(), ["-xf", zipPath, "-C", outDir]) ?? tryRun("tar", ["-xf", zipPath, "-C", outDir]) : tryRun("unzip", ["-q", "-o", zipPath, "-d", outDir]) ?? tryRun("bsdtar", ["-xf", zipPath, "-C", outDir]) ?? tryRun("python3", ["-I", "-c", PY_EXTRACT, zipPath, outDir]);
+  if (!done) throw new Error(NO_ZIP_TOOL);
+}
+function paseoCandidates() {
+  const home = homedir2();
+  if (isWin) return [join2(process.env.LOCALAPPDATA ?? "", "Programs", "Paseo", "resources", "bin", "paseo.cmd")];
+  if (isMac) {
+    return [
+      "/Applications/Paseo.app/Contents/Resources/bin/paseo",
+      join2(home, "Applications", "Paseo.app", "Contents", "Resources", "bin", "paseo"),
+      "/usr/local/bin/paseo",
+      "/opt/homebrew/bin/paseo"
+    ];
+  }
+  return ["/opt/Paseo/resources/bin/paseo", join2(home, ".local", "bin", "paseo"), "/usr/local/bin/paseo", "/usr/bin/paseo"];
+}
+function findPaseo() {
+  const names = isWin ? ["paseo.cmd", "paseo.exe"] : ["paseo"];
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (!dir) continue;
+    for (const n of names) {
+      const p = join2(dir, n);
+      if (existsSync2(p)) return p;
+    }
+  }
+  return paseoCandidates().find((p) => existsSync2(p)) ?? null;
+}
+
 // server/handlers.ts
 var SITE = "https://minhdv-zz.github.io/team-skills";
 var SKILLS_ZIP = "https://codeload.github.com/minhdv-zz/team-skills/zip/refs/heads/main";
@@ -424,12 +518,12 @@ var BLENDER_PORT = 9876;
 var TARGETS = ["claude", "claude-api", "codex"];
 var TARGET_DIRS = { claude: ".claude", "claude-api": ".claude-api", codex: ".codex" };
 function skillsDir(target) {
-  if (target === "codex") return join2(process.env.CODEX_HOME || join2(homedir2(), TARGET_DIRS.codex), "skills");
-  return join2(homedir2(), TARGET_DIRS[target], "skills");
+  if (target === "codex") return join3(process.env.CODEX_HOME || join3(homedir3(), TARGET_DIRS.codex), "skills");
+  return join3(homedir3(), TARGET_DIRS[target], "skills");
 }
 function installedVersion(dir) {
   try {
-    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync2(join2(dir, "SKILL.md"), "utf8"));
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync2(join3(dir, "SKILL.md"), "utf8"));
     return /^version[ \t]*:[ \t]*(.*)$/m.exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "").slice(0, 40) ?? "";
   } catch {
     return "";
@@ -440,22 +534,15 @@ async function fetchJson(file) {
   if (!res.ok) throw new Error("Cannot load " + file + " (HTTP " + res.status + ")");
   return await res.json();
 }
-function winTar() {
-  return join2(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
-}
 async function fetchRepo(url, tmp) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
-  const zipPath = join2(tmp, "repo.zip");
+  const zipPath = join3(tmp, "repo.zip");
   writeFileSync2(zipPath, Buffer.from(await res.arrayBuffer()));
-  const out = join2(tmp, "x");
+  const out = join3(tmp, "x");
   mkdirSync2(out);
-  if (process.platform === "win32") {
-    execFileSync(winTar(), ["-xf", zipPath, "-C", out]);
-  } else {
-    execFileSync("unzip", ["-q", zipPath, "-d", out]);
-  }
-  return join2(out, readdirSync2(out)[0]);
+  zipExtract(zipPath, out);
+  return join3(out, readdirSync3(out)[0]);
 }
 async function listSkills() {
   const list = await fetchJson("skills.json");
@@ -467,14 +554,14 @@ async function listSkills() {
       needs: s.needs ?? [],
       version: s.version ?? "",
       installed: {
-        claude: existsSync2(join2(skillsDir("claude"), s.name)),
-        "claude-api": existsSync2(join2(skillsDir("claude-api"), s.name)),
-        codex: existsSync2(join2(skillsDir("codex"), s.name))
+        claude: existsSync3(join3(skillsDir("claude"), s.name)),
+        "claude-api": existsSync3(join3(skillsDir("claude-api"), s.name)),
+        codex: existsSync3(join3(skillsDir("codex"), s.name))
       },
       installedVersion: {
-        claude: installedVersion(join2(skillsDir("claude"), s.name)),
-        "claude-api": installedVersion(join2(skillsDir("claude-api"), s.name)),
-        codex: installedVersion(join2(skillsDir("codex"), s.name))
+        claude: installedVersion(join3(skillsDir("claude"), s.name)),
+        "claude-api": installedVersion(join3(skillsDir("claude-api"), s.name)),
+        codex: installedVersion(join3(skillsDir("codex"), s.name))
       }
     }))
   };
@@ -485,16 +572,16 @@ async function installSkills(names, target) {
   const allowed = new Set(list.map((s) => s.name));
   for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
   if (names.length === 0) return [];
-  const tmp = mkdtempSync(join2(tmpdir(), "team-skills-"));
+  const tmp = mkdtempSync(join3(tmpdir(), "team-skills-"));
   try {
     const root = await fetchRepo(SKILLS_ZIP, tmp);
     const destRoot = skillsDir(target);
     mkdirSync2(destRoot, { recursive: true });
     const done = [];
     for (const name of names) {
-      const src = join2(root, "plugins", name, "skills", name);
-      if (!existsSync2(src)) throw new Error("Skill folder not found in repository: " + name);
-      const dest = join2(destRoot, name);
+      const src = join3(root, "plugins", name, "skills", name);
+      if (!existsSync3(src)) throw new Error("Skill folder not found in repository: " + name);
+      const dest = join3(destRoot, name);
       rmSync2(dest, { recursive: true, force: true });
       cpSync(src, dest, { recursive: true });
       done.push(dest);
@@ -597,23 +684,6 @@ async function enableInBlender(folder) {
     return { enabled: false, note: e instanceof Error ? e.message : String(e) };
   }
 }
-function blenderRoot() {
-  return join2(process.env.APPDATA ?? join2(homedir2(), "AppData", "Roaming"), "Blender Foundation", "Blender");
-}
-function blenderVersions() {
-  try {
-    return readdirSync2(blenderRoot(), { withFileTypes: true }).filter((d) => d.isDirectory() && /^\d+\.\d+$/.test(d.name)).map((d) => d.name).sort((a, b) => {
-      const [am, an] = a.split(".").map(Number);
-      const [bm, bn] = b.split(".").map(Number);
-      return bm - am || bn - an;
-    });
-  } catch {
-    return [];
-  }
-}
-function addonsDir(version) {
-  return join2(blenderRoot(), version, "scripts", "addons");
-}
 async function installableAddons() {
   return (await fetchJson("addons.json")).filter((a) => !a.link || a.zip);
 }
@@ -636,7 +706,7 @@ async function listAddons() {
       license: a.license ?? "",
       needs: a.needs ?? [],
       installed: Object.fromEntries(
-        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync2(join2(addonsDir(v), folderOf(a)))])
+        versions.map((v) => [v, live ? live.dirs.includes(folderOf(a)) : existsSync3(join3(addonsDir(v), folderOf(a)))])
       )
     }))
   };
@@ -646,18 +716,16 @@ async function fetchZip(url, folder, tmp) {
   if (u.protocol !== "https:" || !ZIP_HOSTS.has(u.hostname)) throw new Error("Download host not allowed: " + u.hostname);
   const res = await fetch(url);
   if (!res.ok) throw new Error("Download failed (HTTP " + res.status + ")");
-  const zipPath = join2(tmp, folder + ".zip");
+  const zipPath = join3(tmp, folder + ".zip");
   writeFileSync2(zipPath, Buffer.from(await res.arrayBuffer()));
-  const tar = winTar();
-  const listing = execFileSync(tar, ["-tf", zipPath], { maxBuffer: 64 * 1024 * 1024 }).toString("utf8").split(/\r?\n/).filter(Boolean);
-  for (const entry of listing) {
+  for (const entry of zipList(zipPath)) {
     const norm = entry.split("\\").join("/");
     if (norm.startsWith("/") || /^[A-Za-z]:/.test(norm) || norm.split("/").includes("..")) throw new Error("Unsafe path in zip: " + entry);
     if (norm.split("/")[0] !== folder) throw new Error("Zip must contain only the folder '" + folder + "' (found '" + entry + "')");
   }
-  const out = join2(tmp, "z-" + folder);
+  const out = join3(tmp, "z-" + folder);
   mkdirSync2(out);
-  execFileSync(tar, ["-xf", zipPath, "-C", out]);
+  zipExtract(zipPath, out);
   return out;
 }
 async function installAddons(names, version) {
@@ -669,7 +737,7 @@ async function installAddons(names, version) {
   const byName = new Map(list.map((a) => [a.name, a]));
   for (const n of names) if (!byName.has(n)) throw new Error("Unknown addon: " + n);
   if (names.length === 0) return { paths: [], via: live ? "blender" : "files", notes: [] };
-  const tmp = mkdtempSync(join2(tmpdir(), "team-addons-"));
+  const tmp = mkdtempSync(join3(tmpdir(), "team-addons-"));
   try {
     const destRoot = live ? live.addonsPath : addonsDir(version);
     mkdirSync2(destRoot, { recursive: true });
@@ -681,13 +749,13 @@ async function installAddons(names, version) {
       const folder = folderOf(entry);
       let src;
       if (entry.zip) {
-        src = join2(await fetchZip(entry.zip, folder, tmp), folder);
+        src = join3(await fetchZip(entry.zip, folder, tmp), folder);
       } else {
         repoRoot ??= await fetchRepo(ADDONS_ZIP, tmp);
-        src = join2(repoRoot, "addons", name);
+        src = join3(repoRoot, "addons", name);
       }
-      if (!existsSync2(src)) throw new Error("Addon folder not found: " + name);
-      const dest = join2(destRoot, folder);
+      if (!existsSync3(src)) throw new Error("Addon folder not found: " + name);
+      const dest = join3(destRoot, folder);
       rmSync2(dest, { recursive: true, force: true });
       cpSync(src, dest, { recursive: true });
       paths.push(dest);
@@ -747,8 +815,8 @@ async function uninstallSkills(names, target) {
   for (const n of names) if (!allowed.has(n)) throw new Error("Unknown skill: " + n);
   const removed = [];
   for (const name of names) {
-    const dest = join2(skillsDir(target), name);
-    if (existsSync2(dest)) {
+    const dest = join3(skillsDir(target), name);
+    if (existsSync3(dest)) {
       removeFolder(dest);
       removed.push(dest);
     }
@@ -767,8 +835,8 @@ async function uninstallAddons(names, version) {
   const paths = [];
   for (const name of names) {
     const folder = folderOf(byName.get(name));
-    const dest = join2(destRoot, folder);
-    if (!existsSync2(dest)) continue;
+    const dest = join3(destRoot, folder);
+    if (!existsSync3(dest)) continue;
     if (live) {
       await blenderRun(
         [
@@ -902,7 +970,7 @@ function clearPendingCache() {
 var reply = (text, isError = false) => ({ text, isError });
 function skillInfo(dir) {
   try {
-    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync3(join3(dir, "SKILL.md"), "utf8"));
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync3(join4(dir, "SKILL.md"), "utf8"));
     const get = (k) => new RegExp("^" + k + "[ 	]*:[ 	]*(.*)$", "m").exec(m?.[1] ?? "")?.[1].trim().replace(/^['"]|['"]$/g, "") ?? "";
     return { description: get("description").slice(0, 200), author: get("author"), version: get("version").slice(0, 40) };
   } catch {
@@ -913,35 +981,35 @@ async function localItems() {
   const team = await teamNames();
   const out = [];
   const seen = /* @__PURE__ */ new Set();
-  const home = homedir3().split("\\").join("/");
+  const home = toSlash(homedir4());
   const byName = /* @__PURE__ */ new Map();
   const seenReal = /* @__PURE__ */ new Set();
   for (const root of skillDirs()) {
     for (const name of listDirs(root)) {
-      const dir = join3(root, name);
-      if (!NAME_RE.test(name) || !existsSync3(join3(dir, "SKILL.md"))) continue;
+      const dir = join4(root, name);
+      if (!NAME_RE.test(name) || !existsSync4(join4(dir, "SKILL.md"))) continue;
       let real = dir;
       try {
         real = realpathSync(dir);
       } catch {
       }
-      if (seenReal.has(real.toLowerCase())) continue;
-      seenReal.add(real.toLowerCase());
+      if (seenReal.has(pathKey(real))) continue;
+      seenReal.add(pathKey(real));
       const hash = hashDir(dir);
       const list = byName.get(name) ?? [];
       const same = list.find((i) => i.hash === hash);
-      const path = dir.split("\\").join("/");
+      const path = toSlash(dir);
       if (same) {
         (same.copies ??= []).push(path);
         continue;
       }
       let mtime = 0;
       try {
-        mtime = statSync2(join3(dir, "SKILL.md")).mtimeMs;
+        mtime = statSync2(join4(dir, "SKILL.md")).mtimeMs;
       } catch {
       }
-      const rootSlash = root.split("\\").join("/");
-      const source = rootSlash.toLowerCase().startsWith(home.toLowerCase()) ? "~" + rootSlash.slice(home.length) : rootSlash;
+      const rootSlash = toSlash(root);
+      const source = pathKey(rootSlash).startsWith(pathKey(home)) ? "~" + rootSlash.slice(home.length) : rootSlash;
       const item = { kind: "skill", name, path, ...skillInfo(dir), shared: team.skills.has(name), hash, source, mtime };
       list.push(item);
       byName.set(name, list);
@@ -951,11 +1019,11 @@ async function localItems() {
   for (const list of byName.values()) if (list.length > 1) for (const i of list) i.variants = list.length;
   for (const root of await addonRoots()) {
     for (const name of listDirs(root)) {
-      const dir = join3(root, name);
+      const dir = join4(root, name);
       if (!NAME_RE.test(name) || seen.has("addon:" + name)) continue;
-      if (!existsSync3(join3(dir, "__init__.py")) && !existsSync3(join3(dir, "blender_manifest.toml"))) continue;
+      if (!existsSync4(join4(dir, "__init__.py")) && !existsSync4(join4(dir, "blender_manifest.toml"))) continue;
       seen.add("addon:" + name);
-      out.push({ kind: "addon", name, path: dir.split("\\").join("/"), description: "", author: "", shared: team.addons.has(name) });
+      out.push({ kind: "addon", name, path: toSlash(dir), description: "", author: "", shared: team.addons.has(name) });
     }
   }
   return out;
@@ -985,10 +1053,10 @@ async function runContribute(input) {
   if (input.path) {
     if (!isAbsolute2(input.path)) return reply("path ph\u1EA3i l\xE0 \u0111\u01B0\u1EDDng d\u1EABn tuy\u1EC7t \u0111\u1ED1i t\u1EDBi th\u01B0 m\u1EE5c skill/addon.", true);
     const p = resolve(input.path);
-    if (!existsSync3(p) || !statSync2(p).isDirectory()) return reply(`Kh\xF4ng th\u1EA5y th\u01B0 m\u1EE5c: ${p}`, true);
+    if (!existsSync4(p) || !statSync2(p).isDirectory()) return reply(`Kh\xF4ng th\u1EA5y th\u01B0 m\u1EE5c: ${p}`, true);
     src = p;
     if (!name) name = basename(p);
-    const ok = kind === "skill" ? existsSync3(resolve(p, "SKILL.md")) : existsSync3(resolve(p, "__init__.py")) || existsSync3(resolve(p, "blender_manifest.toml"));
+    const ok = kind === "skill" ? existsSync4(resolve(p, "SKILL.md")) : existsSync4(resolve(p, "__init__.py")) || existsSync4(resolve(p, "blender_manifest.toml"));
     if (!ok) {
       return reply(kind === "skill" ? "Th\u01B0 m\u1EE5c n\xE0y kh\xF4ng c\xF3 SKILL.md." : "Th\u01B0 m\u1EE5c n\xE0y kh\xF4ng c\xF3 __init__.py ho\u1EB7c blender_manifest.toml.", true);
     }
@@ -1068,7 +1136,7 @@ function patchFrontMatter(text, name, author) {
 var recentSends = /* @__PURE__ */ new Map();
 async function webContribute(input) {
   if (!input.confirm) return webContributeOnce(input);
-  const key = String(input.path ?? "").split("\\").join("/");
+  const key = toSlash(String(input.path ?? ""));
   const prev = recentSends.get(key);
   if (prev && Date.now() - prev.at < 12e4) return prev.result;
   const result = webContributeOnce(input);
@@ -1078,7 +1146,7 @@ async function webContribute(input) {
   return r;
 }
 async function webContributeOnce(input) {
-  const wanted = String(input.path ?? "").split("\\").join("/");
+  const wanted = toSlash(String(input.path ?? ""));
   const it = (await localItems()).find((x) => x.path === wanted);
   if (!it) return { ok: false, error: "M\u1EE5c n\xE0y kh\xF4ng n\u1EB1m trong danh s\xE1ch qu\xE9t tr\xEAn m\xE1y. T\u1EA3i l\u1EA1i trang r\u1ED3i th\u1EED l\u1EA1i." };
   if (it.shared) return { ok: false, error: "M\u1EE5c n\xE0y \u0111\xE3 c\xF3 trong kho chung." };
@@ -1087,13 +1155,13 @@ async function webContributeOnce(input) {
     let src = it.path;
     const author = String(input.author ?? "").trim().slice(0, 80);
     if (it.kind === "skill") {
-      const text = readFileSync3(join3(src, "SKILL.md"), "utf8");
+      const text = readFileSync3(join4(src, "SKILL.md"), "utf8");
       const fixed = patchFrontMatter(text, it.name, author);
       if (fixed !== text) {
-        tmp = mkdtempSync2(join3(tmpdir2(), "team-contrib-"));
-        const dest = join3(tmp, it.name);
+        tmp = mkdtempSync2(join4(tmpdir2(), "team-contrib-"));
+        const dest = join4(tmp, it.name);
         cpSync2(src, dest, { recursive: true });
-        writeFileSync3(join3(dest, "SKILL.md"), fixed);
+        writeFileSync3(join4(dest, "SKILL.md"), fixed);
         src = dest;
       }
     }
@@ -1228,23 +1296,16 @@ async function removeItem(kind, name) {
 
 // server/updater.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync4 } from "node:fs";
-import { homedir as homedir4 } from "node:os";
-import { join as join4 } from "node:path";
+import { homedir as homedir5 } from "node:os";
+import { join as join5 } from "node:path";
 var STARTED_AT = Date.now();
-var OPT_OUT = join4(homedir4(), ".team-skills", "no-auto-update");
-function paseoCommand() {
-  if (process.platform === "win32") {
-    const p = join4(process.env.LOCALAPPDATA ?? "", "Programs", "Paseo", "resources", "bin", "paseo.cmd");
-    return existsSync4(p) ? `"${p}"` : null;
-  }
-  return "paseo";
-}
+var OPT_OUT = join5(homedir5(), ".team-skills", "no-auto-update");
 function runUpdate() {
-  const cmd = paseoCommand();
-  if (!cmd) return { ok: false, error: "Kh\xF4ng t\xECm th\u1EA5y l\u1EC7nh paseo tr\xEAn m\xE1y n\xE0y (c\xF3 th\u1EC3 kh\xF4ng ch\u1EA1y qua Paseo). H\xE3y d\xF9ng n\xFAt Copy l\u1EDDi nh\u1EDD c\xE0i \u1EDF \u0111\u1EA7u trang." };
+  const paseo = findPaseo();
+  if (!paseo) return { ok: false, error: "Kh\xF4ng t\xECm th\u1EA5y l\u1EC7nh paseo tr\xEAn m\xE1y n\xE0y (c\xF3 th\u1EC3 kh\xF4ng ch\u1EA1y qua Paseo). H\xE3y d\xF9ng n\xFAt Copy l\u1EDDi nh\u1EDD c\xE0i \u1EDF \u0111\u1EA7u trang." };
+  const args = ["plugin", "update", "team-skills", "--yes"];
   try {
-    const child = spawn(`${cmd} plugin update team-skills --yes`, { shell: true, detached: true, stdio: "ignore", windowsHide: true });
+    const child = process.platform === "win32" ? spawn(`"${paseo}" ${args.join(" ")}`, { shell: true, detached: true, stdio: "ignore", windowsHide: true }) : spawn(paseo, args, { detached: true, stdio: "ignore" });
     child.on("error", () => {
     });
     child.unref();
@@ -1332,7 +1393,7 @@ async function handle(req, res) {
   }
   if (req.method === "GET" && path === "/local") {
     try {
-      return send(res, 200, { ok: true, items: await localItems(), scanned: skillDirs().map((d) => d.split("\\").join("/")) });
+      return send(res, 200, { ok: true, items: await localItems(), scanned: skillDirs().map(toSlash) });
     } catch (e) {
       return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
     }

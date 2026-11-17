@@ -232,7 +232,8 @@ export function checkContribution(kind: Kind, name: string, src: string): Checke
       for (const [re, label] of SECRET_PATTERNS) {
         if (re.test(text)) err(`${f.rel}: có vẻ chứa ${label}. Hãy xóa trước khi gửi.`);
       }
-      const abs = /\b[A-Za-z]:[\/](?!Windows\b|Program Files\b)[^\s"'`)\]]{3,}/.exec(text);
+      // A drive path (D:/...) or a personal home folder (/home/name/..., /Users/name/...) only works on the author's machine.
+      const abs = /\b[A-Za-z]:[\/](?!Windows\b|Program Files\b)[^\s"'`)\]]{3,}|(?<![\w.~-])\/(?:home|Users)\/[^\s"'`)\]\/]+\/[^\s"'`)\]]{2,}/.exec(text);
       if (abs) warn(`${f.rel}: có đường dẫn riêng của máy bạn (ví dụ ${abs[0].slice(0, 60)}). Nên thay bằng đường dẫn chung hoặc để skill hỏi người dùng.`);
     }
   }

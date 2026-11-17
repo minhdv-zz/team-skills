@@ -18,6 +18,7 @@ import { listPending, reviewPr } from "./review";
 import { isOwner, removeItem } from "./remove";
 import { runUpdate, STARTED_AT } from "./updater";
 import { skillDirs } from "./contribute";
+import { toSlash } from "./platform";
 import { localItems, runContribute, runListLocal, runLogout, webContribute, type ContributeInput, type WebContributeInput } from "./agent";
 
 export const PORT = 47653;
@@ -109,7 +110,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
   if (req.method === "GET" && path === "/local") {
     try {
-      return send(res, 200, { ok: true, items: await localItems(), scanned: skillDirs().map((d) => d.split("\\").join("/")) });
+      return send(res, 200, { ok: true, items: await localItems(), scanned: skillDirs().map(toSlash) });
     } catch (e) {
       return send(res, 200, { ok: false, error: e instanceof Error ? e.message : String(e) });
     }

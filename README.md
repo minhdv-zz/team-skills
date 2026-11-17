@@ -26,7 +26,8 @@ Các plugin: `copymau-hoidz`, `export-hoidz`, `tb-hoidz`.
 Cập nhật khi có bản mới: `/plugin` → update.
 (Repo private thì máy phải đăng nhập Git có quyền đọc repo.)
 
-### Cách 2: một dòng PowerShell (nhanh nhất, không cần git)
+### Cách 2: một dòng lệnh (nhanh nhất, không cần git)
+**Windows (PowerShell)**
 Dán vào PowerShell, thay `copymau-hoidz` bằng tên skill cần cài:
 ```
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.ps1))) copymau-hoidz
@@ -34,6 +35,14 @@ Dán vào PowerShell, thay `copymau-hoidz` bằng tên skill cần cài:
 - Cài nhiều skill: thêm tên phía sau (`... copymau-hoidz tb-hoidz`).
 - Cài tất cả: thêm `-All`. Xem danh sách: thêm `-List`.
 - Skill được chép vào `%USERPROFILE%\.claude\skills`. Mở lại Claude Code để nhận skill mới.
+- Cập nhật skill: chạy lại đúng dòng đó.
+
+**Linux / macOS (Terminal)**: cần `curl` (hoặc `wget`) và `unzip` (hoặc `python3`).
+```
+curl -fsSL https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.sh | bash -s -- copymau-hoidz
+```
+- Cài nhiều skill: thêm tên phía sau. Cài tất cả: `-- --all`. Xem danh sách: `-- --list`.
+- Mặc định chép vào `~/.claude/skills`. Đổi nơi cài bằng `--dest`, ví dụ `--dest ~/.claude-api/skills` hoặc `--dest ~/.codex/skills`.
 - Cập nhật skill: chạy lại đúng dòng đó.
 
 ### Cách 3: trang web + plugin Paseo (chọn trên web, plugin cài hộ)
@@ -44,7 +53,8 @@ Dán vào PowerShell, thay `copymau-hoidz` bằng tên skill cần cài:
 
 ## Yêu cầu môi trường
 - Skill Blender cần Blender MCP; skill Unity cần Unity MCP (`com.coplaydev.unity-mcp`).
-- Một số skill ghi sẵn đường dẫn dự án `D:\Horus\pirate-wars\...`. Máy khác để project ở chỗ khác thì sửa đường dẫn tương ứng.
+- Plugin Paseo chạy được trên Windows, Linux và macOS. Cần `unzip` (hoặc `python3`) trên Linux để giải nén. Addon Blender được chép vào `%APPDATA%\Blender Foundation\Blender\<ver>\scripts\addons` (Windows), `~/.config/blender/<ver>/scripts/addons` (Linux; cũng nhận bản Flatpak/Snap) hoặc `~/Library/Application Support/Blender/<ver>/scripts/addons` (macOS). Khi Blender đang mở và có Blender MCP thì plugin hỏi thẳng Blender nên không phụ thuộc hệ điều hành.
+- Một số skill còn ghi sẵn đường dẫn kiểu Windows (`D:\Horus\pirate-wars\...`, `D:\AI - Dang\...`). Máy khác (Linux/macOS) để project ở chỗ khác thì sửa đường dẫn tương ứng. `export_hoidz` đã tự lấy thư mục project từ Unity MCP.
 
 ## Quy tắc đóng góp
 - Mỗi skill một plugin: `plugins/<tên>/skills/<tên>/SKILL.md` + `plugins/<tên>/.claude-plugin/plugin.json`, và thêm vào `.claude-plugin/marketplace.json`. Giữ hậu tố tên người để khỏi trùng tên.

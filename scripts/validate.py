@@ -6,7 +6,7 @@ Checks (plugins/<name>/skills/<name>/):
   - no executables / installers, no oversized files
   - no obvious secrets (tokens, private keys)
   - every .json file parses
-Warnings (do not fail): personal absolute paths such as C:\\Users\\...
+Warnings (do not fail): personal absolute paths such as C:\\Users\\... or /home/<name>/...
 """
 import json
 import os
@@ -105,6 +105,8 @@ def check_plugin(name):
                         err(f"{r}: looks like it contains a {label}. Remove it before merging")
                 if re.search(r"[A-Za-z]:\\Users\\[^\\\s]+\\", text):
                     warn(f"{r}: contains a personal absolute path (C:\\Users\\...). Prefer a relative or generic path")
+                elif re.search(r"(?<![\w.~-])/(?:home|Users)/[^/\s\"'`)\]]+/\S", text):
+                    warn(f"{r}: contains a personal absolute path (/home/<name>/... or /Users/<name>/...). Prefer a relative or generic path")
 
 
 def main():

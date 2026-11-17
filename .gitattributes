@@ -1,0 +1,4 @@
+# Scripts run on Linux/macOS: a CRLF would break the shebang line ("python3\r").
+*.sh  text eol=lf
+*.py  text eol=lf
+*.mjs text eol=lf

@@ -24,8 +24,9 @@ Sau đó kiểm tra trong scene bằng `mcp__blender__execute_blender_code`:
 - Nếu `scene.act.export_path` đã có đường dẫn cũ: đưa đường dẫn đó ra hỏi người dùng "dùng đường dẫn này hay đổi?" và **chờ người dùng xác nhận** hoặc gửi đường dẫn mới. Không tự dùng khi chưa được xác nhận.
 - Nếu chưa có đường dẫn cũ: hỏi người dùng gửi đường dẫn.
 - **Luôn hỏi bằng tool `AskUserQuestion`** (hiện ô cho người dùng chọn), không hỏi bằng chữ thường. Dự án hiện tại (pirate-wars) có **2 thư mục xuất hay dùng cố định**, luôn đưa cả 2 làm lựa chọn:
-  - `D:\Horus\pirate-wars\Assets\3D_kho\cannon\mesh\g` — cho mesh cannon `_g` (cannon_t101_g…).
-  - `D:\Horus\pirate-wars\Assets\3D_kho\Ship\model` — cho ship (ship_201…).
+  - `<ROOT>/Assets/3D_kho/cannon/mesh/g` — cho mesh cannon `_g` (cannon_t101_g…).
+  - `<ROOT>/Assets/3D_kho/Ship/model` — cho ship (ship_201…).
+  `<ROOT>` là thư mục project pirate-wars trên máy đang chạy. Windows thường là `D:\Horus\pirate-wars`. Linux/macOS hoặc máy khác thì lấy từ Unity MCP (resource `mcpforunity://project/info`) hoặc từ `scene.act.export_path` cũ; không có thì hỏi người dùng. Ghép thành đường dẫn tuyệt đối đúng kiểu hệ điều hành (Linux/macOS dùng `/`, không có ký tự ổ đĩa) trước khi đưa vào lựa chọn.
   Đánh dấu **Recommended** cho thư mục hợp với tên mesh (`cannon_*_g` → `cannon\mesh\g`, `ship_*` → `Ship\model`); nếu không rõ thì Recommended là đường dẫn cũ trong `scene.act.export_path` nếu trùng 1 trong 2. Ghi đủ đường dẫn trong description. Nếu đường dẫn cũ khác cả 2 thư mục trên thì thêm nó làm lựa chọn thứ 3 (tối đa 4 lựa chọn). Người dùng tự gõ đường dẫn khác qua ô "Other".
 - **Chưa được người dùng xác nhận/cung cấp đường dẫn thì tuyệt đối không chạy bước 4** (không gọi `multi_fbx_export`).
 - Thư mục phải tồn tại; nếu chưa có thì hỏi người dùng có muốn tạo không.
@@ -87,7 +88,7 @@ with bpy.context.temp_override(window=win, area=area, region=region):
 
 ## 6. Đặt Import Settings trong Unity (giống file mẫu)
 
-File mẫu: `Assets/3D_kho/cannon/mesh/cannon_t101.fbx` (project `D:\Horus\pirate-wars`). Mọi FBX vừa xuất phải có Import Settings giống file này:
+File mẫu: `Assets/3D_kho/cannon/mesh/cannon_t101.fbx` (project pirate-wars, thư mục gốc `<ROOT>` như ở mục 2). Mọi FBX vừa xuất phải có Import Settings giống file này:
 
 | Tab | Thiết lập | Giá trị |
 |---|---|---|

@@ -190,7 +190,7 @@
           <div id="localList"></div>
           <details class="alt">
             <summary>Skill nằm trong thư mục dự án, không thấy trong danh sách?</summary>
-            <div class="fine" style="margin:8px 0">Trang đang quét: <span id="scannedDirs">...</span><br>Muốn quét thêm thư mục, tạo file <code>%USERPROFILE%\.team-skills\config.json</code> dạng <code>{"skillDirs": ["D:/AI/skills"], "addonDirs": []}</code> rồi tải lại trang. Cùng tên mà nội dung khác nhau thì hiện thành nhiều dòng; thêm dòng <code>version: 1.1</code> vào đầu SKILL.md để dễ phân biệt.</div>
+            <div class="fine" style="margin:8px 0">Trang đang quét: <span id="scannedDirs">...</span><br>Muốn quét thêm thư mục, tạo file <code>~/.team-skills/config.json</code> (Windows: <code>%USERPROFILE%\.team-skills\config.json</code>) dạng <code>{"skillDirs": ["D:/AI/skills"], "addonDirs": []}</code> rồi tải lại trang. Cùng tên mà nội dung khác nhau thì hiện thành nhiều dòng; thêm dòng <code>version: 1.1</code> vào đầu SKILL.md để dễ phân biệt.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
               <select id="cKind"><option value="skill">Skill</option><option value="addon">Addon Blender</option></select>
               <input id="cWhat" placeholder="Ví dụ E:/Du_an/.claude/skills/ten_skill" style="flex:1;min-width:260px">
@@ -312,6 +312,8 @@ var RAW = 'https://raw.githubusercontent.com/minhdv-zz/team-skills/main';
 var LOCAL = 'http://127.0.0.1:47653';
 var PLUGIN_SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
 var INSTALL = '& ([scriptblock]::Create((irm ' + RAW + '/install.ps1)))';
+var INSTALL_SH = 'curl -fsSL ' + RAW + '/install.sh | bash -s --';
+var IS_WIN = /^win/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
 var ITEMS = { skills: [], addons: [] };   // from skills.json / addons.json
 var STAR_API = 'https://team-skills-stars.stars-worker.workers.dev';     // URL của Cloudflare Worker (stars-worker). Để trống thì ẩn nút sao.
 var STARS = {};        // name -> {n:số sao, mine:bool}
@@ -699,12 +701,13 @@ function standaloneLines(){
 function buildPluginPrompt(item){
   var SRC = 'git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin';
   var winPaseo = '%LOCALAPPDATA%\\Programs\\Paseo\\resources\\bin\\paseo.cmd';
+  var nixPaseo = '/opt/Paseo/resources/bin/paseo (Linux) hoặc /Applications/Paseo.app/Contents/Resources/bin/paseo (macOS)';
   var ORIGIN = 'https://minhdv-zz.github.io';
   var kindWord = item ? (item.kind === 'skill' ? 'skill' : 'addon Blender') : '';
   var L = [];
   L.push('Hãy giúp tôi cài (hoặc cập nhật) Team Skills cho trang https://minhdv-zz.github.io/team-skills/' + (item ? ', rồi cài luôn ' + kindWord + ' "' + item.title + '" (tên ' + item.name + ')' : '') + ' , dùng được với app AI mà tôi đang dùng. Làm đúng các bước sau, nói chuyện với tôi bằng tiếng Việt, ngắn gọn. Tôi đã chủ động dán lời nhờ này nên coi như đã đồng ý cài, KHÔNG cần hỏi lại (trừ chỗ có ghi hỏi). Dùng cú pháp đúng với shell đang chạy (PowerShell, cmd, bash...); trên PowerShell gọi curl.exe thay vì curl (curl là bí danh của Invoke-WebRequest).');
   L.push('');
-  L.push('Bước 1 - chọn cách cài theo app tôi đang dùng. Chạy "paseo --version" (Windows: nếu không có lệnh paseo thì thử đường dẫn đầy đủ ' + winPaseo + ' thay cho "paseo" ở mọi lệnh Cách A).');
+  L.push('Bước 1 - chọn cách cài theo app tôi đang dùng. Chạy "paseo --version" (nếu không có lệnh paseo thì thử đường dẫn đầy đủ thay cho "paseo" ở mọi lệnh Cách A. Windows: ' + winPaseo + ' ; ' + nixPaseo + ').');
   L.push('- Tìm thấy paseo và chat này đang chạy trong Paseo: dùng Cách A.');
   L.push('- Không có paseo, hoặc tôi đang dùng app khác (Claude Code, Cursor, Codex, ...): dùng Cách B.');
   L.push('- Không chắc: hỏi tôi một câu duy nhất, đang dùng app nào.');
@@ -817,7 +820,7 @@ function render(){
   $('dot').className = 'dot ' + (on ? 'on' : 'off');
   $('status').textContent = !on ? (PERM_DENIED ? 'Trình duyệt đang CHẶN kết nối tới máy này. Bấm biểu tượng ổ khóa cạnh địa chỉ trang, vào quyền của trang web, bật "Truy nhập ứng dụng và dịch vụ khác trên thiết bị này" rồi tải lại trang.' : 'Chưa kết nối plugin Paseo (làm Bước 1 ở trên).')
     : (!isSk && outdated) ? 'Team Skills trên máy này là bản cũ, chưa hỗ trợ addon. Cập nhật: paseo plugin update team-skills --yes (bản độc lập: tải lại file team-skills.mjs)'
-    : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (%APPDATA%\Blender Foundation\Blender). Mở Blender một lần rồi tải lại trang.'
+    : noBlender ? 'Đã kết nối Paseo nhưng chưa thấy thư mục cấu hình Blender (Windows: %APPDATA%\\Blender Foundation\\Blender; Linux: ~/.config/blender; macOS: ~/Library/Application Support/Blender). Mở Blender một lần rồi tải lại trang.'
     : (STATE && !canUninstall) ? 'Đã kết nối Team Skills nhưng là bản cũ, chưa gỡ cài được. Cập nhật: paseo plugin update team-skills --yes (bản độc lập: tải lại file team-skills.mjs)'
     : (!isSk && STATE.blender && STATE.blender.live) ? 'Đã kết nối Blender đang mở (' + vs[0] + '): addon sẽ được cài và bật trực tiếp.'
     : 'Đã kết nối Team Skills trên máy này.';
@@ -868,9 +871,16 @@ function installOne(i){
     $('mQuickT').textContent = 'AI sẽ cài Team Skills (nếu chưa có) và cài luôn "' + s.title + '" cho bạn, không cần làm tay.';
     $('mTitle').textContent=s.title; $('mId').textContent=s.name;
     if(TAB==='skills'){
-      var dest = target()==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : target()==='codex' ? ' -Dest "$env:USERPROFILE\\.codex\\skills"' : '';
-      $('mText').textContent='Hoặc dán lệnh này vào PowerShell để chỉ cài skill (không cần plugin):';
-      $('mCmd').textContent = INSTALL + ' ' + s.name + dest;
+      var tg = target();
+      if(IS_WIN){
+        var dest = tg==='claude-api' ? ' -Dest "$env:USERPROFILE\\.claude-api\\skills"' : tg==='codex' ? ' -Dest "$env:USERPROFILE\\.codex\\skills"' : '';
+        $('mText').textContent='Hoặc dán lệnh này vào PowerShell để chỉ cài skill (không cần plugin):';
+        $('mCmd').textContent = INSTALL + ' ' + s.name + dest;
+      } else {
+        var destSh = tg==='claude-api' ? ' --dest "$HOME/.claude-api/skills"' : tg==='codex' ? ' --dest "${CODEX_HOME:-$HOME/.codex}/skills"' : '';
+        $('mText').textContent='Hoặc dán lệnh này vào Terminal (Linux/macOS) để chỉ cài skill (không cần plugin):';
+        $('mCmd').textContent = INSTALL_SH + ' ' + s.name + destSh;
+      }
     } else {
       $('mText').textContent='Hoặc tải thư mục addon từ link này rồi chép vào thư mục scripts/addons của Blender:';
       $('mCmd').textContent='https://github.com/minhdv-zz/team-blender-addons/tree/main/addons/' + s.name;
