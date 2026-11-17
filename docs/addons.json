@@ -76,7 +76,7 @@
     "needs": [
       "Tải thủ công"
     ],
-    "link": "https://drive.horusvn.com/s/eAM9CawW8Tfkonb",
+    "link": "https://drive.horusvn.com/s/2PQj5659agCEYjS",
     "author": "glukoz",
     "img": "img/uvpackmaster4.jpg",
     "desc_full": "Xếp (pack) UV island tối ưu diện tích, hỗ trợ nhiều UDIM. Bản 4.1.3.\n\nGói tải trên Drive nội bộ là file RAR chứa thư mục uvpackmaster4 (đã gồm cả addon và engine, khoảng 9.000 file), nên plugin Paseo không cài tự động được. Cài tay:\n1. Tải về và giải nén, được thư mục uvpackmaster4.\n2. Chép nguyên thư mục uvpackmaster4 vào thư mục addon của Blender: %APPDATA%\\Blender Foundation\\Blender\\<phiên bản>\\scripts\\addons (ví dụ phiên bản 5.2).\n3. Mở Blender, vào Edit > Preferences > Add-ons, tick bật UVPackmaster 4.\n4. Nếu báo chưa có engine thì bấm Set Engine Path và trỏ tới thư mục engine4 nằm trong thư mục uvpackmaster4 vừa chép.\n5. Kích hoạt giấy phép của bạn (cần giấy phép hợp lệ của hãng).\n\nNếu Windows Defender chặn một số file engine thì cho phép chúng.",
