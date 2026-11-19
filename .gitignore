@@ -3,3 +3,5 @@
 *.zip
 Thumbs.db
 .DS_Store
+.wrangler/
+.dev.vars

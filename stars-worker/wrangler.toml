@@ -5,3 +5,11 @@ compatibility_date = "2026-01-01"
 [[kv_namespaces]]
 binding = "STARS"
 id = "4b2031397a48406982d1a24013792d57"
+
+# Giới hạn số request /tripo/* mỗi IP (Cloudflare Rate Limiting, đếm nguyên tử): 60 request mỗi 60 giây.
+[[ratelimits]]
+name = "TRIPO_RL"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 60
+  period = 60
