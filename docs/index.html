@@ -133,6 +133,7 @@
     <button class="tab on" id="tab-skills" onclick="setTab('skills')">Skill</button>
     <button class="tab" id="tab-addons" onclick="setTab('addons')">Addon Blender</button>
     <button class="tab" id="tab-contrib" onclick="setTab('contrib')">Đóng góp</button>
+    <button class="tab" id="tab-tripo" onclick="setTab('tripo')">Tài khoản Tripo</button>
     <button class="tab" id="tab-review" onclick="setTab('review')">Chờ duyệt<span class="cnt" id="cnt" style="display:none"></span></button>
   </div>
   <div class="main-col">
@@ -173,6 +174,36 @@
 
 
   <div class="grid" id="grid"></div>
+  </div>
+  <div id="tripo" style="display:none">
+    <div id="tpGate" class="card" style="border-color:var(--acc);gap:12px;max-width:520px">
+      <h3 style="font-size:20px">Tài khoản Tripo của nhóm</h3>
+      <div style="color:var(--mut)">Nhập mật khẩu nhóm để xem. Chưa có mật khẩu thì hỏi người quản lý nhóm.</div>
+      <label>Tên của bạn (để mọi người biết ai đang dùng)<br><input id="tpWhoIn" maxlength="40" placeholder="Ví dụ: Kiên" style="width:100%;margin-top:6px"></label>
+      <label>Mật khẩu nhóm<br><input id="tpPassIn" type="password" autocomplete="off" style="width:100%;margin-top:6px"></label>
+      <div id="tpErr" class="warnbox" style="display:none"></div>
+      <div><button class="pri big" id="tpGo">Xem tài khoản</button></div>
+    </div>
+    <div id="tpMain" style="display:none">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+        <button class="pri big" id="tpClaim">Lấy tài khoản</button>
+        <span class="fine" style="margin:0">Hệ thống chọn tài khoản còn dùng được và đánh dấu bạn đang dùng. Hết credit thì bấm <b>Đã hết</b>. Tài khoản &ldquo;đang dùng&rdquo; quá 12 giờ sẽ được cấp lại cho người khác.</span>
+        <span style="margin-left:auto;display:flex;gap:8px;align-items:center"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Khóa lại</button></span>
+      </div>
+      <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
+      <div class="card" style="margin-bottom:14px"><h3>Tháng này và 5 tháng trước</h3><div id="tpChart"></div></div>
+      <div id="tpList"></div>
+      <details class="help" style="margin-top:14px">
+        <summary>Thêm tài khoản mới</summary>
+        <p>Mỗi dòng một tài khoản: <code>email mật khẩu</code>. Mật khẩu có dấu cách thì ngăn bằng dấu <code>|</code>, ví dụ <code>a@gmail.com | mat khau | ghi chú</code>. Mật khẩu được mã hóa trên server, không nằm trong repo.</p>
+        <textarea id="tpAdd" rows="5" style="width:100%;font:inherit;background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px" placeholder="email1@gmail.com matkhau1&#10;email2@gmail.com matkhau2"></textarea>
+        <div style="margin-top:8px"><button class="pri" id="tpAddBtn">Thêm</button></div>
+      </details>
+      <details class="help" style="margin-top:14px">
+        <summary>Nhật ký gần đây</summary>
+        <div id="tpLog" class="fine" style="font-size:13.5px"></div>
+      </details>
+    </div>
   </div>
   <div id="review" style="display:none">
     <h2 style="margin:0 0 6px">Đóng góp chờ duyệt</h2>
@@ -297,6 +328,15 @@
       <button id="cfCancel">Hủy</button>
       <button id="cfOk" class="danger">Đồng ý</button>
     </div>
+  </div>
+</div>
+<div class="overlay" id="tpm" onclick="if(event.target===this)tpCloseCred()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tpmT">
+    <h2 id="tpmT">Tài khoản Tripo</h2>
+    <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
+    <div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
+    <div class="fine" style="margin:0">Mật khẩu</div><pre id="tpmPass"></pre>
+    <div class="row"><button onclick="tpCloseCred()">Đóng</button><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Mở Tripo Studio</a><button class="pri" id="tpmCopy">Copy mật khẩu</button></div>
   </div>
 </div>
 <div class="overlay" id="ct">
@@ -506,16 +546,139 @@ function copy(text, btn){
     var o=btn.textContent; btn.textContent='Đã copy'; setTimeout(function(){btn.textContent=o},1500);
   });
 }
+// ===== Tab Tài khoản Tripo =====
+var TP = { accs: [], stats: null, busy: false };
+function tpPass(){ return sessionStorage.getItem('tripoPass') || ''; }
+function tpWho(){ return localStorage.getItem('tripoWho') || ''; }
+function tpCall(op, body){
+  body = body || {}; body.who = tpWho();
+  return fetch(STAR_API + '/tripo/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pass': tpPass() }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
+      if(!r.ok){ var e = new Error(j.error || ('Lỗi ' + r.status)); e.status = r.status; throw e; }
+      return j; }); },
+      function(){ throw new Error('Không kết nối được server'); });
+}
+function tpAgo(t){
+  if(!t) return '';
+  var m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if(m < 1) return 'vừa xong'; if(m < 60) return m + ' phút trước';
+  var h = Math.round(m / 60); if(h < 24) return h + ' giờ trước';
+  return Math.round(h / 24) + ' ngày trước';
+}
+function tpShowGate(msg){
+  TP.accs = []; TP.stats = null; $('tpList').innerHTML = ''; $('tpLog').innerHTML = ''; tpCloseCred();
+  $('tpGate').style.display = ''; $('tpMain').style.display = 'none';
+  if(!$('tpWhoIn').value) $('tpWhoIn').value = tpWho();
+  $('tpErr').style.display = msg ? '' : 'none'; $('tpErr').textContent = msg || '';
+}
+function tripoInit(){
+  if(!STAR_API){ tpShowGate('Chưa cấu hình server.'); return; }
+  if(!tpPass()){ tpShowGate(''); return; }
+  tpLoad();
+}
+function tpLoad(){
+  return tpCall('list').then(tpApply).catch(function(e){
+    tpFail(e);
+  });
+}
+function tpApply(j){
+  if(j.accounts) TP.accs = j.accounts;
+  if(j.stats) TP.stats = j.stats;
+  $('tpGate').style.display = 'none'; $('tpMain').style.display = '';
+  $('tpMe').textContent = 'Bạn: ' + tpWho();
+  tpRender();
+}
+function tpRender(){
+  var a = TP.accs, n = { ok: 0, using: 0, empty: 0 };
+  a.forEach(function(x){ n[x.status] = (n[x.status] || 0) + 1; });
+  var cur = TP.stats && TP.stats.months[0] || { emptied: 0, claimed: 0 };
+  function tile(v, l, c){ return '<div class="card" style="gap:0;padding:12px 14px"><div style="font-size:26px;font-weight:700;color:' + c + '">' + v + '</div><div class="fine" style="margin:0">' + l + '</div></div>'; }
+  $('tpTiles').innerHTML = tile(n.ok, 'Còn dùng được', 'var(--ok)') + tile(n.using, 'Đang dùng', '#e3b341') + tile(n.empty, 'Đã hết', '#ffb4ac')
+    + tile(cur.emptied, 'Hết trong tháng này', '#ffb4ac') + tile(cur.claimed, 'Lượt lấy tháng này', 'var(--text)');
+  var ms = (TP.stats ? TP.stats.months : []).slice().reverse(), mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.emptied; })));
+  $('tpChart').innerHTML = '<div style="display:flex;gap:10px;align-items:flex-end;height:120px;margin-top:8px">' + ms.map(function(m){
+    var h = Math.round(m.emptied / mx * 80);
+    return '<div style="flex:1;text-align:center"><div style="font-weight:700">' + m.emptied + '</div><div style="height:' + h + 'px;min-height:2px;background:var(--acc);border-radius:4px 4px 0 0"></div><div class="fine" style="margin:4px 0 0">' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(2, 4)) + '</div></div>';
+  }).join('') + '</div><div class="fine">Cột = số tài khoản bị đánh dấu hết trong tháng.</div>';
+  var order = { using: 0, ok: 1, empty: 2 };
+  var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
+    var chip = x.status === 'ok' ? '<span class="chip ok">Còn dùng được</span>'
+      : x.status === 'using' ? '<span class="chip wait">Đang dùng' + (x.usedBy ? ': ' + esc(x.usedBy) : '') + ' &middot; ' + tpAgo(x.usedAt) + '</span>'
+      : '<span class="chip bad">Đã hết' + (x.emptyAt ? ' &middot; ' + tpAgo(x.emptyAt) : '') + '</span>';
+    var btn = function(act, label, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + esc(x.id) + '">' + label + '</button>'; };
+    return '<div class="card" style="margin-bottom:8px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px">'
+      + '<div style="flex:1;min-width:220px"><b style="word-break:break-all">' + esc(x.email) + '</b>' + (x.note ? '<div class="fine" style="margin:0">' + esc(x.note) + '</div>' : '') + '<div style="margin-top:4px">' + chip + '</div></div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + btn('reveal', 'Xem', 'pri')
+      + (x.status === 'ok' ? btn('using', 'Đang dùng') : '') + (x.status === 'using' ? btn('ok', 'Trả lại') : '')
+      + (x.status !== 'empty' ? btn('empty', 'Đã hết') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
+  }).join('');
+  $('tpList').innerHTML = rows || '<div class="card">Chưa có tài khoản nào. Mở mục &ldquo;Thêm tài khoản mới&rdquo; bên dưới.</div>';
+  var names = { claim: 'lấy', empty: 'đánh dấu hết', add: 'thêm', del: 'xóa' };
+  var rec = TP.stats ? TP.stats.recent : [];
+  $('tpLog').innerHTML = rec.length ? rec.map(function(e){ return '<div>' + tpAgo(e.t) + ': <b>' + esc(e.who || '?') + '</b> ' + (names[e.type] || esc(e.type)) + ' ' + esc(e.email) + '</div>'; }).join('') : 'Chưa có.';
+}
+function tpCloseCred(){ $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; $('tpmPass').textContent = ''; $('tpmNote').textContent = ''; }
+function tpShowCred(email, pass, note){
+  $('tpmNote').textContent = note || '';
+  $('tpmEmail').textContent = email; $('tpmPass').textContent = pass;
+  $('tpm').classList.add('on');
+}
+function tpFail(e){ // 401: sai mật khẩu, quay lại màn nhập. 429 và lỗi khác: chỉ báo, giữ nguyên màn hình
+  if(e.status === 401){ sessionStorage.removeItem('tripoPass'); tpShowGate(e.message); }
+  else if($('tpMain').style.display === 'none'){ tpShowGate(e.message); }
+  else toast(e.message, false);
+}
+function tpGuard(fn){ // chặn bấm chồng
+  if(TP.busy) return; TP.busy = true;
+  Promise.resolve().then(fn).catch(tpFail).then(function(){ TP.busy = false; });
+}
+$('tpGo').addEventListener('click', function(){
+  var who = $('tpWhoIn').value.trim(), pw = $('tpPassIn').value;
+  if(!who){ tpShowGate('Nhập tên của bạn trước.'); return; }
+  if(!pw){ tpShowGate('Nhập mật khẩu nhóm.'); return; }
+  localStorage.setItem('tripoWho', who); sessionStorage.setItem('tripoPass', pw); $('tpPassIn').value = '';
+  tpGuard(function(){ return tpCall('list').then(tpApply); });
+});
+$('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
+$('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); tpShowGate(''); });
+$('tpClaim').addEventListener('click', function(){
+  tpGuard(function(){ return tpCall('claim').then(function(j){
+    tpShowCred(j.email, j.password, 'Đã đánh dấu bạn đang dùng tài khoản này. Dùng xong hoặc hết credit thì quay lại bấm Trả lại / Đã hết.');
+    return tpCall('list').then(tpApply).catch(function(){}); }); });
+});
+$('tpmCopy').addEventListener('click', function(){ copy($('tpmPass').textContent, this); });
+$('tpAddBtn').addEventListener('click', function(){
+  var items = $('tpAdd').value.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){
+    var p = l.split(/[|\t]/).length > 1 ? l.split(/\s*[|\t]\s*/) : l.split(/\s+/);
+    return { email: p[0], password: p[1], note: p.slice(2).join(' ') };
+  });
+  if(!items.length){ toast('Chưa nhập dòng nào', false); return; }
+  tpGuard(function(){ return tpCall('add', { items: items }).then(function(j){
+    $('tpAdd').value = ''; tpApply(j);
+    toast('Đã thêm ' + j.added + (j.skipped.length ? ', bỏ qua: ' + j.skipped.join(', ') : ''), j.added > 0); }); });
+});
+$('tripo').addEventListener('click', function(e){
+  var b = e.target.closest && e.target.closest('button[data-act]'); if(!b) return;
+  var id = b.getAttribute('data-id'), act = b.getAttribute('data-act');
+  var acc = TP.accs.filter(function(x){ return x.id === id; })[0]; if(!acc) return;
+  if(act === 'reveal') tpGuard(function(){ return tpCall('reveal', { id: id }).then(function(j){ tpShowCred(j.email, j.password, acc.note); }); });
+  else if(act === 'delete'){ if(!confirm('Xóa tài khoản ' + acc.email + ' khỏi danh sách chung? Không hoàn tác được.')) return;
+    tpGuard(function(){ return tpCall('delete', { id: id }).then(tpLoad); }); }
+  else tpGuard(function(){ return tpCall('update', { id: id, status: act }).then(tpLoad); });
+});
 function setTab(t){
   TAB=t;
   $('tab-skills').className='tab'+(t==='skills'?' on':'');
   $('tab-addons').className='tab'+(t==='addons'?' on':'');
   $('tab-contrib').className='tab'+(t==='contrib'?' on':'');
   $('tab-review').className='tab'+(t==='review'?' on':'');
-  $('main').style.display = (t==='contrib' || t==='review') ? 'none' : '';
+  $('tab-tripo').className='tab'+(t==='tripo'?' on':'');
+  $('main').style.display = (t==='contrib' || t==='review' || t==='tripo') ? 'none' : '';
   $('contrib').style.display = t==='contrib' ? '' : 'none';
   $('review').style.display = t==='review' ? '' : 'none';
+  $('tripo').style.display = t==='tripo' ? '' : 'none';
   updateBadge();
+  if(t==='tripo'){ $('sub').textContent=''; tripoInit(); return; }
   if(t==='review'){ $('sub').textContent=''; loadReview(); return; }
   if(t==='contrib'){ $('sub').innerHTML=''; updateContribLinks(); renderLocal(); loadLocal().then(function(){ if(TAB==='contrib') renderLocal(); }); return; }
   render();
@@ -984,7 +1147,7 @@ function askConfirm(title, text, okLabel, extra){
 $('cfOk').addEventListener('click', function(){ if(CF_DONE) CF_DONE(true); });
 $('cfCancel').addEventListener('click', function(){ if(CF_DONE) CF_DONE(false); });
 $('cf').addEventListener('click', function(e){ if(e.target===this && CF_DONE) CF_DONE(false); });
-document.addEventListener('keydown', function(e){ if(e.key!=='Escape') return; if(CF_DONE) CF_DONE(false); else if($('dt').classList.contains('on')) closeDetail(); });
+document.addEventListener('keydown', function(e){ if(e.key!=='Escape') return; if(CF_DONE) CF_DONE(false); else if($('tpm').classList.contains('on')) tpCloseCred(); else if($('dt').classList.contains('on')) closeDetail(); });
 
 function uninstallOne(i){
   var s = ITEMS[TAB][i];
