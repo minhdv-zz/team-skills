@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.1
+// @version      2.9.2
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -258,7 +258,8 @@
   // Chưa có ảnh menu đăng xuất thật của Tripo nên dò theo cách chung: bấm lần lượt các ảnh đại diện ở góc phải trên, thấy mục có chữ
   // đăng xuất (nhiều ngôn ngữ) thì bấm, thấy hộp xác nhận thì bấm xác nhận. Mỗi bước đều báo ở ô góc trái để biết dừng ở đâu.
   var LOGOUT_RE = /^(log\s*out|sign\s*out|logout|đăng xuất|退出登录|退出|登出|注销)$/, CONFIRM_RE = /^(confirm|ok|yes|sure|log\s*out|sign\s*out|xác nhận|đồng ý|đăng xuất|确认|确定|是|退出登录|退出)$/;
-  var lo = { on: false, t0: 0, openAt: 0, idx: 0, clickedAt: 0, cands: null };
+  var lo = { on: false, t0: 0, openAt: 0, idx: 0, clickedAt: 0, cands: null, startUrl: '', backAt: 0 };
+  function pageUrl() { return location.href.split('#')[0]; }
   function avatarCandidates() {
     var out = [], els = document.querySelectorAll('img,div,span,button,a');
     for (var i = 0; i < els.length; i++) {
@@ -269,7 +270,8 @@
       var wrap = el.closest('button,a,[role=button]') || el.parentElement;
       var hasText = !!((el.textContent || '').trim() || (wrap && (wrap.textContent || '').trim()));   // ảnh đi kèm chữ (huy hiệu "Lv.1") để xếp sau, thử cuối cùng
       var t = el.closest('button,a,[role=button]') || el;
-      if (out.indexOf(t) < 0) { t._txt = hasText; out.push(t); }
+      var ln = el.closest('a[href]'), nav = !!ln && !/^(#.*)?$/.test(ln.getAttribute('href') || '#');   // ảnh nằm trong liên kết sang trang khác (huy hiệu Lv...): bấm vào sẽ chuyển trang, xếp cuối
+      if (out.indexOf(t) < 0) { t._txt = hasText || nav; out.push(t); }
     }
     out.sort(function (a, b) {   // ảnh trơn trước (phải sang trái); ảnh có chữ đi kèm thì sau (trái sang phải, ảnh đại diện nằm trước huy hiệu)
       if (a._txt !== b._txt) return a._txt ? 1 : -1;
@@ -279,9 +281,13 @@
   }
   function logoutStep() {   // trả về 'doing' | 'gone' (đã đăng xuất) | 'fail'
     var now = Date.now();
-    if (!lo.on) { lo.on = true; lo.t0 = now; }
+    if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
     if (readCredit() === null && !findText(LOGOUT_RE)) { return 'gone'; }
     if (now - lo.t0 > 20000) return 'fail';
+    if (pageUrl() !== lo.startUrl) {   // lỡ bấm trúng thứ chuyển sang trang khác (ví dụ trang Creator Growth): quay lại đúng 1 lần mỗi 2 giây, không bấm gì thêm
+      if (now - lo.backAt > 2000) { lo.backAt = now; lo.openAt = now; say('lỡ vào trang khác, quay lại…'); try { history.back(); } catch (e) { /* bỏ qua */ } }
+      return 'doing';
+    }
     if (lo.clickedAt && now - lo.clickedAt > 500) {   // vừa bấm đăng xuất: nếu hiện hộp xác nhận thì bấm
       var cf = findText(CONFIRM_RE);
       if (cf && clickLimited('logoutok', cf)) { say('xác nhận đăng xuất…'); lo.clickedAt = now; return 'doing'; }
@@ -289,12 +295,16 @@
     var item = findText(LOGOUT_RE);
     if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; } return 'doing'; }
     if (lo.clickedAt) return 'doing';   // đã bấm đăng xuất, chờ trang đổi
-    if (now - lo.openAt > 900) {   // chưa thấy mục đăng xuất: mở menu ở ảnh đại diện kế tiếp
-      if (!lo.cands || lo.idx >= lo.cands.length) { lo.cands = avatarCandidates(); lo.idx = 0; }
+    if (now - lo.openAt > 1800) {   // chưa thấy mục đăng xuất sau 1,8 giây: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần, hết lượt thì dừng, không bấm đi bấm lại)
+      if (!lo.cands || !lo.cands.length) { lo.cands = avatarCandidates(); lo.idx = 0; }
+      if (lo.cands.length && lo.idx >= lo.cands.length) return 'fail';
       var c = lo.cands[lo.idx++];
       lo.openAt = now;
-      if (c) { say('mở menu tài khoản để đăng xuất…'); click(c); }
-      else say('đang tìm ảnh đại diện để đăng xuất…');
+      if (c) {
+        say('mở menu tài khoản để đăng xuất…');
+        try { c.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { /* bỏ qua */ }   // trang rộng hơn cửa sổ: kéo ngang cho ảnh đại diện lọt vào màn hình
+        click(c);
+      } else say('đang tìm ảnh đại diện để đăng xuất…');
     }
     return 'doing';
   }
