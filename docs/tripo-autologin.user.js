@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.1.0
+// @version      2.2.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -64,7 +64,7 @@
 
   function begin() {
 
-  var started = Date.now(), fillAt = 0, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
+  var started = Date.now(), fillAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
 
   function txt(el) { return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
   function visible(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
@@ -115,10 +115,21 @@
     }
     return null;
   }
-  function setVal(input, v) { // ô nhập của React: đặt giá trị bằng setter gốc rồi bắn sự kiện
+  function nativeSet(input, v) { // cách dự phòng: setter gốc rồi bắn sự kiện (ô nhập của React)
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, v);
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  // Giả lập gõ thật: bấm vào ô, chọn hết, chèn chữ bằng lệnh của trình duyệt (sinh đúng chuỗi sự kiện như người gõ),
+  // rồi rời ô để form kiểm tra. Không được thì dùng cách dự phòng.
+  function setVal(input, v) {
+    try {
+      input.focus();
+      input.select();
+      if (document.execCommand('insertText', false, v) && input.value === v) { input.dispatchEvent(new Event('change', { bubbles: true })); input.blur(); return; }
+    } catch (e) { /* dùng cách dự phòng */ }
+    nativeSet(input, v);
+    try { input.blur(); } catch (e) { /* bỏ qua */ }
   }
   function clickLimited(key, el) { // mỗi nút bấm tối đa 3 lần, cách nhau 2,5 giây
     var now = Date.now();
@@ -133,8 +144,15 @@
     var pw = findInput('password', /password/i), em = findInput('email', /e-?mail/i);
     if (pw && em && pw !== em) {
       if (!fillAt) { fillAt = Date.now(); say('đang điền email và mật khẩu…'); }
-      if (em.value !== cred.e) setVal(em, cred.e);   // điền lại nếu trang xóa mất
-      if (pw.value !== cred.p) setVal(pw, cred.p);
+      // điền lại nếu trang xóa mất, nhưng tối đa 3 lần mỗi ô để không giành con trỏ của bạn nếu trang cứ đổi chữ
+      if (em.value !== cred.e && typed.e < 3) { typed.e++; setVal(em, cred.e); if (em.value !== cred.e) say('ô email bị trang đổi chữ (' + em.value.length + '/' + cred.e.length + ' ký tự).'); }
+      if (pw.value !== cred.p && typed.p < 3) { typed.p++; setVal(pw, cred.p); }
+      var okE = em.value === cred.e, okP = pw.value === cred.p;
+      if (!okE || !okP) {   // chỉ bấm Continue khi cả hai ô đã đúng chữ; trang cứ đổi chữ sau 3 lần gõ thì dừng, không gửi sai
+        if ((!okE && typed.e >= 3) || (!okP && typed.p >= 3))
+          return finish('Tripo không nhận đủ email hoặc mật khẩu (email ' + em.value.length + '/' + cred.e.length + ' ký tự). Bạn nhập tay nhé.', 30000);
+        return false;
+      }
       var b = null;   // chỉ nhận nút Continue nằm cùng khối với ô mật khẩu (tổ tiên gần nhất có chứa nút)
       for (var n = pw.parentElement, k = 0; n && k < 8 && !b; n = n.parentElement, k++) b = findText(/^continue$/, n);
       if (b && !disabled(b)) { click(b); return finish('đã điền và bấm Continue.', 5000); }   // gửi đúng một lần rồi xóa thông tin
