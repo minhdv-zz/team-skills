@@ -610,6 +610,8 @@ function tripoInit(){
 }
 function tpLoad(){
   return tpCall('list').then(tpApply).catch(function(e){
+    // Tự vào bằng Gmail đã nhớ mà bị từ chối (bị bỏ khỏi danh sách...): chỉ hiện ô nhập, không báo lỗi. Lỗi chỉ hiện khi người dùng tự bấm "Xem tài khoản".
+    if(e.status === 401){ localStorage.removeItem('tripoWho'); TP.admin = false; tpShowGate(''); return; }
     tpFail(e);
   });
 }
