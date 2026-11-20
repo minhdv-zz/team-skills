@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.4.1
+// @version      2.5.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login';
-  var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 200, MAX_CLICKS = 3, RETRY_MS = 1000, POLL_MS = 100;
+  var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
   // ---------- Trên trang Team Tools ----------
   if (host === 'minhdv-zz.github.io') {
@@ -77,16 +77,18 @@
   }
 
   // Ô báo trạng thái ở góc trái trên cùng trang Tripo, đồng thời ghi vào Console. Giúp biết script đang dừng ở bước nào.
-  var badge = null;
+  var badge = null, lastMsg = '';
   function say(msg, keepMs) {
-    try { console.log('[Team Tools] ' + msg); } catch (e) { /* bỏ qua */ }
+    if (msg === lastMsg && !keepMs) return;   // cùng một thông báo thì không ghi lại (tránh nhấp nháy và tránh kích hoạt vòng lặp)
+    lastMsg = msg;
+    try { console.log('[Team Tools +' + ((Date.now() - started) / 1000).toFixed(1) + 's] ' + msg); } catch (e) { /* bỏ qua */ }
     var root = document.documentElement; if (!root) return;
     if (!badge || !badge.isConnected) {
       badge = document.createElement('div');
       badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:2147483647;background:#1c1640;color:#fff;border:1px solid #7c5cff;border-radius:8px;padding:6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:340px;pointer-events:none';
       root.appendChild(badge);
     }
-    badge.textContent = 'Team Tools: ' + msg;
+    badge.textContent = 'Team Tools (+' + ((Date.now() - started) / 1000).toFixed(1) + 's): ' + msg;
     if (keepMs) setTimeout(function () { if (badge && badge.parentNode) badge.parentNode.removeChild(badge); }, keepMs);
   }
   function disabled(el) {
@@ -133,8 +135,8 @@
   }
   function clickLimited(key, el) { // mỗi nút bấm tối đa 3 lần, cách nhau 2,5 giây
     var now = Date.now();
-    if (clicks[key] >= 3 || (lastClick[key] && now - lastClick[key] < 1200)) return;
-    clicks[key]++; lastClick[key] = now; click(el);
+    if (clicks[key] >= 3 || (lastClick[key] && now - lastClick[key] < 1200)) return false;
+    clicks[key]++; lastClick[key] = now; click(el); return true;
   }
   function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } if (msg) say(msg, keepMs); return true; }
 
@@ -178,16 +180,28 @@
     }
     if (clicks3 > 0) return finish('đã đăng nhập (form đã đóng).', 6000);   // sau khi bấm mà form biến mất là đăng nhập xong
     var up = findText(/^use password$/);
-    if (up) { say('bấm "Use Password"…'); clickLimited('use', up); return false; }
+    if (up) { if (clickLimited('use', up)) say('bấm "Use Password"…'); return false; }
     if (!findInput('email', /e-?mail/i)) {   // chưa có form nào mới bấm nút đăng nhập ở đầu trang
       var lg = findText(/^(sign\s*up\s*\/?\s*)?log\s*in$/);
-      if (lg) { say('bấm nút đăng nhập…'); clickLimited('login', lg); }
+      if (lg) { if (clickLimited('login', lg)) say('bấm nút đăng nhập…'); }
       else say('đang tìm nút đăng nhập…');
     }
     return false;
   }
 
   say('nhận được thông tin đăng nhập, đang tìm nút đăng nhập…');
-  var timer = setInterval(function () { if (step()) clearInterval(timer); }, POLL_MS);
+  // Chạy lại ngay khi trang thay đổi (không đợi nhịp kiểm tra); nhịp 0,1 giây chỉ là dự phòng cho thay đổi không sinh sự kiện DOM.
+  var queued = false, timer = null, obs = null;
+  function stop() { if (timer) clearInterval(timer); if (obs) obs.disconnect(); }
+  function tick() { queued = false; if (!done && step()) stop(); }
+  function schedule() { if (!queued && !done) { queued = true; setTimeout(tick, 30); } }   // gộp nhiều thay đổi liên tiếp, tối đa ~30 lần/giây
+  timer = setInterval(tick, POLL_MS);
+  try {
+    obs = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) { if (badge && badge.contains(muts[i].target)) continue; schedule(); return; }   // bỏ qua thay đổi do chính ô báo gây ra
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'disabled', 'hidden', 'aria-disabled'] });
+  } catch (e) { /* chỉ dùng nhịp dự phòng */ }
+  schedule();
   }
 })();
