@@ -203,13 +203,13 @@
             <div class="fine" style="margin:6px 0 0;text-align:center">Bấm đây trước</div>
           </div>
           <ol class="hsteps" id="tpHeroSteps">
-            <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện email + mật khẩu của một tài khoản còn dùng được.</span></li>
+            <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện email + mật khẩu của tài khoản cả nhóm đang dùng.</span></li>
             <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì xem mục &ldquo;Cài tự đăng nhập Tripo&rdquo; bên dưới). Không cài thì copy email, mật khẩu dán vào.</span></li>
             <li><b>Hết credit thì bấm &ldquo;Đã hết credit&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Khóa lại</button></span>
         </div>
-        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Hệ thống chọn tài khoản còn dùng được và đánh dấu bạn đang dùng. Tài khoản &ldquo;đang dùng&rdquo; quá 12 giờ sẽ được cấp lại cho người khác.</div>
+        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết credit</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
       <div id="tpAdmin" style="display:none">
       <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
@@ -703,9 +703,14 @@ $('tpGo').addEventListener('click', function(){
 $('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); tpShowGate(''); });
 $('tpClaim').addEventListener('click', function(){
-  tpGuard(function(){ return tpCall('claim').then(function(j){
-    tpShowCred(j.email, j.password, 'Đã đánh dấu bạn đang dùng tài khoản này. Hết credit thì bấm Đã hết credit bên dưới để tài khoản được đổi.', j.account && j.account.id);
-    return tpCall('list').then(tpApply).catch(function(){}); }); });
+  // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết credit": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
+  // (lấy cái dùng gần nhất), không thì mới lấy tài khoản mới. Làm ở trang để chạy được với cả Worker bản cũ.
+  var note = 'Đây là tài khoản cả nhóm đang dùng. Hết credit thì bấm Đã hết credit bên dưới để chuyển sang tài khoản tiếp theo.';
+  tpGuard(function(){ return tpCall('list').then(function(l){
+    var cur = (l.accounts || []).filter(function(x){ return x.status === 'using'; }).sort(function(x, y){ return (y.usedAt || 0) - (x.usedAt || 0); })[0];
+    if(cur) return tpCall('reveal', { id: cur.id }).then(function(j){ tpShowCred(j.email, j.password, note, cur.id); return l; });
+    return tpCall('claim').then(function(j){ tpShowCred(j.email, j.password, note, j.account && j.account.id); return null; });
+  }).then(function(){ return tpCall('list').then(tpApply).catch(function(){}); }); });
 });
 $('tpmEmpty').addEventListener('click', function(){
   var id = TP_CLAIM_ID; if(!id) return;
