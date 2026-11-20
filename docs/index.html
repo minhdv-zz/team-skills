@@ -204,7 +204,7 @@
           </div>
           <ol class="hsteps" id="tpHeroSteps">
             <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện email + mật khẩu của tài khoản cả nhóm đang dùng.</span></li>
-            <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì xem mục &ldquo;Cài tự đăng nhập Tripo&rdquo; bên dưới). Không cài thì copy email, mật khẩu dán vào.</span></li>
+            <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì trang sẽ chỉ cách cài). Không cài thì copy email, mật khẩu dán vào.</span></li>
             <li><b>Hết token thì bấm &ldquo;Đã hết token&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Khóa lại</button></span>
@@ -360,7 +360,7 @@
     <div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Máy này chưa cài tiện ích tự đăng nhập.</b> Cài một lần, lần sau bấm là Tripo mở sẵn đã đăng nhập:<br>
-      1) Cài tiện ích <a href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey (Firefox)</a> hoặc <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey (Chrome, Edge)</a>.<br>
+      1) Cài tiện ích (bấm đúng trình duyệt của bạn, rồi bấm Thêm/Add): <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> (Tampermonkey) &middot; <a href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> (Violentmonkey).<br>
       2) Cài <a href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi tải lại trang này.<br>
       Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
       <div class="row" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
