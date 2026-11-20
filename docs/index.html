@@ -196,20 +196,20 @@
       <div><button class="pri big" id="tpGo">Xem tài khoản</button></div>
     </div>
     <div id="tpMain" style="display:none">
-      <div class="hero">
+      <div class="hero" id="tpHero">
         <div class="hero-top">
-          <div class="hero-cta">
+          <div class="hero-cta" id="tpHeroCta">
             <button class="pri big" id="tpClaim">&#9889; Lấy tài khoản</button>
             <div class="fine" style="margin:6px 0 0;text-align:center">Bấm đây trước</div>
           </div>
-          <ol class="hsteps">
+          <ol class="hsteps" id="tpHeroSteps">
             <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện email + mật khẩu của một tài khoản còn dùng được.</span></li>
             <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì xem mục &ldquo;Cài tự đăng nhập Tripo&rdquo; bên dưới). Không cài thì copy email, mật khẩu dán vào.</span></li>
             <li><b>Hết credit thì bấm &ldquo;Đã hết credit&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Khóa lại</button></span>
         </div>
-        <div class="fine" style="margin:10px 0 0">Hệ thống chọn tài khoản còn dùng được và đánh dấu bạn đang dùng. Tài khoản &ldquo;đang dùng&rdquo; quá 12 giờ sẽ được cấp lại cho người khác.</div>
+        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Hệ thống chọn tài khoản còn dùng được và đánh dấu bạn đang dùng. Tài khoản &ldquo;đang dùng&rdquo; quá 12 giờ sẽ được cấp lại cho người khác.</div>
       </div>
       <div id="tpAdmin" style="display:none">
       <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
@@ -642,6 +642,8 @@ document.addEventListener('team-tripo-credit', function(){ if($('tpMain').style.
 function tpIsAdmin(){ return tpWho().trim().toLowerCase() === 'hoidz'; }
 function tpRender(){
   $('tpAdmin').style.display = tpIsAdmin() ? '' : 'none';
+  $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
+  ['tpHeroCta', 'tpHeroSteps', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });   // chủ chỉ cần dòng "Bạn: ..." + Khóa lại
   if(!tpIsAdmin()) return;
   var a = TP.accs, n = { ok: 0, using: 0, empty: 0 };
   a.forEach(function(x){ n[x.status] = (n[x.status] || 0) + 1; });
