@@ -336,7 +336,7 @@
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
     <div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre>
-    <div class="row"><button onclick="tpCloseCred()">Đóng</button><a class="btn" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Mở Tripo Studio</a><button class="pri" id="tpmCopy">Copy mật khẩu</button></div>
+    <div class="row"><button onclick="tpCloseCred()">Đóng</button><a class="btn" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Mở Tripo Studio</a></div>
     <div class="fine" id="tpmHint" style="margin:10px 0 0">Muốn bấm "Mở Tripo Studio" là tự đăng nhập: cài tiện ích <a href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey (Firefox)</a> hoặc <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey (Chrome, Edge)</a>, rồi cài <a href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a> và tải lại trang. Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì bạn tự tích rồi bấm Continue.</div>
   </div>
 </div>
@@ -664,7 +664,6 @@ $('tpmStudio').addEventListener('click', function(e){
   if(root.hasAttribute('data-tripo-ack')) e.preventDefault();   // script đã nhận và tự mở tab Tripo; không nhận thì link vẫn mở như thường
 });
 $('tpmEye').addEventListener('click', function(){ TP_SHOW = !TP_SHOW; tpRenderPass(); });
-$('tpmCopy').addEventListener('click', function(){ copy(TP_PASS, this); });
 $('tpAddBtn').addEventListener('click', function(){
   var items = $('tpAdd').value.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){
     var p = l.split(/[|\t]/).length > 1 ? l.split(/\s*[|\t]\s*/) : l.split(/\s+/);
