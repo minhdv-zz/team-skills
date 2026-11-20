@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.7.0
+// @version      2.8.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -19,7 +19,7 @@
 // lịch sử trình duyệt hay máy chủ. Không bật tự cập nhật (@updateURL) để nội dung script chỉ đổi khi chính bạn cài lại.
 (function () {
   'use strict';
-  var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', CEV = 'team-tripo-credit';
+  var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
   // ---------- Trên trang Team Tools ----------
@@ -73,14 +73,16 @@
   if (!cred) {   // có thể tab mở trước khi lưu xong: thử lại trong ~2 giây rồi bỏ
     var tries = 0, wait = setInterval(function () {
       cred = readCred();
-      if (cred) { clearInterval(wait); begin(); } else if (++tries >= 8) clearInterval(wait);
+      if (cred) { clearInterval(wait); begin(false); } else if (++tries >= 8) { clearInterval(wait); begin(true); }
     }, 250);
     return;
   }
-  begin();
+  begin(false);
 
-  function begin() {
+  // passive = true: không có thông tin đăng nhập (người dùng tự mở Tripo). Không đăng nhập gì cả, chỉ theo dõi credit nếu nhận ra tài khoản.
+  function begin(passive) {
 
+  if (passive) cred = { e: '', p: '' };
   var acctEmail = cred.e, lastGreet = 0;
   var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
 
@@ -188,6 +190,24 @@
   // Cách không phụ thuộc ngôn ngữ (trang /zh, hoặc trình duyệt tự dịch nút "Upgrade" thành "nâng cấp"/"升级"): ở thanh trên cùng, tìm ô chữ
   // chỉ gồm một số, mà ngay sau nó (cùng hàng) là một nút/khối có chữ cái (nút nâng cấp). Chuông thông báo (huy hiệu số) không có khối chữ theo sau
   // nên không bị lẫn. Có nhiều số khác nhau khớp thì trả null (không đoán).
+  // Tên trong lời chào đầu trang ("Hi, tripo-referral-landing-page-024!", cả bản /zh hay bị dịch) KHÔNG trùng email, nên script tự nhớ
+  // "tên trong lời chào -> email" mỗi lần chính nó đăng nhập (hoặc xác nhận được tài khoản). Sau này tab Tripo nào hiện đúng tên đã nhớ thì
+  // biết chắc là tài khoản nào, không cần đăng nhập lại vẫn cập nhật credit. Tên lạ (chưa nhớ) thì không gửi gì.
+  function readGreetName() {
+    var hs = document.querySelectorAll('h1,h2');
+    for (var i = 0; i < hs.length; i++) {
+      var h = hs[i]; if (!visible(h)) continue;
+      var m = /^\s*(?:hi,?\s+|你好[，,]\s*|xin chào,?\s+)?([^\s!！,，]{3,80})[!！]/i.exec((h.innerText || h.textContent || '').trim());
+      if (m) return m[1].toLowerCase();
+    }
+    return null;
+  }
+  function nameMap() { try { var m = JSON.parse(GM_getValue(NKEY, '') || '{}'); return m && typeof m === 'object' ? m : {}; } catch (e) { return {}; } }
+  function rememberName(email) {
+    var n = readGreetName(); if (!n || !email) return;
+    var m = nameMap(); if (m[n] === email) return;
+    m[n] = email; try { GM_setValue(NKEY, JSON.stringify(m)); } catch (e) { /* bỏ qua */ }
+  }
   function readCreditLoose() {
     var els = document.querySelectorAll('span,div,p,b,strong,font'), vals = {}, n = 0, val = null;
     for (var i = 0; i < els.length; i++) {
@@ -230,6 +250,7 @@
       if (v === sent) { cand = null; return; }
       if (v !== cand) { cand = v; candAt = now; return; }   // số mới: phải giữ nguyên thêm 0,7 giây (loại số tạm lúc đang tải)
       if (now - candAt < 1000) return;
+      if (!passive) rememberName(email);   // số đã ổn định và chắc chắn là tài khoản này (vừa đăng nhập / đã xác nhận): nhớ tên trong lời chào
       try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sent = v; cand = null; say('credit còn ' + v + ', đã gửi cho Team Tools.', 4000); } catch (e) { /* bỏ qua */ }
     }, 400);
   }
@@ -295,6 +316,15 @@
     return false;
   }
 
+  if (passive) {   // chờ lời chào hiện ra, tra tên đã nhớ; có thì theo dõi credit, không thì thôi (tối đa 60 giây)
+    var pt0 = Date.now(), piv = setInterval(function () {
+      if (Date.now() - pt0 > 60000) { clearInterval(piv); return; }
+      var n = readGreetName(), em = n && nameMap()[n];
+      if (!em) return;
+      clearInterval(piv); watchCredit(em);
+    }, 700);
+    return;
+  }
   say('nhận được thông tin đăng nhập, đang tìm nút đăng nhập…');
   // Chạy lại ngay khi trang thay đổi (không đợi nhịp kiểm tra); nhịp 0,1 giây chỉ là dự phòng cho thay đổi không sinh sự kiện DOM.
   var queued = false, timer = null, obs = null;
