@@ -710,9 +710,8 @@ function tpAutoOn(){
   for(var i = 0; i < 3; i++){ var x = a[i] || 0; if(x !== TP_MIN_VER[i]) return x > TP_MIN_VER[i]; }
   return true;
 }
-function tpSetupStart(){   // bắt đầu lại luồng cài từ bước 1; chỉ không mở lại cửa hàng nếu vừa mở dưới 20 giây
-  $('tpmWarn').style.display = ''; var old = tpSetupGet(); tpSetupSave({ s: 'store', n: 0, so: Date.now() });
-  if(!old || !old.so || Date.now() - old.so > 20000) window.open(tpStoreUrl(), 'tpStore');
+function tpSetupStart(){   // chỉ hiện hướng dẫn: KHÔNG tự mở tab cửa hàng nữa, chỉ làm theo khi người dùng tự bấm link ở bước 1/2 (trước đây mỗi lần bấm là bật thêm tab nên rất phiền)
+  $('tpmWarn').style.display = ''; var old = tpSetupGet(); if(!old) tpSetupSave({ s: 'idle', n: 0 });
 }
 function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện hướng dẫn cài, không lấy và không hiện tài khoản
   TP_CLAIM_ID = ''; TP_PASS = ''; TP_SHOW = false; $('tpmEmpty').style.display = 'none'; $('tpmEmail').textContent = '';
@@ -896,7 +895,7 @@ function tpToggleStep(){   // quay lại tab sau khi bật công tắc: tự t�
   if(tpAutoOn()){ tpToggleClear(); toast('Đã nhận script tự đăng nhập. Bấm Lấy tài khoản rồi Đăng nhập Tripo là xong.', true); return; }
   tpToggleShow(false);
   if(tpSetupGet()) return;   // đang trong luồng cài script: tpSetupStep lo việc tải lại
-  if(t.n >= 2 || Date.now() - t.o < 8000) return;
+  if(t.n >= 1 || Date.now() - t.o < 8000) return;   // tự tải lại tối đa 1 lần
   t.n++; t.o = Date.now(); tpToggleSave(t); location.reload();
 }
 document.addEventListener('visibilitychange', function(){ tpSetupStep(); tpToggleStep(); });
