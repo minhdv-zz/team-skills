@@ -13,7 +13,6 @@ const ORIGIN = "https://minhdv-zz.github.io";
 const DEV_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/; // chỉ bật khi chạy thử (wrangler dev --var DEV_ORIGIN_OK:1), bản thật không có
 const MAX_ACCOUNTS = 200;
 const MAX_ADD = 20;          // mỗi lần thêm (gói free: 50 thao tác KV mỗi request)
-const USING_HOURS = 12;      // tài khoản "đang dùng" quá số giờ này thì được cấp lại khi có người bấm Lấy
 const MAX_EVENTS = 3000;     // mỗi tháng
 // Chống đoán mật khẩu (xem class Guard). Mỗi lượt thử giữ một "chỗ" trước khi so mật khẩu; đúng thì trả chỗ, sai thì thành một lần sai.
 // KHÓA VĨNH VIỄN: một IP sai IP_MAX lần (IPv6 gộp theo /64) bị chặn hẳn; cả hệ thống sai GLOBAL_MAX lần thì khóa mọi lượt thử.
@@ -248,11 +247,11 @@ async function tripo(req, env, url) {
 
   if (op === "claim") {
     const accs = await getAccounts(env);
-    // chọn tài khoản còn dùng được, lâu chưa ai dùng nhất (chưa dùng bao giờ thì xếp đầu).
-    // Tài khoản "đang dùng" quá USING_HOURS giờ coi như bị bỏ quên, được cấp lại.
-    const stale = Date.now() - USING_HOURS * 3600e3;
-    const pick = accs.filter((a) => a.status === "ok" || (a.status === "using" && (a.usedAt || 0) < stale))
-      .sort((x, y) => (x.usedAt || 0) - (y.usedAt || 0))[0];
+    // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "đã hết": còn tài khoản "đang dùng" thì cấp lại đúng tài khoản đó
+    // (nếu có nhiều, lấy cái dùng gần nhất). Chỉ khi không còn cái nào đang dùng mới lấy tài khoản còn dùng được kế tiếp (thêm vào sớm nhất).
+    const cur = accs.filter((a) => a.status === "using").sort((x, y) => (y.usedAt || 0) - (x.usedAt || 0))[0];
+    const pick = cur || accs.filter((a) => a.status === "ok")
+      .sort((x, y) => (x.addedAt || 0) - (y.addedAt || 0) || x.email.localeCompare(y.email))[0];
     if (!pick) return json({ error: "Hết tài khoản còn dùng được" }, 409);
     const password = await unseal(env, pick.secret); // giải mã trước, lỗi thì chưa đổi trạng thái
     pick.status = "using"; pick.usedBy = who; pick.usedAt = Date.now();
