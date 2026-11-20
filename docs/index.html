@@ -381,7 +381,7 @@
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Máy này chưa cài tiện ích tự đăng nhập.</b> Làm theo 2 bước dưới đây, trang tự chuyển bước khi anh quay lại tab này (nếu tab cài tiện ích chưa tự mở thì bấm link bước 1). Đã có Tampermonkey/Violentmonkey rồi thì bấm thẳng bước 2.<br>
       1) Cài tiện ích (bấm đúng trình duyệt của bạn, rồi bấm Thêm/Add): <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> (Tampermonkey) &middot; <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> (Violentmonkey).<br>
       2) Cài <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi quay lại tab này, trang tự tải lại.<br>
-      Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
+      <div style="margin-top:6px;padding:8px 10px;border:1px solid #6b5a1f;border-radius:8px;background:#2a2410"><b>3) Chrome/Edge: bật quyền chạy script (bắt buộc, không bật thì script cài rồi vẫn không chạy).</b> Bấm <button type="button" id="tpmCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button>, dán vào thanh địa chỉ rồi Enter, bật công tắc <b>Allow User Scripts</b> (Cho phép tập lệnh người dùng) của Tampermonkey. Chỗ này Chrome bắt tự bật, trang không bật hộ được. Xong bấm &ldquo;Đã cài xong, tải lại trang&rdquo; bên dưới.</div> Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
       <div class="row" style="margin-top:8px"><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
@@ -856,6 +856,11 @@ function tpSetupStep(){
   }
 }
 document.addEventListener('visibilitychange', tpSetupStep);
+$('tpmCopyExt').addEventListener('click', function(){
+  var u = /Edg\//.test(navigator.userAgent) ? 'edge://extensions/?id=iikmkjmpaadaobahmlepeloendndfphd' : 'chrome://extensions/?id=dhdgffkkebhmkfjojejmpbldmpobfkfo', b = this;
+  var ok = function(){ b.textContent = 'Đã copy'; }, fail = function(){ prompt('Copy đường dẫn này rồi dán vào thanh địa chỉ:', u); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(ok, fail); else fail();
+});
 $('tpmReload').addEventListener('click', function(){ tpSetupClear(); location.reload(); });
 $('tpmEye').addEventListener('click', function(){ TP_SHOW = !TP_SHOW; tpRenderPass(); });
 $('tpAddBtn').addEventListener('click', function(){
