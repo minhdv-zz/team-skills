@@ -126,6 +126,17 @@
   .pr{margin-bottom:14px}
   .pr .meta{color:var(--mut);font-size:13px}
   .pr .meta a{color:#9d8cff}
+  .mem{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;position:relative}
+  .mem:nth-child(odd){background:#0f141b}
+  .mem .av{width:34px;height:34px;border-radius:50%;background:#2a2150;color:#cdbfff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;text-transform:uppercase}
+  .mem .em{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .mem .role{font-size:13px;border-radius:999px;padding:4px 14px;background:#222831;color:var(--mut);flex:none}
+  .mem .role.own{background:#2a2150;color:#cdbfff}
+  .mem .dots{background:none;border:0;color:var(--mut);font-size:20px;line-height:1;padding:4px 8px;cursor:pointer}
+  .mem .dots:hover{color:var(--text)}
+  .mem .menu{position:absolute;right:8px;top:100%;z-index:5;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 8px 24px #0009}
+  .mem .menu button{background:none;border:0;color:#ffb4ac;padding:8px 16px;cursor:pointer;font:inherit;white-space:nowrap}
+  .mem .menu button:hover{background:#3b1219;border-radius:6px}
   .chip{display:inline-block;font-size:12px;border-radius:999px;padding:1px 10px;border:1px solid var(--line);color:var(--mut)}
   .chip.ok{color:var(--ok);border-color:#1f4a2b;background:#12261a}
   .chip.bad{color:#ffb4ac;border-color:var(--err);background:#3b1219}
@@ -223,9 +234,12 @@
       </details>
       <details class="help" style="margin-top:14px">
         <summary>Thành viên được vào (Gmail)</summary>
-        <p>Mỗi dòng một Gmail. Chỉ những Gmail này (và chủ nhóm) vào được tab này. Bấm Lưu để thay cả danh sách.</p>
-        <textarea id="tpMembers" rows="6" style="width:100%;font:inherit;background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px" placeholder="ten1@gmail.com&#10;ten2@gmail.com"></textarea>
-        <div style="margin-top:8px"><button class="pri" id="tpMembersBtn">Lưu danh sách</button></div>
+        <p>Chỉ những Gmail này (và chủ nhóm) vào được tab này. Thêm hoặc xóa là lưu ngay.</p>
+        <div id="tpMemList"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <input id="tpMemIn" type="text" autocomplete="off" placeholder="Thêm Gmail, nhiều email ngăn bằng dấu cách" style="flex:1;min-width:220px">
+          <button class="pri" id="tpMembersBtn">Thêm</button>
+        </div>
       </details>
       <details class="help" style="margin-top:14px">
         <summary>Nhật ký gần đây</summary>
@@ -622,7 +636,7 @@ function tpApply(j){
   if(j.accounts) TP.accs = j.accounts;
   if(j.stats) TP.stats = j.stats;
   if(j.admin !== undefined) TP.admin = !!j.admin;
-  if(j.members) $('tpMembers').value = j.members.join('\n');
+  if(j.members) tpMemRender(j.members);
   $('tpGate').style.display = 'none'; $('tpMain').style.display = '';
   $('tpMe').textContent = 'Bạn: ' + tpWho();
   tpRender();
@@ -716,11 +730,40 @@ $('tpGo').addEventListener('click', function(){
 $('tpWhoIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(''); });
+var TPOWNER = 'minhdv@horusvn.com';
+function tpMemRender(list){
+  TP.members = list.slice();
+  var rows = [TPOWNER].concat(TP.members).map(function(e, i){
+    var own = i === 0;
+    return '<div class="mem"><div class="av">' + esc(e.charAt(0)) + '</div><div class="em" title="' + esc(e) + '">' + esc(e) + '</div>'
+      + '<span class="role' + (own ? ' own' : '') + '">' + (own ? 'Chủ nhóm' : 'Thành viên') + '</span>'
+      + (own ? '<span style="width:36px"></span>' : '<button class="dots" data-mem="' + esc(e) + '" aria-label="Tùy chọn">&#8942;</button>') + '</div>';
+  });
+  $('tpMemList').innerHTML = rows.join('') + '<div class="fine" style="margin:8px 12px 0">' + TP.members.length + ' thành viên (chưa tính chủ nhóm)</div>';
+}
+function tpMemSave(items, msg){
+  tpGuard(function(){ return tpCall('members_set', { items: items }).then(function(j){ tpMemRender(j.members); toast(msg(j.members), true); }); });
+}
 $('tpMembersBtn').addEventListener('click', function(){
-  var items = $('tpMembers').value.split(/[\s,;]+/).filter(Boolean);
-  tpGuard(function(){ return tpCall('members_set', { items: items }).then(function(j){
-    $('tpMembers').value = j.members.join('\n'); toast('Đã lưu ' + j.members.length + ' thành viên', true); }); });
+  var add = $('tpMemIn').value.toLowerCase().split(/[\s,;]+/).filter(Boolean);
+  if(!add.length) return;
+  var bad = add.filter(function(e){ return !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); });
+  if(bad.length){ toast('Email chưa đúng dạng: ' + bad.join(', '), false); return; }
+  tpMemSave((TP.members || []).concat(add), function(m){ $('tpMemIn').value = ''; return 'Đã lưu, hiện có ' + m.length + ' thành viên'; });
 });
+$('tpMemIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpMembersBtn').click(); });
+$('tpMemList').addEventListener('click', function(e){
+  var old = $('tpMemList').querySelector('.menu'); if(old) old.remove();
+  var d = e.target.closest('.dots'), x = e.target.closest('.menu button');
+  if(x){ var em = x.getAttribute('data-del'); if(!confirm('Xóa ' + em + ' khỏi danh sách?')) return;
+    tpMemSave((TP.members || []).filter(function(m){ return m !== em; }), function(){ return 'Đã xóa ' + em; }); return; }
+  if(d && !(old && old.parentNode === d.parentNode)){
+    var m = document.createElement('div'); m.className = 'menu';
+    m.innerHTML = '<button data-del="' + esc(d.getAttribute('data-mem')) + '">Xóa khỏi danh sách</button>';
+    d.parentNode.appendChild(m); e.stopPropagation();
+  }
+});
+document.addEventListener('click', function(e){ if(!e.target.closest('.dots, .menu')){ var o = document.querySelector('#tpMemList .menu'); if(o) o.remove(); } });
 $('tpClaim').addEventListener('click', function(){
   // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết token": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
   // (lấy cái dùng gần nhất), không thì mới lấy tài khoản mới. Làm ở trang để chạy được với cả Worker bản cũ.
