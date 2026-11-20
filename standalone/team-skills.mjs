@@ -1336,9 +1336,90 @@ function runUpdate() {
   }
 }
 
+// server/tripo-setup.ts
+import { spawn as spawn2 } from "node:child_process";
+import { existsSync as existsSync5, mkdirSync as mkdirSync3, writeFileSync as writeFileSync4 } from "node:fs";
+import { homedir as homedir6 } from "node:os";
+import { join as join6 } from "node:path";
+var TRIPO_SETUP_PATH = "/tripo-setup";
+var SCRIPT_URL = "https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js";
+var MANAGERS = {
+  firefox: { label: "Firefox", name: "Violentmonkey", url: "https://addons.mozilla.org/firefox/addon/violentmonkey/" },
+  chrome: { label: "Chrome", name: "Tampermonkey", url: "https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" },
+  edge: { label: "Edge", name: "Tampermonkey", url: "https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" }
+};
+var MARKER_DIR = join6(homedir6(), ".team-skills");
+var MARKER = join6(MARKER_DIR, "tripo-setup-done");
+function browserOf(userAgent) {
+  const ua = userAgent ?? "";
+  if (/Firefox\//.test(ua)) return "firefox";
+  if (/Edg\//.test(ua)) return "edge";
+  return "chrome";
+}
+function tripoSetupHtml(userAgent) {
+  const mine = browserOf(userAgent);
+  const m = MANAGERS[mine];
+  const others = Object.keys(MANAGERS).filter((k) => k !== mine).map((k) => `<a href="${MANAGERS[k].url}" target="_blank" rel="noopener noreferrer">${MANAGERS[k].name} (${MANAGERS[k].label})</a>`).join(" \xB7 ");
+  const chromium = mine === "firefox" ? "" : `<p class="fine">N\u1EBFu c\xE0i xong m\xE0 script kh\xF4ng ch\u1EA1y: v\xE0o trang qu\u1EA3n l\xFD ti\u1EC7n \xEDch c\u1EE7a ${m.label}, b\u1EADt <b>Allow User Scripts</b> (ho\u1EB7c <b>Developer mode</b>) cho Tampermonkey.</p>`;
+  return `<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Team Skills: t\u1EF1 \u0111\u0103ng nh\u1EADp Tripo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font:16px/1.5 system-ui,sans-serif;max-width:560px;margin:40px auto;padding:0 16px;color:#1a1a1a}
+h1{font-size:22px}.step{border:1px solid #d0d0d0;border-radius:10px;padding:14px 16px;margin:14px 0}
+.btn{display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:9px 16px;border-radius:8px;font-weight:600}
+.fine{color:#555;font-size:14px}
+</style></head><body>
+<h1>B\u1EADt t\u1EF1 \u0111\u0103ng nh\u1EADp Tripo (l\xE0m m\u1ED9t l\u1EA7n)</h1>
+<p>C\xE0i xong th\xEC b\u1EA5m "M\u1EDF Tripo Studio" trong tab T\xE0i kho\u1EA3n Tripo c\u1EE7a Team Tools l\xE0 t\u1EF1 \u0111\u0103ng nh\u1EADp. Tr\xECnh duy\u1EC7t s\u1EBD h\u1ECFi b\u1EA1n x\xE1c nh\u1EADn \u1EDF m\u1ED7i b\u01B0\u1EDBc, kh\xF4ng c\xF3 g\xEC \u0111\u01B0\u1EE3c c\xE0i ng\u1EA7m.</p>
+<div class="step"><b>B\u01B0\u1EDBc 1.</b> C\xE0i ti\u1EC7n \xEDch ${m.name} cho ${m.label}, b\u1EA5m <b>Add</b> (Th\xEAm) khi tr\xECnh duy\u1EC7t h\u1ECFi.<br><br>
+<a class="btn" href="${m.url}" target="_blank" rel="noopener noreferrer">C\xE0i ${m.name}</a>
+<p class="fine">Tr\xECnh duy\u1EC7t kh\xE1c: ${others}</p></div>
+<div class="step"><b>B\u01B0\u1EDBc 2.</b> Sau khi xong b\u01B0\u1EDBc 1, c\xE0i script t\u1EF1 \u0111\u0103ng nh\u1EADp, b\u1EA5m <b>Install</b> (C\xE0i \u0111\u1EB7t).<br><br>
+<a class="btn" href="${SCRIPT_URL}" target="_blank" rel="noopener noreferrer">C\xE0i script Tripo</a>
+${chromium}</div>
+<p class="fine">Kh\xF4ng d\xF9ng t\xE0i kho\u1EA3n Tripo c\u1EE7a nh\xF3m th\xEC \u0111\xF3ng tab n\xE0y. Trang n\xE0y ch\u1EC9 t\u1EF1 m\u1EDF m\u1ED9t l\u1EA7n tr\xEAn m\xE1y n\xE0y.</p>
+</body></html>`;
+}
+function openUrl2(url) {
+  const [cmd, args] = process.platform === "win32" ? ["rundll32", ["url.dll,FileProtocolHandler", url]] : process.platform === "darwin" ? ["open", [url]] : ["xdg-open", [url]];
+  return new Promise((resolve2) => {
+    try {
+      const child = spawn2(cmd, args, { detached: true, stdio: "ignore", windowsHide: true });
+      const timer = setTimeout(() => {
+        child.unref();
+        resolve2(true);
+      }, 2e3);
+      child.once("error", () => {
+        clearTimeout(timer);
+        resolve2(false);
+      });
+      child.once("exit", (code) => {
+        clearTimeout(timer);
+        resolve2(code === 0);
+      });
+    } catch {
+      resolve2(false);
+    }
+  });
+}
+function hasDisplay() {
+  return process.platform !== "linux" || !!(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
+}
+async function openTripoSetupOnce(port) {
+  try {
+    if (process.env.TEAM_SKILLS_NO_OPEN === "1" || existsSync5(MARKER) || !hasDisplay()) return;
+    if (!await openUrl2(`http://127.0.0.1:${port}${TRIPO_SETUP_PATH}`)) return;
+    mkdirSync3(MARKER_DIR, { recursive: true });
+    writeFileSync4(MARKER, (/* @__PURE__ */ new Date()).toISOString() + "\n");
+  } catch (e) {
+    console.error("[team-skills] tripo setup page not opened: " + (e instanceof Error ? e.message : String(e)));
+  }
+}
+
 // server/http.ts
 var PORT = 47653;
-var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants", "skill-versions", "target-codex"];
+var FEATURES = ["install", "uninstall", "addons-live", "agent-contribute", "review", "pending", "local-list", "contribute-web", "owner-remove", "self-update", "whoami", "local-variants", "skill-versions", "target-codex", "tripo-setup"];
 var ALLOWED_ORIGINS = /* @__PURE__ */ new Set(["https://minhdv-zz.github.io"]);
 var ALLOWED_HOSTS = /* @__PURE__ */ new Set(["127.0.0.1:" + PORT, "localhost:" + PORT]);
 function setCors(req, res) {
@@ -1391,6 +1472,13 @@ async function handle(req, res) {
     return;
   }
   const path = (req.url ?? "/").split("?")[0];
+  if (req.method === "GET" && path === TRIPO_SETUP_PATH) {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'");
+    res.end(tripoSetupHtml(req.headers["user-agent"]));
+    return;
+  }
   if (path.startsWith("/agent/")) {
     if (origin || req.headers["x-team-skills"] !== "1") return send(res, 403, { error: "Not allowed" });
     const plain = (status, text) => {
@@ -1610,7 +1698,10 @@ if (mode === "mcp") {
   serveMcp();
 } else if (mode === "serve") {
   startHttp({
-    onListening: () => console.log(`Team Skills \u0111ang ch\u1EA1y t\u1EA1i http://127.0.0.1:${PORT} . Gi\u1EEF c\u1EEDa s\u1ED5 n\xE0y m\u1EDF, \u0111\xF3ng l\xE0 d\u1EEBng.`),
+    onListening: () => {
+      console.log(`Team Skills \u0111ang ch\u1EA1y t\u1EA1i http://127.0.0.1:${PORT} . Gi\u1EEF c\u1EEDa s\u1ED5 n\xE0y m\u1EDF, \u0111\xF3ng l\xE0 d\u1EEBng.`);
+      void openTripoSetupOnce(PORT);
+    },
     onError: (e) => {
       console.error(`Kh\xF4ng m\u1EDF \u0111\u01B0\u1EE3c c\u1ED5ng ${PORT} (${e.message}). C\xF3 th\u1EC3 Team Skills ho\u1EB7c plugin Paseo \u0111\xE3 ch\u1EA1y s\u1EB5n.`);
       process.exit(1);

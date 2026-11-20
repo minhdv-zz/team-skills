@@ -49,6 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/minhdv-zz/team-skills/main/install.
 1. Cài plugin Paseo một lần (Settings → Plugins → Plugin source): `git:https://github.com/minhdv-zz/team-skills.git:paseo-plugin` (hoặc dòng lệnh `paseo plugin install` với cùng chuỗi đó).
 2. Mở https://minhdv-zz.github.io/team-skills/ . Khi chấm tròn xanh, bấm **Cài** ở từng skill, hoặc **Cài còn thiếu** / **Cài tất cả**.
 3. Plugin chỉ nghe ở `127.0.0.1:47653`, chỉ nhận yêu cầu từ trang web trên, chỉ cài skill có trong `docs/skills.json`.
+   Lần chạy đầu trên mỗi máy, plugin (và bản standalone) tự mở một lần trang hướng dẫn `http://127.0.0.1:47653/tripo-setup` để cài tiện ích Violentmonkey/Tampermonkey và script tự đăng nhập Tripo; trình duyệt vẫn hỏi xác nhận, không có gì cài ngầm. Dấu mốc: `~/.team-skills/tripo-setup-done` (xóa file này để mở lại). Tắt hẳn bằng biến môi trường `TEAM_SKILLS_NO_OPEN=1`.
 4. Thêm skill mới: thêm plugin trong `plugins/` và một dòng trong `docs/skills.json`.
 
 ## Yêu cầu môi trường

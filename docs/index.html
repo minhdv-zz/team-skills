@@ -919,12 +919,9 @@ function buildPluginPrompt(item){
   } else {
     L.push('Bước 3 - báo kết quả ngắn gọn và nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển sang xanh. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
   }
-  // Việc thêm: hỏi trước, đồng ý mới mở trang cài tiện ích. Chỉ mở đúng các URL cố định này, người dùng tự bấm xác nhận trong trình duyệt.
+  // Việc thêm: Team Skills tự mở trang hướng dẫn cài tiện ích + script Tripo một lần ở lần chạy đầu. Agent không hỏi, không tự mở trang nào khác.
   L.push('');
-  L.push('Việc thêm (sau khi đã báo kết quả ở trên) - bật tự đăng nhập tài khoản Tripo của nhóm: hỏi tôi MỘT câu có muốn bật không (cần tiện ích Violentmonkey hoặc Tampermonkey trong trình duyệt, trình duyệt luôn hỏi tôi xác nhận trước khi cài). Tôi không muốn thì bỏ qua phần này. Tôi đồng ý thì hỏi tôi đang dùng trình duyệt nào (Firefox, Chrome hay Edge), rồi mở lần lượt đúng hai trang sau, bằng lệnh mở URL của hệ điều hành (Windows: Start-Process "URL" ; macOS: open "URL" ; Linux: xdg-open "URL"), ưu tiên mở trong đúng trình duyệt tôi chọn (ví dụ firefox "URL"), không mở trang nào khác:');
-  L.push('1) Trang cài tiện ích: Firefox: https://addons.mozilla.org/firefox/addon/violentmonkey/ ; Chrome: https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo ; Edge: https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd');
-  L.push('2) Trang cài script (mở sau khi tôi nói đã cài xong tiện ích): https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js');
-  L.push('Nhắc tôi tự bấm "Add/Thêm" ở bước 1 và "Install/Cài đặt" ở bước 2 trong trình duyệt. Nếu tôi dùng Chrome hoặc Edge mới và script không chạy, nhắc tôi bật "Allow User Scripts" (hoặc Developer mode) cho Tampermonkey. Không tự cài gì khác.');
+  L.push('Việc thêm (sau khi đã báo kết quả ở trên) - tự đăng nhập tài khoản Tripo của nhóm: ở lần chạy đầu, Team Skills tự mở trong trình duyệt của tôi một trang hướng dẫn tại http://127.0.0.1:47653/tripo-setup (cài tiện ích Violentmonkey/Tampermonkey rồi cài script tự đăng nhập). KHÔNG hỏi tôi, KHÔNG tự mở thêm trang nào, KHÔNG tự cài gì khác. Chỉ nhắc tôi làm theo 2 bước trên trang đó và tự bấm "Add/Thêm" rồi "Install/Cài đặt" khi trình duyệt hỏi (trình duyệt luôn bắt tôi xác nhận). Nếu không thấy trang đó hiện ra (đã mở từ lần cài trước, hoặc máy không có giao diện), nói tôi tự mở địa chỉ trên. Nếu tôi dùng Chrome hoặc Edge mới và script không chạy, nhắc tôi bật "Allow User Scripts" (hoặc Developer mode) cho Tampermonkey. Tôi không dùng tài khoản Tripo của nhóm thì bỏ qua.');
   return L.join('\n');
 }
 var QUICK_ITEM = null;

@@ -9,6 +9,7 @@
 import { createInterface } from "node:readline";
 import { runContribute, runListLocal, runLogout, type ContributeInput } from "../server/agent";
 import { PORT, startHttp } from "../server/http";
+import { openTripoSetupOnce } from "../server/tripo-setup";
 
 const VERSION = "1.0.0";
 
@@ -107,7 +108,10 @@ if (mode === "mcp") {
   serveMcp();
 } else if (mode === "serve") {
   startHttp({
-    onListening: () => console.log(`Team Skills đang chạy tại http://127.0.0.1:${PORT} . Giữ cửa sổ này mở, đóng là dừng.`),
+    onListening: () => {
+      console.log(`Team Skills đang chạy tại http://127.0.0.1:${PORT} . Giữ cửa sổ này mở, đóng là dừng.`);
+      void openTripoSetupOnce(PORT);
+    },
     onError: (e) => {
       console.error(`Không mở được cổng ${PORT} (${e.message}). Có thể Team Skills hoặc plugin Paseo đã chạy sẵn.`);
       process.exit(1);
