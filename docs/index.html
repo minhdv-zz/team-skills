@@ -206,13 +206,6 @@
       <div><button class="pri big" id="tpGo">Đăng nhập</button></div>
     </div>
     <div id="tpMain" style="display:none">
-      <div class="warnbox" id="tpToggle" style="display:none;margin-bottom:12px;line-height:1.8">
-        <b>Còn 1 bước: bật công tắc cho Tampermonkey (làm 1 lần)</b><br>
-        <b>1.</b> <button type="button" class="tpCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button> rồi mở tab mới: <b>Ctrl+T</b>, <b>Ctrl+V</b>, <b>Enter</b><br>
-        <b>2.</b> Bật công tắc <b>Allow User Scripts</b>:
-        <div style="max-width:100%;width:520px;aspect-ratio:686/94;overflow:hidden;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="display:block;width:100%;margin-top:-14%"></div>
-        <b>3.</b> Quay lại tab này (trang tự tải lại) <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
-      </div>
       <div class="hero" id="tpHero">
         <div class="hero-top">
           <div class="hero-cta" id="tpHeroCta">
@@ -385,6 +378,13 @@
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
     <div id="tpmCred"><div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre></div>
+    <div class="warnbox" id="tpmToggle" style="display:none;margin:10px 0;line-height:1.8">
+        <b>Bật công tắc cho Tampermonkey (làm 1 lần)</b><br>
+        <b>1.</b> <button type="button" class="tpCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button> rồi mở tab mới: <b>Ctrl+T</b>, <b>Ctrl+V</b>, <b>Enter</b><br>
+        <b>2.</b> Bật công tắc <b>Allow User Scripts</b>:
+        <div style="max-width:100%;width:520px;aspect-ratio:686/94;overflow:hidden;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="display:block;width:100%;margin-top:-14%"></div>
+        <b>3.</b> Quay lại tab này (trang tự tải lại) <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
+      </div>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.8"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b><br>
       <b>Bước 1.</b> Cài tiện ích, bấm <b>Thêm / Add</b>: <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> &middot; <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> <span class="fine">(đã có rồi thì qua bước 2)</span><br>
       <b>Bước 2.</b> Cài <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi quay lại tab này (trang tự tải lại).
@@ -719,16 +719,20 @@ function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện h
   $('tpmNote').textContent = document.documentElement.hasAttribute('data-tripo-autologin')
     ? 'Script tự đăng nhập trên máy này là bản cũ. Cài lại bản mới xong mới lấy được tài khoản.'
     : 'Cài tiện ích tự đăng nhập xong mới lấy được tài khoản.';
-  $('tpm').classList.add('on'); tpSetupStart();
+  var tg = !!tpToggleGet() && !/Firefox\//.test(navigator.userAgent);   // đã cài script mà vẫn chưa chạy: chỉ còn thiếu công tắc
+  $('tpmToggle').style.display = tg ? '' : 'none';
+  if(tg){ $('tpmNote').textContent = 'Bật xong công tắc này mới lấy được tài khoản.'; $('tpmWarn').style.display = 'none'; }
+  else tpSetupStart();
+  $('tpm').classList.add('on');
 }
 function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
 function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
-function tpCloseCred(){ $('tpmWarn').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; }
+function tpCloseCred(){ $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; }
 var TP_CLAIM_ID = '';
 function tpShowCred(email, pass, note, id){
-  TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = '';
+  TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = ''; $('tpmToggle').style.display = 'none';
   $('tpmNote').textContent = note || ''; $('tpmWarn').style.display = 'none';
   $('tpmEmail').textContent = email; TP_PASS = pass; TP_SHOW = false; tpRenderPass(); tpSetStudio(email, pass);
   $('tpm').classList.add('on');
@@ -850,7 +854,7 @@ function tpSetupGet(){ try{ var v = JSON.parse(localStorage.getItem('tripoSetup'
 function tpSetupSave(v){ try{ v.t = Date.now(); localStorage.setItem('tripoSetup', JSON.stringify(v)); }catch(e){} }
 function tpToggleGet(){ try{ var v = JSON.parse(localStorage.getItem('tripoToggle') || 'null'); if(v && Date.now() - v.t < 30 * 60 * 1000) return v; localStorage.removeItem('tripoToggle'); }catch(e){} return null; }
 function tpToggleSave(v){ try{ v.t = v.t || Date.now(); localStorage.setItem('tripoToggle', JSON.stringify(v)); }catch(e){} }
-function tpToggleClear(){ try{ localStorage.removeItem('tripoToggle'); }catch(e){} $('tpToggle').style.display = 'none'; }
+function tpToggleClear(){ try{ localStorage.removeItem('tripoToggle'); }catch(e){} $('tpmToggle').style.display = 'none'; }
 function tpSetupClear(){ try{ localStorage.removeItem('tripoSetup'); }catch(e){} }
 function tpOpenScript(){   // mở tab cài script; trả false nếu trình duyệt chặn
   var w = window.open($('tpmScriptLink').href, 'tpScript'); if(!w) return false;
@@ -884,10 +888,11 @@ function tpSetupStep(){
     st.n++; tpSetupSave(st); location.reload();
   }
 }
-function tpToggleShow(scroll){
+var TP_TOG_OPENED = false;
+function tpToggleShow(){   // cần bật công tắc: mở hộp "Lấy tài khoản" có hướng dẫn công tắc (tự mở 1 lần mỗi lần tải trang, không bật lại sau khi đã đóng)
   if(/Firefox\//.test(navigator.userAgent)) return;   // Firefox không có công tắc này
-  var t = tpToggleGet(); if(!t || tpAutoOn() || $('tpMain').style.display === 'none') return;
-  $('tpToggle').style.display = ''; if(scroll){ try{ $('tpToggle').scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch(e){} }
+  var t = tpToggleGet(); if(!t || tpAutoOn() || $('tpMain').style.display === 'none' || TP_TOG_OPENED || $('tpm').classList.contains('on')) return;
+  TP_TOG_OPENED = true; tpShowSetup();
 }
 function tpToggleStep(){   // quay lại tab sau khi bật công tắc: tự tải lại (tối đa 2 lần)
   if(document.visibilityState !== 'visible') return;
