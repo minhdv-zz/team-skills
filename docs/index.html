@@ -808,7 +808,7 @@ $('tpmEmpty').addEventListener('click', function(){
 });
 $('tpmStudio').addEventListener('click', function(e){
   if(!TP_PASS) return;
-  if(!tpAutoOn()){ e.preventDefault(); $('tpmWarn').style.display = ''; if(!tpSetupGet()){ tpSetupSave({ s: 'store', n: 0 }); window.open(tpStoreUrl(), 'tpStore'); } return; }   // chưa cài script (trang không thấy dấu hiệu data-tripo-autologin): không mở Tripo, mở sẵn trang cài tiện ích và chỉ chỗ cài
+  if(!tpAutoOn()){ e.preventDefault(); $('tpmWarn').style.display = ''; var old = tpSetupGet(); tpSetupSave({ s: 'store', n: 0, so: Date.now() }); if(!old || !old.so || Date.now() - old.so > 20000) window.open(tpStoreUrl(), 'tpStore'); return; }   // luôn bắt đầu lại từ bước 1; chỉ không mở lại cửa hàng nếu vừa mở dưới 20 giây   // chưa cài script (trang không thấy dấu hiệu data-tripo-autologin): không mở Tripo, mở sẵn trang cài tiện ích và chỉ chỗ cài
   var root = document.documentElement;
   root.removeAttribute('data-tripo-ack');
   document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: $('tpmEmail').textContent, p: TP_PASS }) }));
