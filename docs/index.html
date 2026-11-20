@@ -104,7 +104,7 @@
   .hsteps li span{display:block;color:var(--mut);font-size:13px}
   .hero-me{margin-left:auto;display:flex;gap:8px;align-items:center;align-self:flex-start}
   @media (prefers-reduced-motion:reduce){.hero-cta button.big{animation:none}}
-  #tpSetup a{color:#9d8cff}
+  #tpmWarn a:not(.btn){color:#9d8cff}
   .fine{color:var(--mut);font-size:12.5px;margin-top:8px}
   details.alt{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
   details.alt>summary{cursor:pointer;color:var(--mut);font-size:14px}
@@ -227,13 +227,6 @@
       </details>
       </div>
     </div>
-    <details class="help" id="tpSetup" style="margin-top:14px;max-width:760px">
-      <summary id="tpSetupT">Cài tự đăng nhập Tripo (làm một lần)</summary>
-      <div class="fine" style="margin:8px 0 0;line-height:1.7">Để bấm <b>Đăng nhập Tripo</b> là tự đăng nhập, mỗi người cài một lần:<br>
-        1) Cài tiện ích <a href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey (Firefox)</a> hoặc <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey (Chrome, Edge)</a>.<br>
-        2) Cài <a href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi tải lại trang.<br>
-        Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì bạn tự tích rồi bấm Continue.</div>
-    </details>
   </div>
   <div id="review" style="display:none">
     <h2 style="margin:0 0 6px">Đóng góp chờ duyệt</h2>
@@ -366,6 +359,11 @@
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
     <div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre>
+    <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Máy này chưa cài tiện ích tự đăng nhập.</b> Cài một lần, lần sau bấm là Tripo mở sẵn đã đăng nhập:<br>
+      1) Cài tiện ích <a href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey (Firefox)</a> hoặc <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey (Chrome, Edge)</a>.<br>
+      2) Cài <a href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi tải lại trang này.<br>
+      Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
+      <div class="row" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết credit</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
   </div>
 </div>
@@ -601,12 +599,7 @@ function tpShowGate(msg){
   if(!$('tpWhoIn').value) $('tpWhoIn').value = tpWho();
   $('tpErr').style.display = msg ? '' : 'none'; $('tpErr').textContent = msg || '';
 }
-function tpSetupSync(){ // đã cài script (trang nhận được dấu hiệu) thì thu gọn mục hướng dẫn, chưa thì mở sẵn
-  var on = tpAutoOn(); $('tpSetup').open = !on;
-  $('tpSetupT').textContent = on ? 'Tự đăng nhập Tripo: đã bật' : 'Cài tự đăng nhập Tripo (làm một lần)';
-}
 function tripoInit(){
-  tpSetupSync();
   if(!STAR_API){ tpShowGate('Chưa cấu hình server.'); return; }
   if(!tpPass()){ tpShowGate(''); return; }
   tpLoad();
@@ -677,17 +670,17 @@ function tpRender(){
 }
 var TP_PASS = '', TP_SHOW = false, TP_STUDIO = 'https://studio.tripo3d.ai/';
 // Link luôn là link thường tới Tripo, không đưa email hay mật khẩu vào URL. Có userscript tự đăng nhập thì khi bấm,
-// trang gửi sự kiện cho script (xem handler #tpmStudio bên dưới); chưa cài thì hướng dẫn nằm trong tab (#tpSetup).
+// trang gửi sự kiện cho script (xem handler #tpmStudio bên dưới); chưa cài thì hướng dẫn hiện trong hộp #tpmWarn.
 function tpAutoOn(){ return document.documentElement.hasAttribute('data-tripo-autologin'); }
 function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
 function tpRenderPass(){ $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
-function tpCloseCred(){ $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; }
+function tpCloseCred(){ $('tpmWarn').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; }
 var TP_CLAIM_ID = '';
 function tpShowCred(email, pass, note, id){
   TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none';
-  $('tpmNote').textContent = note || '';
+  $('tpmNote').textContent = note || ''; $('tpmWarn').style.display = 'none';
   $('tpmEmail').textContent = email; TP_PASS = pass; TP_SHOW = false; tpRenderPass(); tpSetStudio(email, pass);
   $('tpm').classList.add('on');
 }
@@ -720,7 +713,8 @@ $('tpmEmpty').addEventListener('click', function(){
   tpGuard(function(){ return tpCall('update', { id: id, status: 'empty' }).then(function(){ tpCloseCred(); toast('Đã đánh dấu hết. Bấm Lấy tài khoản để lấy tài khoản khác.', true); return tpLoad(); }); });
 });
 $('tpmStudio').addEventListener('click', function(e){
-  if(!tpAutoOn() || !TP_PASS) return;   // chưa cài script: để link mở Tripo bình thường
+  if(!TP_PASS) return;
+  if(!tpAutoOn()){ e.preventDefault(); $('tpmWarn').style.display = ''; return; }   // chưa cài script (trang không thấy dấu hiệu data-tripo-autologin): không mở Tripo, báo và chỉ chỗ cài
   var root = document.documentElement;
   root.removeAttribute('data-tripo-ack');
   document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: $('tpmEmail').textContent, p: TP_PASS }) }));
