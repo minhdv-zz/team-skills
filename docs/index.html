@@ -605,7 +605,7 @@ function tpShowGate(msg){
 }
 function tripoInit(){
   if(!STAR_API){ tpShowGate('Chưa cấu hình server.'); return; }
-  if(!tpWho()){ tpShowGate(''); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(tpWho())){ localStorage.removeItem('tripoWho'); $('tpWhoIn').value = ''; tpShowGate(''); return; }   // tên cũ (không phải Gmail) từ bản dùng mật khẩu: bỏ, hiện ô nhập Gmail sạch
   tpLoad();
 }
 function tpLoad(){
