@@ -386,8 +386,12 @@
         <b>3.</b> Quay lại tab này (trang tự tải lại) <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
       </div>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.8"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b><br>
-      <b>Bước 1.</b> Cài tiện ích, bấm <b>Thêm / Add</b>: <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> &middot; <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> <span class="fine">(đã có rồi thì qua bước 2)</span><br>
-      <b>Bước 2.</b> Cài <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi quay lại tab này (trang tự tải lại).
+      <b>Bước 1. Cài trình quản lý script</b> (chọn đúng trình duyệt của bạn, dòng của bạn có dấu &#10003;):
+      <div class="tpBr" data-br="chrome" style="margin:2px 0 2px 14px">&bull; <b>Chrome</b>: mở <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Tampermonkey</a> &rarr; bấm <b>Thêm vào Chrome</b> (Add to Chrome) &rarr; <b>Thêm tiện ích</b></div>
+      <div class="tpBr" data-br="edge" style="margin:2px 0 2px 14px">&bull; <b>Edge</b>: mở <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Tampermonkey</a> &rarr; bấm <b>Lấy</b> (Get) &rarr; <b>Thêm tiện ích</b></div>
+      <div class="tpBr" data-br="firefox" style="margin:2px 0 2px 14px">&bull; <b>Firefox</b>: mở <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey</a> &rarr; bấm <b>Thêm vào Firefox</b> &rarr; <b>Thêm</b> (Add)</div>
+      <span class="fine">Xong sẽ thấy biểu tượng ở thanh công cụ (có thể nằm trong nút hình mảnh ghép). Đã có sẵn thì qua bước 2.</span><br>
+      <b>Bước 2. Cài script tự đăng nhập:</b> mở <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">link này</a> &rarr; tab mới hiện nút <b>Cài đặt</b> (Install; Violentmonkey: <b>Xác nhận cài đặt</b>) &rarr; bấm. Rồi quay lại tab này, trang tự tải lại.
       <div class="row" style="margin-top:8px"><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
@@ -711,7 +715,13 @@ function tpAutoOn(){
   return true;
 }
 function tpSetupStart(){   // chỉ hiện hướng dẫn: KHÔNG tự mở tab cửa hàng nữa, chỉ làm theo khi người dùng tự bấm link ở bước 1/2 (trước đây mỗi lần bấm là bật thêm tab nên rất phiền)
-  $('tpmWarn').style.display = ''; var old = tpSetupGet(); if(!old) tpSetupSave({ s: 'idle', n: 0 });
+  $('tpmWarn').style.display = ''; tpMarkBrowser(); var old = tpSetupGet(); if(!old) tpSetupSave({ s: 'idle', n: 0 });
+}
+function tpMarkBrowser(){   // dấu ✓ + tô đậm dòng cài tiện ích đúng trình duyệt đang dùng
+  var ua = navigator.userAgent, b = /Firefox\//.test(ua) ? 'firefox' : /Edg\//.test(ua) ? 'edge' : 'chrome';
+  Array.prototype.forEach.call(document.querySelectorAll('#tpmWarn .tpBr'), function(d){
+    var me = d.getAttribute('data-br') === b; d.style.opacity = me ? '1' : '.55';
+    var t = d.querySelector('.tpTick'); if(me && !t){ t = document.createElement('b'); t.className = 'tpTick'; t.textContent = ' \u2713'; t.style.color = '#6ee7a0'; d.insertBefore(t, d.firstChild); } });
 }
 function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện hướng dẫn cài, không lấy và không hiện tài khoản
   TP_CLAIM_ID = ''; TP_PASS = ''; TP_SHOW = false; $('tpmEmpty').style.display = 'none'; $('tpmEmail').textContent = '';
