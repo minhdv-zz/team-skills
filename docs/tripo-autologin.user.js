@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.6.2
+// @version      2.7.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -167,7 +167,7 @@
     }
     return hit;
   }
-  function readCredit() {
+  function readCreditEn() {
     var up = findUpgrade();
     for (var n = up && up.parentElement, k = 0; n && k < 5; n = n.parentElement, k++) {
       var t = txt(n);
@@ -185,6 +185,31 @@
     }
     return null;
   }
+  // Cách không phụ thuộc ngôn ngữ (trang /zh, hoặc trình duyệt tự dịch nút "Upgrade" thành "nâng cấp"/"升级"): ở thanh trên cùng, tìm ô chữ
+  // chỉ gồm một số, mà ngay sau nó (cùng hàng) là một nút/khối có chữ cái (nút nâng cấp). Chuông thông báo (huy hiệu số) không có khối chữ theo sau
+  // nên không bị lẫn. Có nhiều số khác nhau khớp thì trả null (không đoán).
+  function readCreditLoose() {
+    var els = document.querySelectorAll('span,div,p,b,strong,font'), vals = {}, n = 0, val = null;
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i], t = el.textContent;
+      if (t.length > 10 || !/^\s*\d[\d,]{0,8}\s*$/.test(t)) continue;
+      if (el.children.length && el.firstElementChild.textContent.trim() !== t.trim()) continue;   // lấy phần tử sâu nhất chứa đúng số đó
+      var r = el.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0 && r.height < 60 && r.top >= 0 && r.top < 140)) continue;
+      var ok = false;
+      for (var q = el, k = 0; q && k < 3 && !ok; q = q.parentElement, k++) {
+        for (var nx = q.nextElementSibling, j = 0; nx && j < 2 && !ok; nx = nx.nextElementSibling, j++) {
+          var nt = (nx.textContent || '').trim(), nr = nx.getBoundingClientRect();
+          if (nt.length >= 2 && nt.length <= 30 && /\p{L}/u.test(nt) && nr.width > 0 && Math.abs(nr.top - r.top) < 40) ok = true;
+        }
+      }
+      if (!ok) continue;
+      var v = parseInt(t.replace(/[,\s]/g, ''), 10);
+      if (!vals[v]) { vals[v] = 1; n++; val = v; }
+    }
+    return n === 1 ? val : null;
+  }
+  function readCredit() { var v = readCreditEn(); return v !== null ? v : readCreditLoose(); }
   // Sau khi đăng nhập: đọc credit rồi theo dõi liên tục (mỗi 1,5 giây khi đã có số) để số luôn đúng với tài khoản đang dùng (tạo ảnh bị trừ thì số đổi theo).
   // Dừng ngay khi không còn thấy số (đăng xuất hoặc đổi giao diện), để không ghi nhầm số của tài khoản khác vào email này.
   function watchCredit(email) {
