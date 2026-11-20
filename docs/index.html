@@ -936,9 +936,6 @@ function buildPluginPrompt(item){
   } else {
     L.push('Bước 3 - báo kết quả ngắn gọn và nhắc tôi tải lại trang web (Ctrl+Shift+R) để chấm tròn chuyển sang xanh. Nếu có lỗi, gửi tôi nguyên thông báo lỗi và đề xuất cách xử lý, không tự thử cách khác có rủi ro.');
   }
-  // Việc thêm: Team Skills tự mở trang hướng dẫn cài tiện ích + script Tripo một lần ở lần chạy đầu. Agent không hỏi, không tự mở trang nào khác.
-  L.push('');
-  L.push('Việc thêm (sau khi đã báo kết quả ở trên) - tự đăng nhập tài khoản Tripo của nhóm: ở lần chạy đầu, Team Skills tự mở trong trình duyệt của tôi một trang hướng dẫn tại http://127.0.0.1:47653/tripo-setup (cài tiện ích Violentmonkey/Tampermonkey rồi cài script tự đăng nhập). KHÔNG hỏi tôi, KHÔNG tự mở thêm trang nào, KHÔNG tự cài gì khác. Chỉ nhắc tôi làm theo 2 bước trên trang đó và tự bấm "Add/Thêm" rồi "Install/Cài đặt" khi trình duyệt hỏi (trình duyệt luôn bắt tôi xác nhận). Nếu không thấy trang đó hiện ra (đã mở từ lần cài trước, hoặc máy không có giao diện), nói tôi tự mở địa chỉ trên. Nếu tôi dùng Chrome hoặc Edge mới và script không chạy, nhắc tôi bật "Allow User Scripts" (hoặc Developer mode) cho Tampermonkey. Tôi không dùng tài khoản Tripo của nhóm thì bỏ qua.');
   return L.join('\n');
 }
 var QUICK_ITEM = null;

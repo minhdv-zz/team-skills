@@ -1,8 +1,7 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { installSkillRpc, listSkillsRpc } from "./shared/rpc";
 import { installSkill, listSkills } from "./server/handlers";
-import { PORT, startHttp } from "./server/http";
-import { openTripoSetupOnce } from "./server/tripo-setup";
+import { startHttp } from "./server/http";
 import { contributeTools } from "./server/tools";
 import { startAutoUpdate } from "./server/updater";
 
@@ -18,7 +17,7 @@ export default function contribute(server: PluginServerContext) {
     return request;
   });
 
-  const stopHttp = startHttp({ onListening: () => void openTripoSetupOnce(PORT) });
+  const stopHttp = startHttp();
   const stopUpdate = startAutoUpdate();
   return () => {
     removeHook();
