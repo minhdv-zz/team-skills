@@ -101,8 +101,11 @@ async function logEvs(env, items, who) {
     await env.STARS.put(k, JSON.stringify(list.slice(-MAX_EVENTS)));
   } catch { /* bỏ qua */ }
 }
-const pub = (a) => ({ id: a.id, email: a.email, note: a.note || "", status: a.status, usedBy: a.usedBy || "", usedAt: a.usedAt || 0,
-  addedBy: a.addedBy || "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0 });
+// credit nằm ở khóa KV riêng (bản đồ id -> {c, t}) để không ghi đè danh sách tài khoản khi nhiều người thao tác cùng lúc
+const getCredits = async (env) => (await env.STARS.get("tripo:credits", "json")) || {};
+const pub = (a, cm) => ({ id: a.id, email: a.email, note: a.note || "", status: a.status, usedBy: a.usedBy || "", usedAt: a.usedAt || 0,
+  addedBy: a.addedBy || "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0,
+  credit: cm && cm[a.id] ? cm[a.id].c : null, creditAt: cm && cm[a.id] ? cm[a.id].t : 0 });
 const str = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const validId = (v) => typeof v === "string" && /^[a-f0-9]{10}$/.test(v);
 const newId = () => [...crypto.getRandomValues(new Uint8Array(5))].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -223,8 +226,9 @@ async function tripo(req, env, url) {
   let b; try { b = await req.json(); } catch { b = {}; }
   if (!b || typeof b !== "object") b = {};
   const who = str(b.who, 40), op = url.pathname.slice(7);
+  const cm = await getCredits(env), P = (a) => pub(a, cm);
 
-  if (op === "list") return json({ accounts: (await getAccounts(env)).map(pub), stats: await stats(env) });
+  if (op === "list") return json({ accounts: (await getAccounts(env)).map(P), stats: await stats(env) });
 
   if (op === "add") {
     const items = Array.isArray(b.items) ? b.items.slice(0, MAX_ADD) : [];
@@ -239,7 +243,7 @@ async function tripo(req, env, url) {
       accs.push(a); added.push(a);
     }
     if (added.length) { await putAccounts(env, accs); await logEvs(env, added.map((a) => ["add", a]), who); }
-    return json({ added: added.length, skipped, accounts: accs.map(pub), stats: await stats(env) });
+    return json({ added: added.length, skipped, accounts: accs.map(P), stats: await stats(env) });
   }
 
   if (op === "claim") {
@@ -253,7 +257,7 @@ async function tripo(req, env, url) {
     const password = await unseal(env, pick.secret); // giải mã trước, lỗi thì chưa đổi trạng thái
     pick.status = "using"; pick.usedBy = who; pick.usedAt = Date.now();
     await putAccounts(env, accs); await logEvs(env, [["claim", pick]], who);
-    return json({ account: pub(pick), email: pick.email, password });
+    return json({ account: P(pick), email: pick.email, password });
   }
 
   if (!validId(b.id)) return json({ error: "bad id" }, 400);
@@ -272,14 +276,29 @@ async function tripo(req, env, url) {
     if (b.note !== undefined) a.note = str(b.note, 200);
     await putAccounts(env, accs);
     if (ev) await logEvs(env, [[ev, a]], who);
-    return json({ account: pub(a) });
+    return json({ account: P(a) });
+  }
+
+  // Số credit đọc từ trang Tripo (userscript đọc, trang Team Tools gửi lên). Chỉ nhận số nguyên hợp lý.
+  if (op === "credit") {
+    const c = b.credit, now = Date.now();
+    if (!Number.isInteger(c) || c < 0 || c > 10000000) return json({ error: "bad credit" }, 400);
+    // thời điểm đọc do script gửi lên (để "x phút trước" đúng thật); không hợp lý thì dùng giờ hiện tại
+    const at = Number.isInteger(b.at) && b.at <= now + 60e3 && b.at >= now - 3600e3 ? Math.min(b.at, now) : now;
+    const old = cm[a.id];
+    if (!old || old.c !== c || at - old.t > 60e3) {   // cùng số và còn mới (dưới 60 giây) thì khỏi ghi lại
+      cm[a.id] = { c, t: at };
+      await env.STARS.put("tripo:credits", JSON.stringify(cm));
+    }
+    return json({ credit: cm[a.id].c, creditAt: cm[a.id].t });
   }
 
   if (op === "reveal") return json({ email: a.email, password: await unseal(env, a.secret) });
 
   if (op === "delete") {
     accs.splice(i, 1);
-    await putAccounts(env, accs); await logEvs(env, [["del", a]], who);
+    await putAccounts(env, accs);
+    if (cm[a.id]) { delete cm[a.id]; await env.STARS.put("tripo:credits", JSON.stringify(cm)).catch(() => {}); } await logEvs(env, [["del", a]], who);
     return json({ ok: true });
   }
 

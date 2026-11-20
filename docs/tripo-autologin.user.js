@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.5.0
+// @version      2.6.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -12,13 +12,14 @@
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @grant        GM_openInTab
+// @grant        GM_addValueChangeListener
 // ==/UserScript==
 // Cách chạy: trang Team Tools gửi {e,p} qua sự kiện "team-tripo-login" (không đi qua URL). Script cất tạm trong bộ nhớ của
 // tiện ích (GM_setValue, tối đa 3 phút), mở tab Tripo, tab đó đọc ra điền form rồi xóa ngay. Không có mật khẩu nào trong URL,
 // lịch sử trình duyệt hay máy chủ. Không bật tự cập nhật (@updateURL) để nội dung script chỉ đổi khi chính bạn cài lại.
 (function () {
   'use strict';
-  var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login';
+  var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
   // ---------- Trên trang Team Tools ----------
@@ -33,6 +34,22 @@
       var old = JSON.parse(GM_getValue(KEY, '') || 'null');
       if (old && !(Date.now() - old.t < TTL)) GM_deleteValue(KEY);
     } catch (e) { GM_deleteValue(KEY); }
+    // Số credit đọc được trên trang Tripo: chuyển sang trang Team Tools qua thuộc tính + sự kiện (trang tự lưu lên server).
+    var pushCredit = function () {
+      var raw = ''; try { raw = GM_getValue(CKEY, '') || ''; } catch (e) { return; }
+      if (!raw) return;
+      var v = null; try { v = JSON.parse(raw); } catch (e) { v = null; }
+      if (!v || typeof v.e !== 'string' || !Number.isInteger(v.c) || !(Date.now() - v.t < 10 * 60 * 1000)) return;
+      var put = function () {
+        var r = document.documentElement; if (!r) return false;
+        r.setAttribute('data-tripo-credit', JSON.stringify({ e: v.e, c: v.c, t: v.t }));
+        document.dispatchEvent(new CustomEvent(CEV));
+        return true;
+      };
+      if (!put()) { var iv2 = setInterval(function () { if (put()) clearInterval(iv2); }, 10); }
+    };
+    try { GM_addValueChangeListener(CKEY, function (n, o, nv, remote) { if (remote && nv) pushCredit(); }); } catch (e) { /* tiện ích cũ: bỏ qua */ }
+    pushCredit();
     document.addEventListener(EV, function (ev) {
       var c; try { c = JSON.parse(String(ev.detail)); } catch (e) { return; }
       if (!c || typeof c.e !== 'string' || typeof c.p !== 'string' || !c.e || !c.p) return;
@@ -64,6 +81,7 @@
 
   function begin() {
 
+  var acctEmail = cred.e;
   var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
 
   function txt(el) { return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
@@ -138,6 +156,50 @@
     if (clicks[key] >= 3 || (lastClick[key] && now - lastClick[key] < 1200)) return false;
     clicks[key]++; lastClick[key] = now; click(el); return true;
   }
+  // Đọc số credit ở góc phải trên của Tripo (dạng "⚡ 45 [Upgrade]"): tìm nút Upgrade, rồi lấy khối nhỏ nhất bao quanh mà chữ chỉ gồm
+  // "<số> Upgrade". Không khớp đúng dạng đó thì trả null (không đoán), để không bao giờ gửi một số không phải credit.
+  function findUpgrade() {   // chỉ xét phần tử lá (không có con) và đọc textContent, không ép tính bố cục như innerText
+    var els = document.querySelectorAll('button,a,[role=button],span,div,p'), hit = null;
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.children.length || el.textContent.length > 12 || !/^\s*upgrade\s*$/i.test(el.textContent)) continue;
+      if (visible(el)) { hit = el; break; }
+    }
+    return hit;
+  }
+  function readCredit() {
+    var up = findUpgrade();
+    for (var n = up && up.parentElement, k = 0; n && k < 5; n = n.parentElement, k++) {
+      var t = txt(n);
+      if (t.length > 40) break;
+      var m = /^[^\d\s]{0,3}\s*(\d[\d,]*)\s*upgrade$/.exec(t);
+      if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+    }
+    return null;
+  }
+  // Sau khi đăng nhập: đọc credit rồi theo dõi liên tục (mỗi 1,5 giây khi đã có số) để số luôn đúng với tài khoản đang dùng (tạo ảnh bị trừ thì số đổi theo).
+  // Dừng ngay khi không còn thấy số (đăng xuất hoặc đổi giao diện), để không ghi nhầm số của tài khoản khác vào email này.
+  function watchCredit(email) {
+    var t0 = Date.now(), cand = null, candAt = 0, sent = null, goneAt = 0, last = 0;
+    var iv = setInterval(function () {
+      var now = Date.now();
+      if (now - t0 < 3000) return;   // chờ giao diện đổi sang tài khoản mới (tránh số cũ hoặc số tạm lúc vừa đăng nhập)
+      if (sent !== null && now - last < 1500) return;   // đã có số thì kiểm tra thưa hơn cho nhẹ trang
+      last = now;
+      var v = readCredit();
+      if (v === null) {
+        if (sent === null) { if (now - t0 > 45000) clearInterval(iv); return; }   // chưa gửi lần nào: chờ tối đa 45 giây
+        if (!goneAt) goneAt = now;
+        if (now - goneAt > 1500) clearInterval(iv);   // đã gửi rồi mà số biến mất: coi như đã đăng xuất, dừng
+        return;
+      }
+      goneAt = 0;
+      if (v === sent) { cand = null; return; }
+      if (v !== cand) { cand = v; candAt = now; return; }   // số mới: phải giữ nguyên thêm 0,7 giây (loại số tạm lúc đang tải)
+      if (now - candAt < 1000) return;
+      try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sent = v; cand = null; say('credit còn ' + v + ', đã gửi cho Team Tools.', 4000); } catch (e) { /* bỏ qua */ }
+    }, 400);
+  }
   function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } if (msg) say(msg, keepMs); return true; }
 
   function pressContinue(pw) {   // chỉ nhận nút Continue nằm cùng khối với ô mật khẩu (tổ tiên gần nhất có chứa nút)
@@ -178,7 +240,7 @@
       if (!pressContinue(pw) && now - fillAt > FILL_WAIT) return finish('đã điền xong nhưng chưa bấm được Continue (có thể đang chờ ô xác minh). Bạn tự bấm Continue nhé.', 30000);   // để form đã điền, bạn tự bấm
       return false;
     }
-    if (clicks3 > 0) return finish('đã đăng nhập (form đã đóng).', 6000);   // sau khi bấm mà form biến mất là đăng nhập xong
+    if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).', 6000); }   // sau khi bấm mà form biến mất là đăng nhập xong
     var up = findText(/^use password$/);
     if (up) { if (clickLimited('use', up)) say('bấm "Use Password"…'); return false; }
     if (!findInput('email', /e-?mail/i)) {   // chưa có form nào mới bấm nút đăng nhập ở đầu trang

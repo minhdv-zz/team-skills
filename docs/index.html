@@ -588,7 +588,22 @@ function tpApply(j){
   $('tpGate').style.display = 'none'; $('tpMain').style.display = '';
   $('tpMe').textContent = 'Bạn: ' + tpWho();
   tpRender();
+  tpCreditSync();
 }
+// Credit do userscript đọc từ trang Tripo (thuộc tính data-tripo-credit): khớp theo email rồi lưu lên server.
+function tpCreditSync(){
+  var root = document.documentElement, raw = root.getAttribute('data-tripo-credit');
+  if(!raw || !TP.accs.length) return;
+  root.removeAttribute('data-tripo-credit');
+  var c; try { c = JSON.parse(raw); } catch(e) { return; }
+  if(!c || typeof c !== 'object' || Date.now() - c.t > 10 * 60 * 1000) return;   // quá 10 phút thì bỏ, số có thể đã cũ
+  var acc = TP.accs.filter(function(x){ return x.email.toLowerCase() === String(c.e).toLowerCase(); })[0];
+  if(!acc || !Number.isInteger(c.c) || c.c < 0) return;
+  tpCall('credit', { id: acc.id, credit: c.c, at: c.t }).then(function(j){
+    if(j && Number.isInteger(j.credit)){ acc.credit = j.credit; acc.creditAt = j.creditAt; tpRender(); }
+  }).catch(function(){ if(!c.r && !root.hasAttribute('data-tripo-credit')){ c.r = 1; root.setAttribute('data-tripo-credit', JSON.stringify(c)); } });   // lỗi thì giữ lại để gửi lại đúng một lần (lần tải danh sách kế tiếp)
+}
+document.addEventListener('team-tripo-credit', function(){ if($('tpMain').style.display !== 'none') tpCreditSync(); });
 function tpRender(){
   var a = TP.accs, n = { ok: 0, using: 0, empty: 0 };
   a.forEach(function(x){ n[x.status] = (n[x.status] || 0) + 1; });
@@ -609,6 +624,8 @@ function tpRender(){
     var btn = function(act, label, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + esc(x.id) + '">' + label + '</button>'; };
     return '<div class="card" style="margin-bottom:8px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px">'
       + '<div style="flex:1;min-width:220px"><b style="word-break:break-all">' + esc(x.email) + '</b>' + (x.note ? '<div class="fine" style="margin:0">' + esc(x.note) + '</div>' : '') + '<div style="margin-top:4px">' + chip + '</div></div>'
+      + '<div style="min-width:96px;text-align:center" title="' + (x.creditAt ? 'Cập nhật ' + tpAgo(x.creditAt) : 'Chưa đọc được. Bấm Xem để mở Tripo, số sẽ tự cập nhật.') + '">'
+      + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0">&#9889; chưa có</span>' : '<span style="font-size:20px;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0">' + tpAgo(x.creditAt) + '</div>') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + btn('reveal', 'Xem', 'pri')
       + (x.status === 'ok' ? btn('using', 'Đang dùng') : '') + (x.status === 'using' ? btn('ok', 'Trả lại') : '')
       + (x.status !== 'empty' ? btn('empty', 'Đã hết') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
