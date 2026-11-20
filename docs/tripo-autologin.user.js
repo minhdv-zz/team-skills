@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.0
+// @version      2.9.1
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -267,11 +267,14 @@
       var isImg = el.tagName === 'IMG', bg = !isImg && /url\(/.test(getComputedStyle(el).backgroundImage || '');
       if (!isImg && !bg) continue;
       var wrap = el.closest('button,a,[role=button]') || el.parentElement;
-      if ((el.textContent || '').trim() || (wrap && (wrap.textContent || '').trim())) continue;   // bỏ huy hiệu có chữ (ví dụ "Lv.1" ngay cạnh ảnh đại diện): chỉ bấm ảnh đại diện trơn
+      var hasText = !!((el.textContent || '').trim() || (wrap && (wrap.textContent || '').trim()));   // ảnh đi kèm chữ (huy hiệu "Lv.1") để xếp sau, thử cuối cùng
       var t = el.closest('button,a,[role=button]') || el;
-      if (out.indexOf(t) < 0) out.push(t);
+      if (out.indexOf(t) < 0) { t._txt = hasText; out.push(t); }
     }
-    out.sort(function (a, b) { return b.getBoundingClientRect().left - a.getBoundingClientRect().left; });   // từ phải sang trái
+    out.sort(function (a, b) {   // ảnh trơn trước (phải sang trái); ảnh có chữ đi kèm thì sau (trái sang phải, ảnh đại diện nằm trước huy hiệu)
+      if (a._txt !== b._txt) return a._txt ? 1 : -1;
+      var d = b.getBoundingClientRect().left - a.getBoundingClientRect().left; return a._txt ? -d : d;
+    });
     return out;
   }
   function logoutStep() {   // trả về 'doing' | 'gone' (đã đăng xuất) | 'fail'
