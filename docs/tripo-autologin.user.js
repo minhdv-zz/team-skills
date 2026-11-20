@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.3.0
+// @version      2.4.1
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login';
-  var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 1200, MAX_CLICKS = 3;
+  var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 200, MAX_CLICKS = 3, RETRY_MS = 1000, POLL_MS = 100;
 
   // ---------- Trên trang Team Tools ----------
   if (host === 'minhdv-zz.github.io') {
@@ -133,7 +133,7 @@
   }
   function clickLimited(key, el) { // mỗi nút bấm tối đa 3 lần, cách nhau 2,5 giây
     var now = Date.now();
-    if (clicks[key] >= 3 || (lastClick[key] && now - lastClick[key] < 2500)) return;
+    if (clicks[key] >= 3 || (lastClick[key] && now - lastClick[key] < 1200)) return;
     clicks[key]++; lastClick[key] = now; click(el);
   }
   function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } if (msg) say(msg, keepMs); return true; }
@@ -166,7 +166,7 @@
       var now = Date.now();
       if (!settledAt) settledAt = now;
       if (clicks3 > 0) {   // đã bấm Continue: chờ Tripo xử lý; chỉ bấm lại khi Tripo báo lỗi định dạng email (do bấm quá sớm)
-        if (now - lastClickAt < 2500) return false;
+        if (now - lastClickAt < RETRY_MS) return false;
         var emailErr = (document.body.innerText || '').toLowerCase().indexOf('valid email') >= 0;
         if (emailErr && clicks3 < MAX_CLICKS) { pressContinue(pw); return false; }
         if (now - lastClickAt > 10000) return finish('đã bấm Continue nhưng form vẫn còn. Nếu chưa đăng nhập được, bạn bấm lại Continue nhé.', 30000);
@@ -188,6 +188,6 @@
   }
 
   say('nhận được thông tin đăng nhập, đang tìm nút đăng nhập…');
-  var timer = setInterval(function () { if (step()) clearInterval(timer); }, 500);
+  var timer = setInterval(function () { if (step()) clearInterval(timer); }, POLL_MS);
   }
 })();
