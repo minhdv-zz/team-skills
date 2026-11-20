@@ -205,11 +205,11 @@
           <ol class="hsteps" id="tpHeroSteps">
             <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện email + mật khẩu của tài khoản cả nhóm đang dùng.</span></li>
             <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì xem mục &ldquo;Cài tự đăng nhập Tripo&rdquo; bên dưới). Không cài thì copy email, mật khẩu dán vào.</span></li>
-            <li><b>Hết credit thì bấm &ldquo;Đã hết credit&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
+            <li><b>Hết token thì bấm &ldquo;Đã hết token&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Khóa lại</button></span>
         </div>
-        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết credit</b> thì mới chuyển sang tài khoản tiếp theo.</div>
+        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết token</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
       <div id="tpAdmin" style="display:none">
       <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
@@ -364,7 +364,7 @@
       2) Cài <a href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi tải lại trang này.<br>
       Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
       <div class="row" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
-    <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết credit</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
+    <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
   </div>
 </div>
 <div class="overlay" id="ct">
@@ -642,8 +642,8 @@ function tpRender(){
   a.forEach(function(x){ n[x.status] = (n[x.status] || 0) + 1; });
   var cur = TP.stats && TP.stats.months[0] || { emptied: 0, claimed: 0 };
   function tile(v, l, c){ return '<div class="card" style="gap:0;padding:12px 14px"><div style="font-size:26px;font-weight:700;color:' + c + '">' + v + '</div><div class="fine" style="margin:0">' + l + '</div></div>'; }
-  $('tpTiles').innerHTML = tile(n.ok, 'Còn dùng được', 'var(--ok)') + tile(n.using, 'Đang dùng', '#e3b341') + tile(n.empty, 'Đã hết', '#ffb4ac')
-    + tile(cur.emptied, 'Hết trong tháng này', '#ffb4ac') + tile(cur.claimed, 'Lượt lấy tháng này', 'var(--text)');
+  $('tpTiles').innerHTML = tile(n.ok, 'Còn dùng được', 'var(--ok)') + tile(n.using, 'Đang dùng', '#e3b341') + tile(n.empty, 'Đã hết token', '#ffb4ac')
+    + tile(cur.emptied, 'Hết token trong tháng này', '#ffb4ac') + tile(cur.claimed, 'Lượt lấy tháng này', 'var(--text)');
   var ms = (TP.stats ? TP.stats.months : []).slice().reverse(), mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.emptied; })));
   $('tpChart').innerHTML = '<div style="display:flex;gap:10px;align-items:flex-end;height:120px;margin-top:8px">' + ms.map(function(m){
     var h = Math.round(m.emptied / mx * 80);
@@ -653,7 +653,7 @@ function tpRender(){
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
     var chip = x.status === 'ok' ? '<span class="chip ok">Còn dùng được</span>'
       : x.status === 'using' ? '<span class="chip wait">Đang dùng' + (x.usedBy ? ': ' + esc(x.usedBy) : '') + ' &middot; ' + tpAgo(x.usedAt) + '</span>'
-      : '<span class="chip bad">Đã hết' + (x.emptyAt ? ' &middot; ' + tpAgo(x.emptyAt) : '') + '</span>';
+      : '<span class="chip bad">Đã hết token' + (x.emptyAt ? ' &middot; ' + tpAgo(x.emptyAt) : '') + '</span>';
     var btn = function(act, label, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + esc(x.id) + '">' + label + '</button>'; };
     return '<div class="card" style="margin-bottom:8px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px">'
       + '<div style="flex:1;min-width:220px"><b style="word-break:break-all">' + esc(x.email) + '</b>' + (x.note ? '<div class="fine" style="margin:0">' + esc(x.note) + '</div>' : '') + '<div style="margin-top:4px">' + chip + '</div></div>'
@@ -661,7 +661,7 @@ function tpRender(){
       + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0">&#9889; chưa có</span>' : '<span style="font-size:20px;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0">' + tpAgo(x.creditAt) + '</div>') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + btn('reveal', 'Xem', 'pri')
       + (x.status === 'ok' ? btn('using', 'Đang dùng') : '') + (x.status === 'using' ? btn('ok', 'Trả lại') : '')
-      + (x.status !== 'empty' ? btn('empty', 'Đã hết') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
+      + (x.status !== 'empty' ? btn('empty', 'Đã hết token') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
   }).join('');
   $('tpList').innerHTML = rows || '<div class="card">Chưa có tài khoản nào. Mở mục &ldquo;Thêm tài khoản mới&rdquo; bên dưới.</div>';
   var names = { claim: 'lấy', empty: 'đánh dấu hết', add: 'thêm', del: 'xóa' };
@@ -703,9 +703,9 @@ $('tpGo').addEventListener('click', function(){
 $('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); tpShowGate(''); });
 $('tpClaim').addEventListener('click', function(){
-  // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết credit": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
+  // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết token": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
   // (lấy cái dùng gần nhất), không thì mới lấy tài khoản mới. Làm ở trang để chạy được với cả Worker bản cũ.
-  var note = 'Đây là tài khoản cả nhóm đang dùng. Hết credit thì bấm Đã hết credit bên dưới để chuyển sang tài khoản tiếp theo.';
+  var note = 'Đây là tài khoản cả nhóm đang dùng. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.';
   tpGuard(function(){ return tpCall('list').then(function(l){
     var cur = (l.accounts || []).filter(function(x){ return x.status === 'using'; }).sort(function(x, y){ return (y.usedAt || 0) - (x.usedAt || 0); })[0];
     if(cur) return tpCall('reveal', { id: cur.id }).then(function(j){ tpShowCred(j.email, j.password, note, cur.id); return l; });
@@ -714,7 +714,7 @@ $('tpClaim').addEventListener('click', function(){
 });
 $('tpmEmpty').addEventListener('click', function(){
   var id = TP_CLAIM_ID; if(!id) return;
-  if(!confirm('Đánh dấu tài khoản này đã hết credit?')) return;
+  if(!confirm('Đánh dấu tài khoản này đã hết token?')) return;
   tpGuard(function(){ return tpCall('update', { id: id, status: 'empty' }).then(function(){ tpCloseCred(); toast('Đã đánh dấu hết. Bấm Lấy tài khoản để lấy tài khoản khác.', true); return tpLoad(); }); });
 });
 $('tpmStudio').addEventListener('click', function(e){
