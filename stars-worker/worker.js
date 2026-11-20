@@ -163,7 +163,7 @@ async function auth(req, env) {
   const email = normEmail(req.headers.get("X-Email") || "");
   const owner = email === ADMIN_EMAIL;
   let good = owner, admin = owner;
-  if (!good && EMAIL_RE.test(email)) { try { const m = await getMembers(env); good = m.includes(email); admin = good && (await getAdmins(env)).includes(email); } catch { good = false; admin = false; } }
+  if (!good && EMAIL_RE.test(email)) { try { const [m, ad] = await Promise.all([getMembers(env), getAdmins(env)]); good = m.includes(email); admin = good && ad.includes(email); } catch { good = false; admin = false; } }
   const passOk = await same(req.headers.get("X-Pass") || "", env.TRIPO_PASS);
   good = good && passOk;   // cần đủ cả Gmail trong danh sách lẫn mật khẩu nhóm
   try { await guard.settle(r.ids, good); }
@@ -239,15 +239,15 @@ async function tripo(req, env, url) {
   let b; try { b = await req.json(); } catch { b = {}; }
   if (!b || typeof b !== "object") b = {};
   const who = au.email, isAdmin = au.admin, op = url.pathname.slice(7);
-  const cm = await getCredits(env);
+  const cm = isAdmin || op === "credit" ? await getCredits(env) : {};   // chỉ đọc khi cần (thành viên thường không dùng số credit)
   // Người không phải chủ chỉ thấy id + trạng thái: không có email, ghi chú, người dùng, credit của tài khoản.
   const P = isAdmin ? (a) => pub(a, cm) : (a) => ({ id: a.id, email: "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: null, creditAt: 0 });
   const adminOnly = ["add", "delete", "members", "members_set"];
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
 
   if (op === "list") {
-    const st = await stats(env);
-    return json({ admin: isAdmin, accounts: (await getAccounts(env)).map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: isAdmin ? await getMembers(env) : undefined, admins: isAdmin ? await getAdmins(env) : undefined });
+    const [st, accs, members, admins] = await Promise.all([stats(env), getAccounts(env), isAdmin ? getMembers(env) : null, isAdmin ? getAdmins(env) : null]);   // đọc song song, không nối đuôi nhau
+    return json({ admin: isAdmin, accounts: accs.map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: members || undefined, admins: admins || undefined });
   }
 
   if (op === "members") return json({ members: await getMembers(env), admins: await getAdmins(env) });
