@@ -644,6 +644,7 @@ function tpApply(j){
   if(j.admin !== undefined) TP.admin = !!j.admin;
   if(j.members) tpMemRender(j.members, j.admins);
   $('tpGate').style.display = 'none'; $('tpMain').style.display = '';
+  tpToggleShow(false);   // hướng dẫn bật công tắc (nếu đang cần) hiện ngay khi màn chính hiện, không chờ vòng kiểm tra
   $('tpMe').textContent = 'Bạn: ' + tpWho();
   tpRender();
   tpCreditSync();
@@ -903,11 +904,11 @@ document.addEventListener('visibilitychange', function(){ tpSetupStep(); tpToggl
   var tries = 0, iv = setInterval(function(){
     tries++;
     if(tpAutoOn()){ clearInterval(iv); if(tpSetupGet() || tpToggleGet()){ tpSetupClear(); tpToggleClear(); toast('Đã nhận script tự đăng nhập. Bấm Lấy tài khoản rồi Đăng nhập Tripo là xong.', true); } return; }
-    if(tries < 4) return;   // chờ ~2 giây cho script kịp gắn dấu hiệu
+    if(tries < 2) return;   // chờ ~0,5 giây cho script kịp gắn dấu hiệu
     var st = tpSetupGet(); if(st && st.s === 'script' && st.n >= 1){ tpSetupClear(); tpToggleSave({ n: 0, o: Date.now() }); }
     if(!tpToggleGet()){ clearInterval(iv); return; }
-    if($('tpMain').style.display !== 'none'){ tpToggleShow(true); clearInterval(iv); } else if(tries > 600) clearInterval(iv);
-  }, 500);
+    if($('tpMain').style.display !== 'none'){ tpToggleShow(true); clearInterval(iv); } else if(tries > 1200) clearInterval(iv);
+  }, 250);
 })();
 Array.prototype.forEach.call(document.querySelectorAll('.tpCopyExt'), function(btn){ btn.addEventListener('click', function(){
   var u = /Edg\//.test(navigator.userAgent) ? 'edge://extensions/?id=iikmkjmpaadaobahmlepeloendndfphd' : 'chrome://extensions/?id=dhdgffkkebhmkfjojejmpbldmpobfkfo', b = this;
