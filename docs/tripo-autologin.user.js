@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.6.1
+// @version      2.6.2
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -249,12 +249,17 @@
       return false;
     }
     if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).', 6000); }
-    // Tripo đang đăng nhập sẵn: chỉ khi lời chào trên trang là "Hi, <tên trước @ của email>!" mới chắc đúng tài khoản này, lúc đó đọc credit.
-    if (Date.now() - lastGreet > 1000) {
+    // Tripo đang đăng nhập sẵn. Tên trong lời chào KHÔNG nhất thiết trùng email (vd "Hi, tripo-referral-landing-page-031!"), nên có hai mức:
+    //  - lời chào đúng "Hi, <tên trước @ của email>!": chắc đúng tài khoản này, đọc credit và gửi cho Team Tools;
+    //  - thấy "<số> Upgrade" (dấu hiệu đã đăng nhập) mà không xác nhận được tài khoản: DỪNG, không đăng nhập lại và không gửi credit
+    //    (tránh ghi số của tài khoản khác vào email này), nhắc người dùng đăng xuất nếu muốn dùng tài khoản của nhóm.
+    if (Date.now() - lastGreet > 500) {
       lastGreet = Date.now();
       var low = (document.body && document.body.innerText || '').toLowerCase();
       if (low.indexOf('hi, ' + acctEmail.split('@')[0].toLowerCase() + '!') >= 0) { watchCredit(acctEmail); return finish('đã đăng nhập sẵn tài khoản này.', 6000); }
-    }   // sau khi bấm mà form biến mất là đăng nhập xong
+      if (readCredit() !== null) return finish('trình duyệt đã đăng nhập sẵn một tài khoản Tripo (không xác nhận được là ' + acctEmail + '), nên script không đăng nhập lại. Muốn dùng tài khoản của nhóm thì đăng xuất Tripo rồi bấm "Mở Tripo Studio" lại.', 20000);
+    }
+    if (Date.now() - started < 2000) { say('đang kiểm tra đã đăng nhập chưa…'); return false; }   // trang mới tải có thể chưa hiện trạng thái đăng nhập: chờ chút rồi mới bấm nút đăng nhập
     var up = findText(/^use password$/);
     if (up) { if (clickLimited('use', up)) say('bấm "Use Password"…'); return false; }
     if (!findInput('email', /e-?mail/i)) {   // chưa có form nào mới bấm nút đăng nhập ở đầu trang
