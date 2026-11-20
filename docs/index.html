@@ -189,8 +189,9 @@
   <div id="tripo" style="display:none">
     <div id="tpGate" class="card" style="border-color:var(--acc);gap:12px;max-width:520px">
       <h3 style="font-size:20px">Tài khoản Tripo của nhóm</h3>
-      <div style="color:var(--mut)">Nhập tài khoản (Gmail) của bạn để vào. Gmail chưa có trong danh sách nhóm thì nhờ người quản lý thêm.</div>
+      <div style="color:var(--mut)">Nhập tài khoản (Gmail) và mật khẩu nhóm để vào. Gmail chưa có trong danh sách nhóm thì nhờ người quản lý thêm.</div>
       <label>Tài khoản (Gmail)<br><input id="tpWhoIn" type="email" maxlength="120" autocomplete="email" placeholder="ten@horusvn.com" style="width:100%;margin-top:6px"></label>
+      <label>Mật khẩu nhóm<br><input id="tpPassIn" type="password" autocomplete="off" style="width:100%;margin-top:6px"></label>
       <div id="tpErr" class="warnbox" style="display:none"></div>
       <div><button class="pri big" id="tpGo">Đăng nhập</button></div>
     </div>
@@ -581,10 +582,11 @@ function copy(text, btn){
 }
 // ===== Tab Tài khoản Tripo =====
 var TP = { accs: [], stats: null, busy: false };
+function tpPass(){ return sessionStorage.getItem('tripoPass') || ''; }
 function tpWho(){ return localStorage.getItem('tripoWho') || ''; }
 function tpCall(op, body){
   body = body || {};
-  return fetch(STAR_API + '/tripo/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Email': tpWho() }, body: JSON.stringify(body) })
+  return fetch(STAR_API + '/tripo/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Email': tpWho(), 'X-Pass': tpPass() }, body: JSON.stringify(body) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
       if(!r.ok){ var e = new Error(j.error || ('Lỗi ' + r.status)); e.status = r.status; throw e; }
       return j; }); },
@@ -605,13 +607,14 @@ function tpShowGate(msg){
 }
 function tripoInit(){
   if(!STAR_API){ tpShowGate('Chưa cấu hình server.'); return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(tpWho())){ localStorage.removeItem('tripoWho'); $('tpWhoIn').value = ''; tpShowGate(''); return; }   // tên cũ (không phải Gmail) từ bản dùng mật khẩu: bỏ, hiện ô nhập Gmail sạch
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(tpWho())){ localStorage.removeItem('tripoWho'); $('tpWhoIn').value = ''; tpShowGate(''); return; }
+  if(!tpPass()){ tpShowGate(''); return; }   // tên cũ (không phải Gmail) từ bản dùng mật khẩu: bỏ, hiện ô nhập Gmail sạch
   tpLoad();
 }
 function tpLoad(){
   return tpCall('list').then(tpApply).catch(function(e){
     // Tự vào bằng Gmail đã nhớ mà bị từ chối (bị bỏ khỏi danh sách...): chỉ hiện ô nhập, không báo lỗi. Lỗi chỉ hiện khi người dùng tự bấm "Xem tài khoản".
-    if(e.status === 401){ localStorage.removeItem('tripoWho'); TP.admin = false; tpShowGate(''); return; }
+    if(e.status === 401){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(''); return; }
     tpFail(e);
   });
 }
@@ -693,8 +696,8 @@ function tpShowCred(email, pass, note, id){
   $('tpm').classList.add('on');
 }
 function tpFail(e){ // 401: sai mật khẩu, quay lại màn nhập. 429 và lỗi khác: chỉ báo, giữ nguyên màn hình
-  if(e.status === 401){ localStorage.removeItem('tripoWho'); TP.admin = false; tpShowGate(e.message); }
-  else if(e.status === 423 || $('tpMain').style.display === 'none'){ TP.admin = false; tpShowGate(e.message); }   // 423: đã bị khóa
+  if(e.status === 401){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(e.message); }
+  else if(e.status === 423 || $('tpMain').style.display === 'none'){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(e.message); }   // 423: đã bị khóa
   else toast(e.message, false);
 }
 function tpGuard(fn){ // chặn bấm chồng
@@ -705,11 +708,14 @@ $('tpGo').addEventListener('click', function(){
   var who = $('tpWhoIn').value.trim().toLowerCase();
   if(!who){ tpShowGate('Nhập Gmail của bạn.'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(who)){ tpShowGate('Gmail chưa đúng dạng, ví dụ ten@gmail.com.'); return; }
-  localStorage.setItem('tripoWho', who);
+  var pw = $('tpPassIn').value;
+  if(!pw){ tpShowGate('Nhập mật khẩu nhóm.'); return; }
+  localStorage.setItem('tripoWho', who); sessionStorage.setItem('tripoPass', pw); $('tpPassIn').value = '';
   tpGuard(function(){ return tpCall('list').then(tpApply); });
 });
 $('tpWhoIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
-$('tpLock').addEventListener('click', function(){ localStorage.removeItem('tripoWho'); TP.admin = false; $('tpWhoIn').value = ''; tpShowGate(''); });
+$('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
+$('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(''); });
 $('tpMembersBtn').addEventListener('click', function(){
   var items = $('tpMembers').value.split(/[\s,;]+/).filter(Boolean);
   tpGuard(function(){ return tpCall('members_set', { items: items }).then(function(j){

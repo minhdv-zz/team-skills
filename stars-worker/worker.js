@@ -2,7 +2,9 @@
 //  1) Đếm sao theo tên máy, không cần đăng nhập. KV binding STARS, khoá "m:<key>|<machine>" = "1".
 //  2) Tab "Tài khoản Tripo": mọi endpoint POST /tripo/* cần header X-Email = Gmail nằm trong danh sách thành viên
 //     (KV "tripo:members", chủ sửa trong tab). Chủ (ADMIN_EMAIL) luôn có quyền và là người duy nhất thêm/xóa tài khoản, xem danh sách đầy đủ.
+//     Phải đúng CẢ HAI: Gmail trong danh sách + mật khẩu nhóm (header X-Pass = secret TRIPO_PASS).
 //     Secret (đặt bằng `wrangler secret put`, KHÔNG ghi vào repo):
+//       TRIPO_PASS     mật khẩu nhóm để vào tab
 //       TRIPO_ENC_KEY  chuỗi ngẫu nhiên dài, dùng mã hóa mật khẩu từng tài khoản (AES-GCM)
 //     Chống đoán Gmail: Durable Object `Guard` (đếm nguyên tử, đếm TRƯỚC khi so mật khẩu nên bắn song song cũng không lách được).
 //     KV: "tripo:accounts" = JSON mảng tài khoản, "tripo:ev:YYYYMM" = JSON mảng sự kiện của tháng đó.
@@ -140,13 +142,13 @@ function ipKey(ip) {
   return n.some(Number.isNaN) ? "v6:" + s : "v6:" + n.map((x) => x.toString(16)).join(":");
 }
 
-const LOCKED_MSG = "Đã khóa vì nhập Gmail sai quá nhiều lần. Liên hệ người quản lý để mở khóa.";
+const LOCKED_MSG = "Đã khóa vì nhập sai quá nhiều lần. Liên hệ người quản lý để mở khóa.";
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const normEmail = (v) => (typeof v === "string" ? v.trim().toLowerCase().slice(0, 120) : "");
 const getMembers = async (env) => (await env.STARS.get("tripo:members", "json")) || [];
 
 async function auth(req, env) {
-  if (!env.TRIPO_ENC_KEY || !env.GUARD) return { bad: json({ error: "Server chưa cấu hình" }, 503) }; // thiếu GUARD thì đóng cổng, không mở
+  if (!env.TRIPO_PASS || !env.TRIPO_ENC_KEY || !env.GUARD) return { bad: json({ error: "Server chưa cấu hình" }, 503) }; // thiếu GUARD thì đóng cổng, không mở
   const ip = ipKey(req.headers.get("CF-Connecting-IP") || "?");
   // Lớp phụ (xấp xỉ): giới hạn số request mỗi IP bằng Cloudflare Rate Limiting.
   if (env.TRIPO_RL) {
@@ -160,9 +162,11 @@ async function auth(req, env) {
   const admin = email === ADMIN_EMAIL;
   let good = admin;
   if (!good && EMAIL_RE.test(email)) { try { good = (await getMembers(env)).includes(email); } catch { good = false; } }
+  const passOk = await same(req.headers.get("X-Pass") || "", env.TRIPO_PASS);
+  good = good && passOk;   // cần đủ cả Gmail trong danh sách lẫn mật khẩu nhóm
   try { await guard.settle(r.ids, good); }
   catch { try { await guard.settle(r.ids, good); } catch { /* vẫn lỗi thì lượt giữ chỗ tự thành lần sai sau PENDING_STALE_S, an toàn hơn */ } }
-  return good ? { email, admin } : { bad: json({ error: "Gmail này chưa có trong danh sách nhóm" }, 401) };
+  return good ? { email, admin } : { bad: json({ error: "Gmail hoặc mật khẩu không đúng" }, 401) };
 }
 
 // Durable Object (SQLite) đếm lượt thử và giữ trạng thái khóa. Mỗi hàm chạy đồng bộ từ đầu đến cuối nên không có chen ngang.
@@ -335,7 +339,7 @@ export default {
     const url = new URL(req.url), o = req.headers.get("Origin");
     const allow = o === ORIGIN || (env.DEV_ORIGIN_OK === "1" && o && url.pathname.startsWith("/tripo/") && DEV_ORIGIN.test(o)) ? o : ORIGIN;
     const cors = { "Access-Control-Allow-Origin": allow, "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Email", "Vary": "Origin" };
+      "Access-Control-Allow-Headers": "Content-Type, X-Email, X-Pass", "Vary": "Origin" };
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     let res;
     try {
