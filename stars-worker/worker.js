@@ -1,7 +1,7 @@
 // Cloudflare Worker của Team Tools.
 //  1) Đếm sao theo tên máy, không cần đăng nhập. KV binding STARS, khoá "m:<key>|<machine>" = "1".
 //  2) Tab "Tài khoản Tripo": mọi endpoint POST /tripo/* cần header X-Email = Gmail nằm trong danh sách thành viên
-//     (KV "tripo:members", chủ sửa trong tab). Chủ (ADMIN_EMAIL) luôn có quyền và là người duy nhất thêm/xóa tài khoản, xem danh sách đầy đủ.
+//     (KV "tripo:members", admin sửa trong tab). Admin = chủ (ADMIN_EMAIL) + admin phụ (KV "tripo:admins", quyền ngang chủ, cấp được cho người khác): thêm/xóa tài khoản, xem danh sách đầy đủ.
 //     Phải đúng CẢ HAI: Gmail trong danh sách + mật khẩu nhóm (header X-Pass = secret TRIPO_PASS).
 //     Secret (đặt bằng `wrangler secret put`, KHÔNG ghi vào repo):
 //       TRIPO_PASS     mật khẩu nhóm để vào tab
@@ -146,6 +146,8 @@ const LOCKED_MSG = "Đã khóa vì nhập sai quá nhiều lần. Liên hệ ng�
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const normEmail = (v) => (typeof v === "string" ? v.trim().toLowerCase().slice(0, 120) : "");
 const getMembers = async (env) => (await env.STARS.get("tripo:members", "json")) || [];
+// Admin phụ (do chủ cấp, KV "tripo:admins"): luôn nằm trong danh sách thành viên. Chủ (ADMIN_EMAIL) là admin gốc, không nằm trong KV.
+const getAdmins = async (env) => (await env.STARS.get("tripo:admins", "json")) || [];
 
 async function auth(req, env) {
   if (!env.TRIPO_PASS || !env.TRIPO_ENC_KEY || !env.GUARD) return { bad: json({ error: "Server chưa cấu hình" }, 503) }; // thiếu GUARD thì đóng cổng, không mở
@@ -159,9 +161,9 @@ async function auth(req, env) {
   const r = await guard.reserve(ip);
   if (!r.ok) return { bad: r.locked ? json({ error: LOCKED_MSG }, 423) : json({ error: "Thao tác quá nhanh, đợi một lúc rồi thử lại" }, 429) };
   const email = normEmail(req.headers.get("X-Email") || "");
-  const admin = email === ADMIN_EMAIL;
-  let good = admin;
-  if (!good && EMAIL_RE.test(email)) { try { good = (await getMembers(env)).includes(email); } catch { good = false; } }
+  const owner = email === ADMIN_EMAIL;
+  let good = owner, admin = owner;
+  if (!good && EMAIL_RE.test(email)) { try { const m = await getMembers(env); good = m.includes(email); admin = good && (await getAdmins(env)).includes(email); } catch { good = false; admin = false; } }
   const passOk = await same(req.headers.get("X-Pass") || "", env.TRIPO_PASS);
   good = good && passOk;   // cần đủ cả Gmail trong danh sách lẫn mật khẩu nhóm
   try { await guard.settle(r.ids, good); }
@@ -241,20 +243,26 @@ async function tripo(req, env, url) {
   // Người không phải chủ chỉ thấy id + trạng thái: không có email, ghi chú, người dùng, credit của tài khoản.
   const P = isAdmin ? (a) => pub(a, cm) : (a) => ({ id: a.id, email: "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: null, creditAt: 0 });
   const adminOnly = ["add", "delete", "members", "members_set"];
-  if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ chủ nhóm làm được việc này" }, 403);
+  if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
 
   if (op === "list") {
     const st = await stats(env);
-    return json({ admin: isAdmin, accounts: (await getAccounts(env)).map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: isAdmin ? await getMembers(env) : undefined });
+    return json({ admin: isAdmin, accounts: (await getAccounts(env)).map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: isAdmin ? await getMembers(env) : undefined, admins: isAdmin ? await getAdmins(env) : undefined });
   }
 
-  if (op === "members") return json({ members: await getMembers(env) });
+  if (op === "members") return json({ members: await getMembers(env), admins: await getAdmins(env) });
   if (op === "members_set") {
-    const raw = Array.isArray(b.items) ? b.items : [], out = [];
+    if (!Array.isArray(b.items)) return json({ error: "Thiếu danh sách" }, 400);
+    const raw = b.items, out = [];
     for (const it of raw.slice(0, 1000)) { const e = normEmail(it); if (EMAIL_RE.test(e) && e !== ADMIN_EMAIL && !out.includes(e)) out.push(e); }
     if (out.length > MAX_MEMBERS) return json({ error: "Quá " + MAX_MEMBERS + " thành viên" }, 400);
+    // Mọi admin (kể cả admin phụ) đều cấp/thu hồi được admin, quyền ngang chủ. Chủ (ADMIN_EMAIL) không nằm trong danh sách nên không bị gỡ. Bỏ người đã bị xóa khỏi thành viên.
+    let adm = await getAdmins(env);
+    if (Array.isArray(b.admins)) adm = b.admins.map(normEmail);
+    adm = adm.filter((e, i) => out.includes(e) && adm.indexOf(e) === i);
     await env.STARS.put("tripo:members", JSON.stringify(out));
-    return json({ members: out });
+    await env.STARS.put("tripo:admins", JSON.stringify(adm));
+    return json({ members: out, admins: adm });
   }
 
   if (op === "add") {
@@ -292,7 +300,7 @@ async function tripo(req, env, url) {
   if (!a) return json({ error: "không thấy tài khoản" }, 404);
 
   if (op === "update") {
-    if (!isAdmin && (b.note !== undefined || b.status !== "empty")) return json({ error: "Chỉ chủ nhóm đổi được mục này" }, 403); // thành viên thường chỉ được báo "đã hết token"
+    if (!isAdmin && (b.note !== undefined || b.status !== "empty")) return json({ error: "Chỉ admin đổi được mục này" }, 403); // thành viên thường chỉ được báo "đã hết token"
     let ev = null;
     if (b.status !== undefined) {
       if (!["ok", "using", "empty"].includes(b.status)) return json({ error: "bad status" }, 400);

@@ -135,8 +135,9 @@
   .mem .dots{background:none;border:0;color:var(--mut);font-size:20px;line-height:1;padding:4px 8px;cursor:pointer}
   .mem .dots:hover{color:var(--text)}
   .mem .menu{position:absolute;right:8px;top:100%;z-index:5;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 8px 24px #0009}
-  .mem .menu button{background:none;border:0;color:#ffb4ac;padding:8px 16px;cursor:pointer;font:inherit;white-space:nowrap}
-  .mem .menu button:hover{background:#3b1219;border-radius:6px}
+  .mem .menu button{display:block;width:100%;text-align:left;background:none;border:0;color:#ffb4ac;padding:8px 16px;cursor:pointer;font:inherit;white-space:nowrap}
+  .mem .menu button:hover{background:#222831;border-radius:6px}
+  .mem .menu button[data-act=del]:hover{background:#3b1219}
   .chip{display:inline-block;font-size:12px;border-radius:999px;padding:1px 10px;border:1px solid var(--line);color:var(--mut)}
   .chip.ok{color:var(--ok);border-color:#1f4a2b;background:#12261a}
   .chip.bad{color:#ffb4ac;border-color:var(--err);background:#3b1219}
@@ -234,7 +235,7 @@
       </details>
       <details class="help" style="margin-top:14px">
         <summary>Thành viên được vào (Gmail)</summary>
-        <p>Chỉ những Gmail này (và chủ nhóm) vào được tab này. Thêm hoặc xóa là lưu ngay.</p>
+        <p>Chỉ những Gmail này (và admin) vào được tab này. Thêm hoặc xóa là lưu ngay.</p>
         <div id="tpMemList"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
           <input id="tpMemIn" type="text" autocomplete="off" placeholder="Thêm Gmail, nhiều email ngăn bằng dấu cách" style="flex:1;min-width:220px">
@@ -636,7 +637,7 @@ function tpApply(j){
   if(j.accounts) TP.accs = j.accounts;
   if(j.stats) TP.stats = j.stats;
   if(j.admin !== undefined) TP.admin = !!j.admin;
-  if(j.members) tpMemRender(j.members);
+  if(j.members) tpMemRender(j.members, j.admins);
   $('tpGate').style.display = 'none'; $('tpMain').style.display = '';
   $('tpMe').textContent = 'Bạn: ' + tpWho();
   tpRender();
@@ -731,35 +732,51 @@ $('tpWhoIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('t
 $('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(''); });
 var TPOWNER = 'minhdv@horusvn.com';
-function tpMemRender(list){
+function tpMemRender(list, admins){
   TP.members = list.slice();
+  if(admins) TP.admins = admins.slice(); else if(!TP.admins) TP.admins = [];
   var rows = [TPOWNER].concat(TP.members).map(function(e, i){
-    var own = i === 0;
+    var own = i === 0, adm = own || TP.admins.indexOf(e) >= 0;
     return '<div class="mem"><div class="av">' + esc(e.charAt(0)) + '</div><div class="em" title="' + esc(e) + '">' + esc(e) + '</div>'
-      + '<span class="role' + (own ? ' own' : '') + '">' + (own ? 'Chủ nhóm' : 'Thành viên') + '</span>'
-      + (own ? '<span style="width:36px"></span>' : '<button class="dots" data-mem="' + esc(e) + '" aria-label="Tùy chọn">&#8942;</button>') + '</div>';
+      + '<span class="role' + (adm ? ' own' : '') + '">' + (adm ? 'Admin' : 'Thành viên') + '</span>'
+      + (own ? '<span style="width:36px"></span>' : '<button class="dots" data-mem="' + esc(e) + '" data-adm="' + (adm ? 1 : 0) + '" aria-label="Tùy chọn">&#8942;</button>') + '</div>';
   });
-  $('tpMemList').innerHTML = rows.join('') + '<div class="fine" style="margin:8px 12px 0">' + TP.members.length + ' thành viên (chưa tính chủ nhóm)</div>';
+  $('tpMemList').innerHTML = rows.join('') + '<div class="fine" style="margin:8px 12px 0">' + TP.members.length + ' thành viên (chưa tính minhdv@horusvn.com)' + '</div>';
 }
-function tpMemSave(items, msg){
-  tpGuard(function(){ return tpCall('members_set', { items: items }).then(function(j){ tpMemRender(j.members); toast(msg(j.members), true); }); });
+function tpMemSave(items, admins, msg){   // admins = undefined khi chỉ thêm/xóa thành viên: server giữ nguyên admin, tránh ghi đè do dữ liệu cũ
+  var body = { items: items }; if(admins) body.admins = admins;
+  tpGuard(function(){ return tpCall('members_set', body).then(function(j){
+    tpMemRender(j.members, j.admins); toast(msg(j.members), true);
+    var me = tpWho().toLowerCase();
+    if(me !== TPOWNER && j.members.indexOf(me) < 0){ tpShowGate('Bạn không còn trong danh sách thành viên.'); return; }   // tự xóa mình
+    if(me !== TPOWNER && j.admins.indexOf(me) < 0){ TP.admin = false; tpRender(); }   // tự hạ quyền: ẩn giao diện admin ngay
+  }); });
 }
 $('tpMembersBtn').addEventListener('click', function(){
   var add = $('tpMemIn').value.toLowerCase().split(/[\s,;]+/).filter(Boolean);
   if(!add.length) return;
   var bad = add.filter(function(e){ return !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); });
   if(bad.length){ toast('Email chưa đúng dạng: ' + bad.join(', '), false); return; }
-  tpMemSave((TP.members || []).concat(add), function(m){ $('tpMemIn').value = ''; return 'Đã lưu, hiện có ' + m.length + ' thành viên'; });
+  tpMemSave((TP.members || []).concat(add), null, function(m){ $('tpMemIn').value = ''; return 'Đã lưu, hiện có ' + m.length + ' thành viên'; });
 });
 $('tpMemIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpMembersBtn').click(); });
 $('tpMemList').addEventListener('click', function(e){
   var old = $('tpMemList').querySelector('.menu'); if(old) old.remove();
   var d = e.target.closest('.dots'), x = e.target.closest('.menu button');
-  if(x){ var em = x.getAttribute('data-del'); if(!confirm('Xóa ' + em + ' khỏi danh sách?')) return;
-    tpMemSave((TP.members || []).filter(function(m){ return m !== em; }), function(){ return 'Đã xóa ' + em; }); return; }
+  if(x){
+    var em = x.getAttribute('data-em'), act = x.getAttribute('data-act');
+    if(act === 'del'){ if(!confirm('Xóa ' + em + ' khỏi danh sách?')) return;
+      tpMemSave((TP.members || []).filter(function(m){ return m !== em; }), null, function(){ return 'Đã xóa ' + em; }); return; }
+    var on = act === 'admin', adms = (TP.admins || []).filter(function(m){ return m !== em; });
+    if(on) adms.push(em);
+    if(!confirm((on ? 'Chuyển ' + em + ' thành Admin? Admin có quyền ngang chủ: xem mật khẩu, thêm/xóa tài khoản, thành viên và cấp admin.' : 'Chuyển ' + em + ' về Thành viên?'))) return;
+    tpMemSave(TP.members, adms, function(){ return em + (on ? ' đã là Admin' : ' đã về Thành viên'); }); return;
+  }
   if(d && !(old && old.parentNode === d.parentNode)){
+    var em2 = d.getAttribute('data-mem'), isAdm = d.getAttribute('data-adm') === '1';
     var m = document.createElement('div'); m.className = 'menu';
-    m.innerHTML = '<button data-del="' + esc(d.getAttribute('data-mem')) + '">Xóa khỏi danh sách</button>';
+    m.innerHTML = '<button data-em="' + esc(em2) + '" data-act="' + (isAdm ? 'member' : 'admin') + '" style="color:var(--text)">' + (isAdm ? 'Chuyển về Thành viên' : 'Chuyển thành Admin') + '</button>'
+      + '<button data-em="' + esc(em2) + '" data-act="del">Xóa khỏi danh sách</button>';
     d.parentNode.appendChild(m); e.stopPropagation();
   }
 });
