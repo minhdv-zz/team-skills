@@ -206,6 +206,12 @@
       <div><button class="pri big" id="tpGo">Đăng nhập</button></div>
     </div>
     <div id="tpMain" style="display:none">
+      <div class="warnbox" id="tpToggle" style="display:none;margin-bottom:12px;line-height:1.7">
+        <b>Còn 1 bước cuối (chỉ làm một lần): bật quyền chạy script cho Tampermonkey.</b> Chrome bắt người dùng tự bật, trang không bật hộ được.<br>
+        1) Bấm <button type="button" class="tpCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button> &nbsp;2) Nhấn <b>Ctrl+T</b> (mở tab mới), <b>Ctrl+V</b>, <b>Enter</b> (dán vào thanh địa chỉ) &nbsp;3) Bật công tắc như hình:<br>
+        <img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="max-width:100%;width:520px;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><br>
+        Bật xong quay lại tab này, trang tự tải lại. <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
+      </div>
       <div class="hero" id="tpHero">
         <div class="hero-top">
           <div class="hero-cta" id="tpHeroCta">
@@ -378,10 +384,10 @@
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
     <div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre>
-    <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Máy này chưa cài tiện ích tự đăng nhập.</b> Làm theo 2 bước dưới đây, trang tự chuyển bước khi anh quay lại tab này (nếu tab cài tiện ích chưa tự mở thì bấm link bước 1). Đã có Tampermonkey/Violentmonkey rồi thì bấm thẳng bước 2.<br>
+    <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Máy này chưa cài tiện ích tự đăng nhập.</b> Làm theo 2 bước dưới đây, trang tự chuyển bước khi bạn quay lại tab này (nếu tab cài tiện ích chưa tự mở thì bấm link bước 1). Đã có Tampermonkey/Violentmonkey rồi thì bấm thẳng bước 2.<br>
       1) Cài tiện ích (bấm đúng trình duyệt của bạn, rồi bấm Thêm/Add): <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> (Tampermonkey) &middot; <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> (Violentmonkey).<br>
       2) Cài <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi quay lại tab này, trang tự tải lại.<br>
-      <div style="margin-top:6px;padding:8px 10px;border:1px solid #6b5a1f;border-radius:8px;background:#2a2410"><b>3) Chrome/Edge: bật quyền chạy script (bắt buộc, không bật thì script cài rồi vẫn không chạy).</b> Bấm <button type="button" id="tpmCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button>, dán vào thanh địa chỉ rồi Enter, bật công tắc <b>Allow User Scripts</b> (Cho phép tập lệnh người dùng) của Tampermonkey. Chỗ này Chrome bắt tự bật, trang không bật hộ được. Xong bấm &ldquo;Đã cài xong, tải lại trang&rdquo; bên dưới.</div> Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
+      Cài xong mà Tripo vẫn không tự đăng nhập thì trang sẽ tự hướng dẫn bật nốt công tắc <b>Allow User Scripts</b> của Tampermonkey (chỉ làm một lần). Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
       <div class="row" style="margin-top:8px"><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
@@ -814,7 +820,7 @@ $('tpmStudio').addEventListener('click', function(e){
   document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: $('tpmEmail').textContent, p: TP_PASS }) }));
   if(root.hasAttribute('data-tripo-ack')) e.preventDefault();   // script đã nhận và tự mở tab Tripo; không nhận thì link vẫn mở như thường
 });
-// Cài tự động từng bước: mở cửa hàng tiện ích -> khi anh quay lại tab này thì mở trang cài script -> quay lại lần nữa thì tải lại trang để nhận script.
+// Cài tự động từng bước: mở cửa hàng tiện ích -> khi người dùng quay lại tab này thì mở trang cài script -> quay lại lần nữa thì tải lại trang để nhận script.
 function tpStoreUrl(){
   var ua = navigator.userAgent;
   if(/Firefox\//.test(ua)) return 'https://addons.mozilla.org/firefox/addon/violentmonkey/';
@@ -823,6 +829,9 @@ function tpStoreUrl(){
 }
 function tpSetupGet(){ try{ var v = JSON.parse(localStorage.getItem('tripoSetup') || 'null'); if(v && Date.now() - v.t < 20 * 60 * 1000) return v; localStorage.removeItem('tripoSetup'); }catch(e){} return null; }
 function tpSetupSave(v){ try{ v.t = Date.now(); localStorage.setItem('tripoSetup', JSON.stringify(v)); }catch(e){} }
+function tpToggleGet(){ try{ var v = JSON.parse(localStorage.getItem('tripoToggle') || 'null'); if(v && Date.now() - v.t < 30 * 60 * 1000) return v; localStorage.removeItem('tripoToggle'); }catch(e){} return null; }
+function tpToggleSave(v){ try{ v.t = v.t || Date.now(); localStorage.setItem('tripoToggle', JSON.stringify(v)); }catch(e){} }
+function tpToggleClear(){ try{ localStorage.removeItem('tripoToggle'); }catch(e){} $('tpToggle').style.display = 'none'; }
 function tpSetupClear(){ try{ localStorage.removeItem('tripoSetup'); }catch(e){} }
 function tpOpenScript(){   // mở tab cài script; trả false nếu trình duyệt chặn
   var w = window.open($('tpmScriptLink').href, 'tpScript'); if(!w) return false;
@@ -847,20 +856,44 @@ function tpSetupStep(){
       tpGoOff();
       tpGo = function(){ tpGoOff(); var c = tpSetupGet(); if(!c || c.s !== 'script') return; if(tpOpenScript()){ c.o = Date.now(); tpSetupSave(c); } };
       document.addEventListener('pointerdown', tpGo, true); document.addEventListener('keydown', tpGo, true);
-      toast('Thêm tiện ích xong thì bấm vào trang một cái, em mở tiếp trang cài script.', true);
+      toast('Thêm tiện ích xong thì bấm vào trang một cái, trang mở tiếp trang cài script.', true);
     }
   } else if(st.s === 'script' && st.o){   // chỉ tải lại khi trang cài script đã được mở thật
-    if(st.n >= 1){ tpSetupClear(); toast('Cài script xong thì bấm nút Tải lại trang trong hộp hướng dẫn (hoặc F5).', true); return; }   // tự tải lại đúng 1 lần, không lặp
+    if(st.n >= 1){ tpSetupClear(); tpToggleSave({ n: 0, o: Date.now() }); tpToggleShow(true); return; }   // đã cài + tải lại mà vẫn không thấy script: gần như chắc công tắc Allow User Scripts đang tắt   // tự tải lại đúng 1 lần, không lặp
     if(Date.now() - st.o < 8000) return;   // vừa mở trang cài script
     st.n++; tpSetupSave(st); location.reload();
   }
 }
-document.addEventListener('visibilitychange', tpSetupStep);
-$('tpmCopyExt').addEventListener('click', function(){
+function tpToggleShow(scroll){
+  if(/Firefox\//.test(navigator.userAgent)) return;   // Firefox không có công tắc này
+  var t = tpToggleGet(); if(!t || tpAutoOn() || $('tpMain').style.display === 'none') return;
+  $('tpToggle').style.display = ''; if(scroll){ try{ $('tpToggle').scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch(e){} }
+}
+function tpToggleStep(){   // quay lại tab sau khi bật công tắc: tự tải lại (tối đa 2 lần)
+  if(document.visibilityState !== 'visible') return;
+  var t = tpToggleGet(); if(!t) return;
+  if(tpAutoOn()){ tpToggleClear(); toast('Đã nhận script tự đăng nhập. Bấm Lấy tài khoản rồi Đăng nhập Tripo là xong.', true); return; }
+  tpToggleShow(false);
+  if(t.n >= 2 || Date.now() - t.o < 8000) return;
+  t.n++; t.o = Date.now(); tpToggleSave(t); location.reload();
+}
+document.addEventListener('visibilitychange', function(){ tpSetupStep(); tpToggleStep(); });
+(function(){   // sau khi trang tải xong (kể cả sau khi tự tải lại): có script thì báo, tải lại 1 lần rồi vẫn chưa có thì hiện hướng dẫn bật công tắc
+  var tries = 0, iv = setInterval(function(){
+    tries++;
+    if(tpAutoOn()){ clearInterval(iv); if(tpSetupGet() || tpToggleGet()){ tpSetupClear(); tpToggleClear(); toast('Đã nhận script tự đăng nhập. Bấm Lấy tài khoản rồi Đăng nhập Tripo là xong.', true); } return; }
+    if(tries < 4) return;   // chờ ~2 giây cho script kịp gắn dấu hiệu
+    var st = tpSetupGet(); if(st && st.s === 'script' && st.n >= 1){ tpSetupClear(); tpToggleSave({ n: 0, o: Date.now() }); }
+    if(!tpToggleGet()){ clearInterval(iv); return; }
+    if($('tpMain').style.display !== 'none'){ tpToggleShow(true); clearInterval(iv); } else if(tries > 600) clearInterval(iv);
+  }, 500);
+})();
+Array.prototype.forEach.call(document.querySelectorAll('.tpCopyExt'), function(btn){ btn.addEventListener('click', function(){
   var u = /Edg\//.test(navigator.userAgent) ? 'edge://extensions/?id=iikmkjmpaadaobahmlepeloendndfphd' : 'chrome://extensions/?id=dhdgffkkebhmkfjojejmpbldmpobfkfo', b = this;
-  var ok = function(){ b.textContent = 'Đã copy'; }, fail = function(){ prompt('Copy đường dẫn này rồi dán vào thanh địa chỉ:', u); };
+  var ok = function(){ b.textContent = 'Đã copy, giờ nhấn Ctrl+T rồi Ctrl+V, Enter'; }, fail = function(){ prompt('Copy đường dẫn này rồi dán vào thanh địa chỉ:', u); };
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(ok, fail); else fail();
-});
+}); });
+$('tpToggleReload').addEventListener('click', function(){ tpToggleSave({ n: 2, o: Date.now(), t: Date.now() }); location.reload(); });   // chưa bật thì sau khi tải lại banner vẫn hiện, không tự tải thêm
 $('tpmReload').addEventListener('click', function(){ tpSetupClear(); location.reload(); });
 $('tpmEye').addEventListener('click', function(){ TP_SHOW = !TP_SHOW; tpRenderPass(); });
 $('tpAddBtn').addEventListener('click', function(){
