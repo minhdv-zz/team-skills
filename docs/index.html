@@ -213,9 +213,9 @@
             <div class="fine" style="margin:6px 0 0;text-align:center">Bấm đây trước</div>
           </div>
           <ol class="hsteps" id="tpHeroSteps">
-            <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện email + mật khẩu của tài khoản cả nhóm đang dùng.</span></li>
-            <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì trang sẽ chỉ cách cài). Không cài thì copy email, mật khẩu dán vào.</span></li>
-            <li><b>Hết token thì bấm &ldquo;Đã hết token&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
+            <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện tài khoản cả nhóm đang dùng.</span></li>
+            <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì trang sẽ chỉ cách cài). Mật khẩu được script tự điền, không hiện ra màn hình.</span></li>
+            <li><b>Hết token thì bấm &ldquo;Đã hết token&rdquo;</b><span>Nút nằm ngay trong hộp tài khoản. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Đăng xuất</button></span>
         </div>
@@ -377,12 +377,12 @@
     <h2 id="tpmT">Tài khoản Tripo</h2>
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
     <div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
-    <div class="fine" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre>
+    <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Máy này chưa cài tiện ích tự đăng nhập.</b> Cài một lần, lần sau bấm là Tripo mở sẵn đã đăng nhập:<br>
       1) Cài tiện ích (bấm đúng trình duyệt của bạn, rồi bấm Thêm/Add): <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> (Tampermonkey) &middot; <a href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> (Violentmonkey).<br>
       2) Cài <a href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi tải lại trang này.<br>
       Trên Chrome/Edge mới, nếu script không chạy thì vào trang quản lý tiện ích, bật <b>Allow User Scripts</b> (hoặc Developer mode) cho Tampermonkey. Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
-      <div class="row" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
+      <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
   </div>
 </div>
@@ -699,7 +699,7 @@ function tpAutoOn(){ return document.documentElement.hasAttribute('data-tripo-au
 function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
-function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
+function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
 function tpCloseCred(){ $('tpmWarn').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; }
 var TP_CLAIM_ID = '';
 function tpShowCred(email, pass, note, id){
