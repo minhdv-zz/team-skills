@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.8.0
+// @version      2.9.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -19,7 +19,7 @@
 // lịch sử trình duyệt hay máy chủ. Không bật tự cập nhật (@updateURL) để nội dung script chỉ đổi khi chính bạn cài lại.
 (function () {
   'use strict';
-  var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', CEV = 'team-tripo-credit';
+  var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
   // ---------- Trên trang Team Tools ----------
@@ -254,6 +254,47 @@
       try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sent = v; cand = null; say('credit còn ' + v + ', đã gửi cho Team Tools.', 4000); } catch (e) { /* bỏ qua */ }
     }, 400);
   }
+  // ---- Đăng xuất khi trình duyệt đang ở tài khoản khác ----
+  // Chưa có ảnh menu đăng xuất thật của Tripo nên dò theo cách chung: bấm lần lượt các ảnh đại diện ở góc phải trên, thấy mục có chữ
+  // đăng xuất (nhiều ngôn ngữ) thì bấm, thấy hộp xác nhận thì bấm xác nhận. Mỗi bước đều báo ở ô góc trái để biết dừng ở đâu.
+  var LOGOUT_RE = /^(log\s*out|sign\s*out|logout|đăng xuất|退出登录|退出|登出|注销)$/, CONFIRM_RE = /^(confirm|ok|yes|sure|log\s*out|sign\s*out|xác nhận|đồng ý|đăng xuất|确认|确定|是|退出登录|退出)$/;
+  var lo = { on: false, t0: 0, openAt: 0, idx: 0, clickedAt: 0, cands: null };
+  function avatarCandidates() {
+    var out = [], els = document.querySelectorAll('img,div,span,button,a');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i], r = el.getBoundingClientRect();
+      if (!(r.width >= 20 && r.width <= 64 && r.height >= 20 && r.height <= 64 && r.top >= 0 && r.top < 100 && r.left > window.innerWidth * 0.55)) continue;
+      var isImg = el.tagName === 'IMG', bg = !isImg && /url\(/.test(getComputedStyle(el).backgroundImage || '');
+      if (!isImg && !bg) continue;
+      var wrap = el.closest('button,a,[role=button]') || el.parentElement;
+      if ((el.textContent || '').trim() || (wrap && (wrap.textContent || '').trim())) continue;   // bỏ huy hiệu có chữ (ví dụ "Lv.1" ngay cạnh ảnh đại diện): chỉ bấm ảnh đại diện trơn
+      var t = el.closest('button,a,[role=button]') || el;
+      if (out.indexOf(t) < 0) out.push(t);
+    }
+    out.sort(function (a, b) { return b.getBoundingClientRect().left - a.getBoundingClientRect().left; });   // từ phải sang trái
+    return out;
+  }
+  function logoutStep() {   // trả về 'doing' | 'gone' (đã đăng xuất) | 'fail'
+    var now = Date.now();
+    if (!lo.on) { lo.on = true; lo.t0 = now; }
+    if (readCredit() === null && !findText(LOGOUT_RE)) { return 'gone'; }
+    if (now - lo.t0 > 20000) return 'fail';
+    if (lo.clickedAt && now - lo.clickedAt > 500) {   // vừa bấm đăng xuất: nếu hiện hộp xác nhận thì bấm
+      var cf = findText(CONFIRM_RE);
+      if (cf && clickLimited('logoutok', cf)) { say('xác nhận đăng xuất…'); lo.clickedAt = now; return 'doing'; }
+    }
+    var item = findText(LOGOUT_RE);
+    if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; } return 'doing'; }
+    if (lo.clickedAt) return 'doing';   // đã bấm đăng xuất, chờ trang đổi
+    if (now - lo.openAt > 900) {   // chưa thấy mục đăng xuất: mở menu ở ảnh đại diện kế tiếp
+      if (!lo.cands || lo.idx >= lo.cands.length) { lo.cands = avatarCandidates(); lo.idx = 0; }
+      var c = lo.cands[lo.idx++];
+      lo.openAt = now;
+      if (c) { say('mở menu tài khoản để đăng xuất…'); click(c); }
+      else say('đang tìm ảnh đại diện để đăng xuất…');
+    }
+    return 'doing';
+  }
   function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } if (msg) say(msg, keepMs); return true; }
 
   function pressContinue(pw) {   // chỉ nhận nút Continue nằm cùng khối với ô mật khẩu (tổ tiên gần nhất có chứa nút)
@@ -295,15 +336,28 @@
       return false;
     }
     if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).', 6000); }
-    // Tripo đang đăng nhập sẵn. Tên trong lời chào KHÔNG nhất thiết trùng email (vd "Hi, tripo-referral-landing-page-031!"), nên có hai mức:
-    //  - lời chào đúng "Hi, <tên trước @ của email>!": chắc đúng tài khoản này, đọc credit và gửi cho Team Tools;
-    //  - thấy "<số> Upgrade" (dấu hiệu đã đăng nhập) mà không xác nhận được tài khoản: DỪNG, không đăng nhập lại và không gửi credit
-    //    (tránh ghi số của tài khoản khác vào email này), nhắc người dùng đăng xuất nếu muốn dùng tài khoản của nhóm.
-    if (Date.now() - lastGreet > 500) {
+    // Tripo đang đăng nhập sẵn:
+    //  - đúng tài khoản cần (lời chào "Hi, <tên trước @>!" hoặc tên đã nhớ trỏ về email này): đọc credit, không đăng nhập lại;
+    //  - tài khoản khác (hoặc không xác nhận được): ĐĂNG XUẤT rồi đăng nhập lại bằng tài khoản của nhóm. Đăng nhập lại luôn đúng ý muốn nên
+    //    không xác nhận được cũng không sao. Để không lặp vô hạn, mỗi email chỉ tự đăng xuất 1 lần trong 3 phút.
+    if (lo.on) {
+      var rs = logoutStep();
+      if (rs === 'fail') return finish('không tự đăng xuất được (script chưa tìm thấy nút đăng xuất của Tripo). Bạn đăng xuất Tripo bằng tay rồi bấm "Mở Tripo Studio" lại nhé.', 30000);
+      if (rs === 'gone') { lo.on = false; lo.gone = true; say('đã đăng xuất, đăng nhập tài khoản ' + acctEmail + '…'); }
+      else return false;
+    }
+    if (!lo.gone && Date.now() - lastGreet > 500) {
       lastGreet = Date.now();
-      var low = (document.body && document.body.innerText || '').toLowerCase();
-      if (low.indexOf('hi, ' + acctEmail.split('@')[0].toLowerCase() + '!') >= 0) { watchCredit(acctEmail); return finish('đã đăng nhập sẵn tài khoản này.', 6000); }
-      if (readCredit() !== null) return finish('trình duyệt đã đăng nhập sẵn một tài khoản Tripo (không xác nhận được là ' + acctEmail + '), nên script không đăng nhập lại. Muốn dùng tài khoản của nhóm thì đăng xuất Tripo rồi bấm "Mở Tripo Studio" lại.', 20000);
+      var low = (document.body && document.body.innerText || '').toLowerCase(), gname = readGreetName(), mapped = gname && nameMap()[gname];
+      if (low.indexOf('hi, ' + acctEmail.split('@')[0].toLowerCase() + '!') >= 0 || (gname && gname === acctEmail.split('@')[0].toLowerCase()) || mapped === acctEmail) { watchCredit(acctEmail); return finish('đã đăng nhập sẵn tài khoản này.', 6000); }
+      if (readCredit() !== null) {
+        var prev = null; try { prev = JSON.parse(GM_getValue(LKEY, '') || 'null'); } catch (e) { prev = null; }
+        if (prev && prev.e === acctEmail && Date.now() - prev.t < 3 * 60 * 1000) return finish('đã đăng xuất một lần rồi mà Tripo vẫn báo đăng nhập sẵn, nên script dừng để khỏi lặp. Bạn kiểm tra lại tài khoản trên Tripo nhé.', 20000);
+        try { GM_setValue(LKEY, JSON.stringify({ e: acctEmail, t: Date.now() })); } catch (e) { /* bỏ qua */ }
+        say('đang đăng nhập tài khoản khác' + (gname ? ' (' + gname + ')' : '') + ', đăng xuất để vào ' + acctEmail + '…');
+        logoutStep();
+        return false;
+      }
     }
     if (Date.now() - started < 2000) { say('đang kiểm tra đã đăng nhập chưa…'); return false; }   // trang mới tải có thể chưa hiện trạng thái đăng nhập: chờ chút rồi mới bấm nút đăng nhập
     var up = findText(/^use password$/);
