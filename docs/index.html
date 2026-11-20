@@ -206,11 +206,12 @@
       <div><button class="pri big" id="tpGo">Đăng nhập</button></div>
     </div>
     <div id="tpMain" style="display:none">
-      <div class="warnbox" id="tpToggle" style="display:none;margin-bottom:12px;line-height:1.7">
-        <b>Bật quyền chạy script cho Tampermonkey (chỉ làm một lần, bật sẵn rồi thì bỏ qua).</b> Chrome bắt người dùng tự bật, trang không dò và không bật hộ được.<br>
-        1) Bấm <button type="button" class="tpCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button> &nbsp;2) Nhấn <b>Ctrl+T</b> (mở tab mới), <b>Ctrl+V</b>, <b>Enter</b> (dán vào thanh địa chỉ) &nbsp;3) Bật công tắc <b>Allow User Scripts</b> như hình:
+      <div class="warnbox" id="tpToggle" style="display:none;margin-bottom:12px;line-height:1.8">
+        <b>Còn 1 bước: bật công tắc cho Tampermonkey (làm 1 lần)</b><br>
+        <b>1.</b> <button type="button" class="tpCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button> rồi mở tab mới: <b>Ctrl+T</b>, <b>Ctrl+V</b>, <b>Enter</b><br>
+        <b>2.</b> Bật công tắc <b>Allow User Scripts</b>:
         <div style="max-width:100%;width:520px;aspect-ratio:686/94;overflow:hidden;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="display:block;width:100%;margin-top:-14%"></div>
-        Bật xong quay lại tab này, trang tự tải lại. <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
+        <b>3.</b> Quay lại tab này (trang tự tải lại) <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
       </div>
       <div class="hero" id="tpHero">
         <div class="hero-top">
@@ -384,10 +385,9 @@
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
     <div id="tpmCred"><div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre></div>
-    <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.7"><b>Cần cài (hoặc cài lại) tiện ích tự đăng nhập.</b> Làm theo 2 bước dưới đây, trang tự chuyển bước khi bạn quay lại tab này (nếu tab cài tiện ích chưa tự mở thì bấm link bước 1). Đã có Tampermonkey/Violentmonkey rồi thì bấm thẳng bước 2.<br>
-      1) Cài tiện ích (bấm đúng trình duyệt của bạn, rồi bấm Thêm/Add): <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> (Tampermonkey) &middot; <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> (Violentmonkey).<br>
-      2) Cài <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi quay lại tab này, trang tự tải lại.<br>
-      Cài xong mà Tripo vẫn không tự đăng nhập thì trang sẽ tự hướng dẫn bật nốt công tắc <b>Allow User Scripts</b> của Tampermonkey (chỉ làm một lần). Nếu Tripo hiện ô xác minh người máy thì tự tích rồi bấm Continue.
+    <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.8"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b><br>
+      <b>Bước 1.</b> Cài tiện ích, bấm <b>Thêm / Add</b>: <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Chrome</a> &middot; <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Edge</a> &middot; <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Firefox</a> <span class="fine">(đã có rồi thì qua bước 2)</span><br>
+      <b>Bước 2.</b> Cài <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">script tự đăng nhập</a>, rồi quay lại tab này (trang tự tải lại).
       <div class="row" style="margin-top:8px"><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
