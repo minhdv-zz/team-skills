@@ -635,7 +635,7 @@ function tpShowCred(email, pass, note){
 }
 function tpFail(e){ // 401: sai mật khẩu, quay lại màn nhập. 429 và lỗi khác: chỉ báo, giữ nguyên màn hình
   if(e.status === 401){ sessionStorage.removeItem('tripoPass'); tpShowGate(e.message); }
-  else if($('tpMain').style.display === 'none'){ tpShowGate(e.message); }
+  else if(e.status === 423 || $('tpMain').style.display === 'none'){ sessionStorage.removeItem('tripoPass'); tpShowGate(e.message); }   // 423: đã bị khóa
   else toast(e.message, false);
 }
 function tpGuard(fn){ // chặn bấm chồng
