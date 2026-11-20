@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.6.0
+// @version      2.6.1
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -81,7 +81,7 @@
 
   function begin() {
 
-  var acctEmail = cred.e;
+  var acctEmail = cred.e, lastGreet = 0;
   var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
 
   function txt(el) { return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
@@ -175,6 +175,14 @@
       var m = /^[^\d\s]{0,3}\s*(\d[\d,]*)\s*upgrade$/.exec(t);
       if (m) return parseInt(m[1].replace(/,/g, ''), 10);
     }
+    // Trên Tripo thật số credit và nút Upgrade là hai khối đứng cạnh nhau: lấy khối liền trước nút Upgrade, chỉ nhận khi chữ của nó là một số.
+    for (var q = up, j = 0; q && j < 4; q = q.parentElement, j++) {
+      var pv = q.previousElementSibling;
+      if (!pv) continue;
+      var pm = /^[^\d\s]{0,3}\s*(\d[\d,]*)$/.exec(txt(pv));
+      if (pm && visible(pv)) return parseInt(pm[1].replace(/,/g, ''), 10);
+      break;   // khối liền trước không phải số thì thôi, không nhảy sang khối xa hơn
+    }
     return null;
   }
   // Sau khi đăng nhập: đọc credit rồi theo dõi liên tục (mỗi 1,5 giây khi đã có số) để số luôn đúng với tài khoản đang dùng (tạo ảnh bị trừ thì số đổi theo).
@@ -240,7 +248,13 @@
       if (!pressContinue(pw) && now - fillAt > FILL_WAIT) return finish('đã điền xong nhưng chưa bấm được Continue (có thể đang chờ ô xác minh). Bạn tự bấm Continue nhé.', 30000);   // để form đã điền, bạn tự bấm
       return false;
     }
-    if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).', 6000); }   // sau khi bấm mà form biến mất là đăng nhập xong
+    if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).', 6000); }
+    // Tripo đang đăng nhập sẵn: chỉ khi lời chào trên trang là "Hi, <tên trước @ của email>!" mới chắc đúng tài khoản này, lúc đó đọc credit.
+    if (Date.now() - lastGreet > 1000) {
+      lastGreet = Date.now();
+      var low = (document.body && document.body.innerText || '').toLowerCase();
+      if (low.indexOf('hi, ' + acctEmail.split('@')[0].toLowerCase() + '!') >= 0) { watchCredit(acctEmail); return finish('đã đăng nhập sẵn tài khoản này.', 6000); }
+    }   // sau khi bấm mà form biến mất là đăng nhập xong
     var up = findText(/^use password$/);
     if (up) { if (clickLimited('use', up)) say('bấm "Use Password"…'); return false; }
     if (!findInput('email', /e-?mail/i)) {   // chưa có form nào mới bấm nút đăng nhập ở đầu trang
