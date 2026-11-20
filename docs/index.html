@@ -189,9 +189,8 @@
   <div id="tripo" style="display:none">
     <div id="tpGate" class="card" style="border-color:var(--acc);gap:12px;max-width:520px">
       <h3 style="font-size:20px">Tài khoản Tripo của nhóm</h3>
-      <div style="color:var(--mut)">Nhập mật khẩu nhóm để xem. Chưa có mật khẩu thì hỏi người quản lý nhóm.</div>
-      <label>Tên của bạn (để mọi người biết ai đang dùng)<br><input id="tpWhoIn" maxlength="40" placeholder="Ví dụ: Kiên" style="width:100%;margin-top:6px"></label>
-      <label>Mật khẩu nhóm<br><input id="tpPassIn" type="password" autocomplete="off" style="width:100%;margin-top:6px"></label>
+      <div style="color:var(--mut)">Nhập tài khoản (Gmail) của bạn để vào. Gmail chưa có trong danh sách nhóm thì nhờ người quản lý thêm.</div>
+      <label>Tài khoản (Gmail)<br><input id="tpWhoIn" type="email" maxlength="120" autocomplete="email" placeholder="ten@gmail.com" style="width:100%;margin-top:6px"></label>
       <div id="tpErr" class="warnbox" style="display:none"></div>
       <div><button class="pri big" id="tpGo">Xem tài khoản</button></div>
     </div>
@@ -220,6 +219,12 @@
         <p>Mỗi dòng một tài khoản: <code>email mật khẩu</code>. Mật khẩu có dấu cách thì ngăn bằng dấu <code>|</code>, ví dụ <code>a@gmail.com | mat khau | ghi chú</code>. Mật khẩu được mã hóa trên server, không nằm trong repo.</p>
         <textarea id="tpAdd" rows="5" style="width:100%;font:inherit;background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px" placeholder="email1@gmail.com matkhau1&#10;email2@gmail.com matkhau2"></textarea>
         <div style="margin-top:8px"><button class="pri" id="tpAddBtn">Thêm</button></div>
+      </details>
+      <details class="help" style="margin-top:14px">
+        <summary>Thành viên được vào (Gmail)</summary>
+        <p>Mỗi dòng một Gmail. Chỉ những Gmail này (và chủ nhóm) vào được tab này. Bấm Lưu để thay cả danh sách.</p>
+        <textarea id="tpMembers" rows="6" style="width:100%;font:inherit;background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px" placeholder="ten1@gmail.com&#10;ten2@gmail.com"></textarea>
+        <div style="margin-top:8px"><button class="pri" id="tpMembersBtn">Lưu danh sách</button></div>
       </details>
       <details class="help" style="margin-top:14px">
         <summary>Nhật ký gần đây</summary>
@@ -576,11 +581,10 @@ function copy(text, btn){
 }
 // ===== Tab Tài khoản Tripo =====
 var TP = { accs: [], stats: null, busy: false };
-function tpPass(){ return sessionStorage.getItem('tripoPass') || ''; }
 function tpWho(){ return localStorage.getItem('tripoWho') || ''; }
 function tpCall(op, body){
-  body = body || {}; body.who = tpWho();
-  return fetch(STAR_API + '/tripo/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Pass': tpPass() }, body: JSON.stringify(body) })
+  body = body || {};
+  return fetch(STAR_API + '/tripo/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Email': tpWho() }, body: JSON.stringify(body) })
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
       if(!r.ok){ var e = new Error(j.error || ('Lỗi ' + r.status)); e.status = r.status; throw e; }
       return j; }); },
@@ -601,7 +605,7 @@ function tpShowGate(msg){
 }
 function tripoInit(){
   if(!STAR_API){ tpShowGate('Chưa cấu hình server.'); return; }
-  if(!tpPass()){ tpShowGate(''); return; }
+  if(!tpWho()){ tpShowGate(''); return; }
   tpLoad();
 }
 function tpLoad(){
@@ -612,6 +616,8 @@ function tpLoad(){
 function tpApply(j){
   if(j.accounts) TP.accs = j.accounts;
   if(j.stats) TP.stats = j.stats;
+  if(j.admin !== undefined) TP.admin = !!j.admin;
+  if(j.members) $('tpMembers').value = j.members.join('\n');
   $('tpGate').style.display = 'none'; $('tpMain').style.display = '';
   $('tpMe').textContent = 'Bạn: ' + tpWho();
   tpRender();
@@ -631,8 +637,8 @@ function tpCreditSync(){
   }).catch(function(){ if(!c.r && !root.hasAttribute('data-tripo-credit')){ c.r = 1; root.setAttribute('data-tripo-credit', JSON.stringify(c)); } });   // lỗi thì giữ lại để gửi lại đúng một lần (lần tải danh sách kế tiếp)
 }
 document.addEventListener('team-tripo-credit', function(){ if($('tpMain').style.display !== 'none') tpCreditSync(); });
-// Chỉ chủ (tên "hoidz") thấy danh sách tài khoản, nút Xem/Xóa, thêm tài khoản, nhật ký. Lưu ý: đây mới là ẩn trên giao diện.
-function tpIsAdmin(){ return tpWho().trim().toLowerCase() === 'hoidz'; }
+// Chỉ chủ (máy chủ báo admin) thấy danh sách tài khoản, nút Xem/Xóa, thêm tài khoản, nhật ký. Lưu ý: đây mới là ẩn trên giao diện.
+function tpIsAdmin(){ return !!TP.admin; }   // do máy chủ báo; máy chủ mới là nơi chặn quyền thật
 function tpRender(){
   $('tpAdmin').style.display = tpIsAdmin() ? '' : 'none';
   $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
@@ -685,8 +691,8 @@ function tpShowCred(email, pass, note, id){
   $('tpm').classList.add('on');
 }
 function tpFail(e){ // 401: sai mật khẩu, quay lại màn nhập. 429 và lỗi khác: chỉ báo, giữ nguyên màn hình
-  if(e.status === 401){ sessionStorage.removeItem('tripoPass'); tpShowGate(e.message); }
-  else if(e.status === 423 || $('tpMain').style.display === 'none'){ sessionStorage.removeItem('tripoPass'); tpShowGate(e.message); }   // 423: đã bị khóa
+  if(e.status === 401){ localStorage.removeItem('tripoWho'); TP.admin = false; tpShowGate(e.message); }
+  else if(e.status === 423 || $('tpMain').style.display === 'none'){ TP.admin = false; tpShowGate(e.message); }   // 423: đã bị khóa
   else toast(e.message, false);
 }
 function tpGuard(fn){ // chặn bấm chồng
@@ -694,14 +700,19 @@ function tpGuard(fn){ // chặn bấm chồng
   Promise.resolve().then(fn).catch(tpFail).then(function(){ TP.busy = false; });
 }
 $('tpGo').addEventListener('click', function(){
-  var who = $('tpWhoIn').value.trim(), pw = $('tpPassIn').value;
-  if(!who){ tpShowGate('Nhập tên của bạn trước.'); return; }
-  if(!pw){ tpShowGate('Nhập mật khẩu nhóm.'); return; }
-  localStorage.setItem('tripoWho', who); sessionStorage.setItem('tripoPass', pw); $('tpPassIn').value = '';
+  var who = $('tpWhoIn').value.trim().toLowerCase();
+  if(!who){ tpShowGate('Nhập Gmail của bạn.'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(who)){ tpShowGate('Gmail chưa đúng dạng, ví dụ ten@gmail.com.'); return; }
+  localStorage.setItem('tripoWho', who);
   tpGuard(function(){ return tpCall('list').then(tpApply); });
 });
-$('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
-$('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); tpShowGate(''); });
+$('tpWhoIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
+$('tpLock').addEventListener('click', function(){ localStorage.removeItem('tripoWho'); TP.admin = false; $('tpWhoIn').value = ''; tpShowGate(''); });
+$('tpMembersBtn').addEventListener('click', function(){
+  var items = $('tpMembers').value.split(/[\s,;]+/).filter(Boolean);
+  tpGuard(function(){ return tpCall('members_set', { items: items }).then(function(j){
+    $('tpMembers').value = j.members.join('\n'); toast('Đã lưu ' + j.members.length + ' thành viên', true); }); });
+});
 $('tpClaim').addEventListener('click', function(){
   // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết token": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
   // (lấy cái dùng gần nhất), không thì mới lấy tài khoản mới. Làm ở trang để chạy được với cả Worker bản cũ.

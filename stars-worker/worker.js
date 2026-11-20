@@ -1,16 +1,18 @@
 // Cloudflare Worker của Team Tools.
 //  1) Đếm sao theo tên máy, không cần đăng nhập. KV binding STARS, khoá "m:<key>|<machine>" = "1".
-//  2) Tab "Tài khoản Tripo": mọi endpoint POST /tripo/* cần header X-Pass = mật khẩu nhóm.
+//  2) Tab "Tài khoản Tripo": mọi endpoint POST /tripo/* cần header X-Email = Gmail nằm trong danh sách thành viên
+//     (KV "tripo:members", chủ sửa trong tab). Chủ (ADMIN_EMAIL) luôn có quyền và là người duy nhất thêm/xóa tài khoản, xem danh sách đầy đủ.
 //     Secret (đặt bằng `wrangler secret put`, KHÔNG ghi vào repo):
-//       TRIPO_PASS     mật khẩu nhóm để vào tab
 //       TRIPO_ENC_KEY  chuỗi ngẫu nhiên dài, dùng mã hóa mật khẩu từng tài khoản (AES-GCM)
-//     Chống đoán mật khẩu: Durable Object `Guard` (đếm nguyên tử, đếm TRƯỚC khi so mật khẩu nên bắn song song cũng không lách được).
+//     Chống đoán Gmail: Durable Object `Guard` (đếm nguyên tử, đếm TRƯỚC khi so mật khẩu nên bắn song song cũng không lách được).
 //     KV: "tripo:accounts" = JSON mảng tài khoản, "tripo:ev:YYYYMM" = JSON mảng sự kiện của tháng đó.
 //     Không dùng API Tripo: ai thấy tài khoản hết credit thì bấm "Đã hết", trang đếm theo tháng.
 import { DurableObject } from "cloudflare:workers";
 
 const ORIGIN = "https://minhdv-zz.github.io";
 const DEV_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/; // chỉ bật khi chạy thử (wrangler dev --var DEV_ORIGIN_OK:1), bản thật không có
+const ADMIN_EMAIL = "minhdv@horusvn.com";
+const MAX_MEMBERS = 200;
 const MAX_ACCOUNTS = 200;
 const MAX_ADD = 20;          // mỗi lần thêm (gói free: 50 thao tác KV mỗi request)
 const MAX_EVENTS = 3000;     // mỗi tháng
@@ -138,23 +140,29 @@ function ipKey(ip) {
   return n.some(Number.isNaN) ? "v6:" + s : "v6:" + n.map((x) => x.toString(16)).join(":");
 }
 
-const LOCKED_MSG = "Đã khóa vì nhập sai mật khẩu quá nhiều lần. Liên hệ người quản lý để mở khóa.";
+const LOCKED_MSG = "Đã khóa vì nhập Gmail sai quá nhiều lần. Liên hệ người quản lý để mở khóa.";
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
+const normEmail = (v) => (typeof v === "string" ? v.trim().toLowerCase().slice(0, 120) : "");
+const getMembers = async (env) => (await env.STARS.get("tripo:members", "json")) || [];
 
 async function auth(req, env) {
-  if (!env.TRIPO_PASS || !env.TRIPO_ENC_KEY || !env.GUARD) return json({ error: "Server chưa cấu hình mật khẩu" }, 503); // thiếu GUARD thì đóng cổng, không mở
+  if (!env.TRIPO_ENC_KEY || !env.GUARD) return { bad: json({ error: "Server chưa cấu hình" }, 503) }; // thiếu GUARD thì đóng cổng, không mở
   const ip = ipKey(req.headers.get("CF-Connecting-IP") || "?");
   // Lớp phụ (xấp xỉ): giới hạn số request mỗi IP bằng Cloudflare Rate Limiting.
   if (env.TRIPO_RL) {
     const { success } = await env.TRIPO_RL.limit({ key: ip });
-    if (!success) return json({ error: "Thao tác quá nhanh, đợi một phút rồi thử lại" }, 429);
+    if (!success) return { bad: json({ error: "Thao tác quá nhanh, đợi một phút rồi thử lại" }, 429) };
   }
   const guard = env.GUARD.get(env.GUARD.idFromName("tripo"));
   const r = await guard.reserve(ip);
-  if (!r.ok) return r.locked ? json({ error: LOCKED_MSG }, 423) : json({ error: "Thao tác quá nhanh, đợi một lúc rồi thử lại" }, 429);
-  const good = await same(req.headers.get("X-Pass") || "", env.TRIPO_PASS);
+  if (!r.ok) return { bad: r.locked ? json({ error: LOCKED_MSG }, 423) : json({ error: "Thao tác quá nhanh, đợi một lúc rồi thử lại" }, 429) };
+  const email = normEmail(req.headers.get("X-Email") || "");
+  const admin = email === ADMIN_EMAIL;
+  let good = admin;
+  if (!good && EMAIL_RE.test(email)) { try { good = (await getMembers(env)).includes(email); } catch { good = false; } }
   try { await guard.settle(r.ids, good); }
   catch { try { await guard.settle(r.ids, good); } catch { /* vẫn lỗi thì lượt giữ chỗ tự thành lần sai sau PENDING_STALE_S, an toàn hơn */ } }
-  return good ? null : json({ error: "Sai mật khẩu" }, 401);
+  return good ? { email, admin } : { bad: json({ error: "Gmail này chưa có trong danh sách nhóm" }, 401) };
 }
 
 // Durable Object (SQLite) đếm lượt thử và giữ trạng thái khóa. Mỗi hàm chạy đồng bộ từ đầu đến cuối nên không có chen ngang.
@@ -221,13 +229,29 @@ async function tripo(req, env, url) {
   if (req.method !== "POST") return json({ error: "not found" }, 404);
   const o = req.headers.get("Origin");
   if (o !== ORIGIN && !(env.DEV_ORIGIN_OK === "1" && o && DEV_ORIGIN.test(o))) return json({ error: "origin" }, 403);
-  const bad = await auth(req, env); if (bad) return bad;
+  const au = await auth(req, env); if (au.bad) return au.bad;
   let b; try { b = await req.json(); } catch { b = {}; }
   if (!b || typeof b !== "object") b = {};
-  const who = str(b.who, 40), op = url.pathname.slice(7);
-  const cm = await getCredits(env), P = (a) => pub(a, cm);
+  const who = au.email, isAdmin = au.admin, op = url.pathname.slice(7);
+  const cm = await getCredits(env);
+  // Người không phải chủ chỉ thấy id + trạng thái: không có email, ghi chú, người dùng, credit của tài khoản.
+  const P = isAdmin ? (a) => pub(a, cm) : (a) => ({ id: a.id, email: "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: null, creditAt: 0 });
+  const adminOnly = ["add", "delete", "members", "members_set"];
+  if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ chủ nhóm làm được việc này" }, 403);
 
-  if (op === "list") return json({ accounts: (await getAccounts(env)).map(P), stats: await stats(env) });
+  if (op === "list") {
+    const st = await stats(env);
+    return json({ admin: isAdmin, accounts: (await getAccounts(env)).map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: isAdmin ? await getMembers(env) : undefined });
+  }
+
+  if (op === "members") return json({ members: await getMembers(env) });
+  if (op === "members_set") {
+    const raw = Array.isArray(b.items) ? b.items : [], out = [];
+    for (const it of raw.slice(0, 1000)) { const e = normEmail(it); if (EMAIL_RE.test(e) && e !== ADMIN_EMAIL && !out.includes(e)) out.push(e); }
+    if (out.length > MAX_MEMBERS) return json({ error: "Quá " + MAX_MEMBERS + " thành viên" }, 400);
+    await env.STARS.put("tripo:members", JSON.stringify(out));
+    return json({ members: out });
+  }
 
   if (op === "add") {
     const items = Array.isArray(b.items) ? b.items.slice(0, MAX_ADD) : [];
@@ -264,6 +288,7 @@ async function tripo(req, env, url) {
   if (!a) return json({ error: "không thấy tài khoản" }, 404);
 
   if (op === "update") {
+    if (!isAdmin && (b.note !== undefined || b.status !== "empty")) return json({ error: "Chỉ chủ nhóm đổi được mục này" }, 403); // thành viên thường chỉ được báo "đã hết token"
     let ev = null;
     if (b.status !== undefined) {
       if (!["ok", "using", "empty"].includes(b.status)) return json({ error: "bad status" }, 400);
@@ -292,6 +317,7 @@ async function tripo(req, env, url) {
     return json({ credit: cm[a.id].c, creditAt: cm[a.id].t });
   }
 
+  if (op === "reveal" && !isAdmin && a.status !== "using") return json({ error: "Chỉ xem được tài khoản đang dùng chung" }, 403);
   if (op === "reveal") return json({ email: a.email, password: await unseal(env, a.secret) });
 
   if (op === "delete") {
@@ -309,7 +335,7 @@ export default {
     const url = new URL(req.url), o = req.headers.get("Origin");
     const allow = o === ORIGIN || (env.DEV_ORIGIN_OK === "1" && o && url.pathname.startsWith("/tripo/") && DEV_ORIGIN.test(o)) ? o : ORIGIN;
     const cors = { "Access-Control-Allow-Origin": allow, "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Pass", "Vary": "Origin" };
+      "Access-Control-Allow-Headers": "Content-Type, X-Email", "Vary": "Origin" };
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     let res;
     try {
