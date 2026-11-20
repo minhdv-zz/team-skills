@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.0.1
+// @version      2.1.0
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
@@ -68,7 +68,27 @@
 
   function txt(el) { return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
   function visible(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
-  function click(el) { (el.closest('button,a,[role=button]') || el).click(); }
+  function click(el) { // một số giao diện nghe pointer/mouse chứ không nghe click: bắn đủ chuỗi rồi click
+    var t = el.closest('button,a,[role=button]') || el;
+    ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach(function (n) {
+      try { t.dispatchEvent(new MouseEvent(n, { bubbles: true, cancelable: true, view: window })); } catch (e) { /* bỏ qua */ }
+    });
+    t.click();
+  }
+
+  // Ô báo trạng thái ở góc trái trên cùng trang Tripo, đồng thời ghi vào Console. Giúp biết script đang dừng ở bước nào.
+  var badge = null;
+  function say(msg, keepMs) {
+    try { console.log('[Team Tools] ' + msg); } catch (e) { /* bỏ qua */ }
+    var root = document.documentElement; if (!root) return;
+    if (!badge || !badge.isConnected) {
+      badge = document.createElement('div');
+      badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:2147483647;background:#1c1640;color:#fff;border:1px solid #7c5cff;border-radius:8px;padding:6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:340px;pointer-events:none';
+      root.appendChild(badge);
+    }
+    badge.textContent = 'Team Tools: ' + msg;
+    if (keepMs) setTimeout(function () { if (badge && badge.parentNode) badge.parentNode.removeChild(badge); }, keepMs);
+  }
   function disabled(el) {
     var x = el.closest('button,[role=button]') || el;
     return !!x.disabled || x.getAttribute('aria-disabled') === 'true' || /(^|\s)(is-|ant-btn-)?disabled(\s|$)/i.test(x.className || '');
@@ -105,31 +125,33 @@
     if (clicks[key] >= 3 || (lastClick[key] && now - lastClick[key] < 2500)) return;
     clicks[key]++; lastClick[key] = now; click(el);
   }
-  function finish() { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } return true; }
+  function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } if (msg) say(msg, keepMs); return true; }
 
   function step() {
     if (done) return true;
-    if (Date.now() - started > TOTAL) return finish();
+    if (Date.now() - started > TOTAL) return finish('Không thấy form đăng nhập sau 2 phút. Bạn đăng nhập tay nhé.', 20000);
     var pw = findInput('password', /password/i), em = findInput('email', /e-?mail/i);
     if (pw && em && pw !== em) {
-      if (!fillAt) fillAt = Date.now();
+      if (!fillAt) { fillAt = Date.now(); say('đang điền email và mật khẩu…'); }
       if (em.value !== cred.e) setVal(em, cred.e);   // điền lại nếu trang xóa mất
       if (pw.value !== cred.p) setVal(pw, cred.p);
       var b = null;   // chỉ nhận nút Continue nằm cùng khối với ô mật khẩu (tổ tiên gần nhất có chứa nút)
       for (var n = pw.parentElement, k = 0; n && k < 8 && !b; n = n.parentElement, k++) b = findText(/^continue$/, n);
-      if (b && !disabled(b)) { click(b); return finish(); }   // gửi đúng một lần rồi xóa thông tin
-      if (Date.now() - fillAt > FILL_WAIT) return finish();    // không bấm được (ô xác minh...): để form đã điền, bạn tự bấm
+      if (b && !disabled(b)) { click(b); return finish('đã điền và bấm Continue.', 5000); }   // gửi đúng một lần rồi xóa thông tin
+      if (Date.now() - fillAt > FILL_WAIT) return finish('đã điền xong nhưng chưa bấm được Continue (có thể đang chờ ô xác minh). Bạn tự bấm Continue nhé.', 30000);   // để form đã điền, bạn tự bấm
       return false;
     }
     var up = findText(/^use password$/);
-    if (up) { clickLimited('use', up); return false; }
+    if (up) { say('bấm "Use Password"…'); clickLimited('use', up); return false; }
     if (!findInput('email', /e-?mail/i)) {   // chưa có form nào mới bấm nút đăng nhập ở đầu trang
-      var lg = findText(/^sign up\s*\/\s*log in$/);
-      if (lg) clickLimited('login', lg);
+      var lg = findText(/^(sign\s*up\s*\/?\s*)?log\s*in$/);
+      if (lg) { say('bấm nút đăng nhập…'); clickLimited('login', lg); }
+      else say('đang tìm nút đăng nhập…');
     }
     return false;
   }
 
+  say('nhận được thông tin đăng nhập, đang tìm nút đăng nhập…');
   var timer = setInterval(function () { if (step()) clearInterval(timer); }, 500);
   }
 })();
