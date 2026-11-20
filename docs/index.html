@@ -218,7 +218,7 @@
             <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì trang sẽ chỉ cách cài). Không cài thì copy email, mật khẩu dán vào.</span></li>
             <li><b>Hết token thì bấm &ldquo;Đã hết token&rdquo;</b><span>Nút nằm ngay trong hộp email/mật khẩu. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
-          <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Khóa lại</button></span>
+          <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Đăng xuất</button></span>
         </div>
         <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết token</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
@@ -661,7 +661,7 @@ function tpIsAdmin(){ return !!TP.admin; }   // do máy chủ báo; máy chủ m
 function tpRender(){
   $('tpAdmin').style.display = tpIsAdmin() ? '' : 'none';
   $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
-  ['tpHeroCta', 'tpHeroSteps', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });   // chủ chỉ cần dòng "Bạn: ..." + Khóa lại
+  ['tpHeroCta', 'tpHeroSteps', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });   // chủ chỉ cần dòng "Bạn: ..." + Đăng xuất
   if(!tpIsAdmin()) return;
   var a = TP.accs, n = { ok: 0, using: 0, empty: 0 };
   a.forEach(function(x){ n[x.status] = (n[x.status] || 0) + 1; });
