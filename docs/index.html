@@ -699,7 +699,7 @@ function tpRender(){
       + '<div style="min-width:96px;text-align:center" title="' + (x.creditAt ? 'Cập nhật ' + tpAgo(x.creditAt) : 'Chưa đọc được. Bấm Xem để mở Tripo, số sẽ tự cập nhật.') + '">'
       + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0">&#9889; chưa có</span>' : '<span style="font-size:20px;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0">' + tpAgo(x.creditAt) + '</div>') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + btn('reveal', 'Xem', 'pri')
-      + (x.status === 'ok' ? btn('using', 'Đang dùng') : '') + (x.status === 'using' ? btn('ok', 'Trả lại') : '')
+      + btn('login', 'Đăng nhập') + (x.status === 'using' ? btn('ok', 'Trả lại') : '')
       + (x.status !== 'empty' ? btn('empty', 'Đã hết token') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
   }).join('');
   $('tpList').innerHTML = rows || '<div class="card">Chưa có tài khoản nào. Mở mục &ldquo;Thêm tài khoản mới&rdquo; bên dưới.</div>';
@@ -959,6 +959,15 @@ $('tripo').addEventListener('click', function(e){
   var id = b.getAttribute('data-id'), act = b.getAttribute('data-act');
   var acc = TP.accs.filter(function(x){ return x.id === id; })[0]; if(!acc) return;
   if(act === 'reveal') tpGuard(function(){ return tpCall('reveal', { id: id }).then(function(j){ tpShowCred(j.email, j.password, acc.note); }); });
+  else if(act === 'login') tpGuard(function(){ return tpCall('reveal', { id: id }).then(function(j){   // admin: mở thẳng Tripo đã đăng nhập tài khoản này (như nút Đăng nhập Tripo trong hộp Xem)
+    var root = document.documentElement;
+    if(tpAutoOn()){
+      root.removeAttribute('data-tripo-ack');
+      document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: j.email, p: j.password }) }));
+      if(root.hasAttribute('data-tripo-ack')){ toast('Đang mở Tripo, đăng nhập ' + j.email, true); return; }
+    }
+    tpShowCred(j.email, j.password, acc.note); if(!tpAutoOn()) tpSetupStart();   // chưa cài script hoặc script không nhận: mở hộp (có hướng dẫn cài / tự dán)
+  }); });
   else if(act === 'delete'){ if(!confirm('Xóa tài khoản ' + acc.email + ' khỏi danh sách chung? Không hoàn tác được.')) return;
     tpGuard(function(){ return tpCall('delete', { id: id }).then(tpLoad); }); }
   else tpGuard(function(){ return tpCall('update', { id: id, status: act }).then(tpLoad); });
