@@ -121,7 +121,10 @@ async function stats(env) {
     const ev = lists[i] || [];
     return { month: m, emptied: new Set(ev.filter((e) => e.type === "empty").map((e) => e.email)).size, claimed: ev.filter((e) => e.type === "claim").length };
   });
-  return { months: out, recent: (lists[0] || []).slice(-30).reverse() };
+  // Mỗi tài khoản đã có những ai lấy (không trùng người), tính trên cả 6 tháng nhật ký; trang hiện số này ở dòng trạng thái của từng tài khoản
+  const claimers = {};
+  for (const ev of lists) for (const e of ev || []) if (e.type === "claim" && e.who) { const c = (claimers[e.email] = claimers[e.email] || []); if (!c.includes(e.who)) c.push(e.who); }
+  return { months: out, recent: (lists[0] || []).slice(-30).reverse(), claimers };
 }
 
 // ---------- /tripo/* ----------

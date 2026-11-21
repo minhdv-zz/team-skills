@@ -687,9 +687,11 @@ function tpRender(){
   }).join('') + '</div><div class="fine">Cột = số tài khoản bị đánh dấu hết trong tháng.</div>';
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
-    var chip = x.status === 'ok' ? '<span class="chip ok">Còn dùng được</span>'
-      : x.status === 'using' ? '<span class="chip wait">Đang dùng' + (x.usedBy ? ': ' + esc(x.usedBy) : '') + ' &middot; ' + tpAgo(x.usedAt) + '</span>'
-      : '<span class="chip bad">Đã hết token' + (x.emptyAt ? ' &middot; ' + tpAgo(x.emptyAt) : '') + '</span>';
+    var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước
+    var stTxt = x.status === 'ok' ? 'Còn dùng được' : x.status === 'using' ? 'Đang dùng' + (x.usedBy ? ': ' + x.usedBy : '') + ' \u00b7 ' + tpAgo(x.usedAt) : 'Đã hết token' + (x.emptyAt ? ' \u00b7 ' + tpAgo(x.emptyAt) : '');
+    var cls2 = x.status === 'ok' ? 'ok' : x.status === 'using' ? 'wait' : 'bad';
+    var chip = who ? '<span class="chip ' + cls2 + '" title="' + esc(stTxt + (who.length ? '\nĐã lấy: ' + who.join(', ') : '')) + '">' + who.length + ' người đã lấy</span>'
+      : '<span class="chip ' + cls2 + '">' + esc(stTxt) + '</span>';
     var btn = function(act, label, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + esc(x.id) + '">' + label + '</button>'; };
     return '<div class="card" style="margin-bottom:8px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px">'
       + '<div style="flex:1;min-width:220px"><b style="word-break:break-all">' + esc(x.email) + '</b>' + (x.note ? '<div class="fine" style="margin:0">' + esc(x.note) + '</div>' : '') + '<div style="margin-top:4px">' + chip + '</div></div>'
