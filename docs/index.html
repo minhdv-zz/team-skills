@@ -686,7 +686,7 @@ function tpRender(){
   }).join('') + '</div><div class="fine">Cột = số tài khoản bị đánh dấu hết trong tháng.</div>';
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
-    var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước
+    var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // danh sách tên đã gộp theo người   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước
     var stTxt = x.status === 'ok' ? 'Còn dùng được' : x.status === 'using' ? 'Đang dùng' + (x.usedBy ? ': ' + x.usedBy : '') + ' \u00b7 ' + tpAgo(x.usedAt) : 'Đã hết token' + (x.emptyAt ? ' \u00b7 ' + tpAgo(x.emptyAt) : '');
     var cls2 = x.status === 'ok' ? 'ok' : x.status === 'using' ? 'wait' : 'bad';
     var chip = who ? '<span class="chip ' + cls2 + '" title="' + esc(stTxt + (who.length ? '\nĐã lấy: ' + who.join(', ') : '')) + '">' + who.length + ' người đã lấy</span>'
@@ -751,11 +751,14 @@ function tpShowCred(email, pass, note, id){
   tpShowWho(email);
   $('tpm').classList.add('on');
 }
-function tpShowWho(email){   // admin: danh sách người đã lấy tài khoản này (máy chủ chỉ gửi cho admin)
-  var box = $('tpmWho'), w = TP.stats && TP.stats.claimers ? TP.stats.claimers[email] : null;
+function tpShowWho(email){   // admin: ai đã lấy tài khoản này, mỗi người một dòng (tên, số lần, lần gần nhất); máy chủ chỉ gửi cho admin
+  var box = $('tpmWho'), w = TP.stats && TP.stats.claimBy ? TP.stats.claimBy[email] : null;
   if(!tpIsAdmin() || !w){ box.style.display = 'none'; return; }
-  box.innerHTML = '<div class="fine" style="margin:0 0 4px"><b>' + w.length + ' người đã lấy tài khoản này</b></div>'
-    + (w.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + w.map(function(n){ return '<span class="chip ok" style="margin:0">' + esc(n) + '</span>'; }).join('') + '</div>' : '<div class="fine" style="margin:0">Chưa có ai.</div>');
+  box.innerHTML = '<div class="fine" style="margin:0 0 6px"><b>' + w.length + ' người đã lấy tài khoản này</b></div>'
+    + (w.length ? '<div style="max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:8px">' + w.map(function(r, i){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;' + (i ? 'border-top:1px solid var(--line);' : '') + '"><b style="flex:1;word-break:break-all">' + esc(r.n) + '</b>'
+        + '<span class="fine" style="margin:0;white-space:nowrap">' + r.c + ' lần &middot; gần nhất ' + tpAgo(r.t) + '</span></div>';
+    }).join('') + '</div>' : '<div class="fine" style="margin:0">Chưa có ai.</div>');
   box.style.display = '';
 }
 function tpFail(e){ // 401: sai mật khẩu, quay lại màn nhập. 429 và lỗi khác: chỉ báo, giữ nguyên màn hình

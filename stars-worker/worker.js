@@ -121,10 +121,17 @@ async function stats(env) {
     const ev = lists[i] || [];
     return { month: m, emptied: new Set(ev.filter((e) => e.type === "empty").map((e) => e.email)).size, claimed: ev.filter((e) => e.type === "claim").length };
   });
-  // Mỗi tài khoản đã có những ai lấy (không trùng người), tính trên cả 6 tháng nhật ký; trang hiện số này ở dòng trạng thái của từng tài khoản
-  const claimers = {};
-  for (const ev of lists) for (const e of ev || []) if (e.type === "claim" && e.who) { const c = (claimers[e.email] = claimers[e.email] || []); if (!c.includes(e.who)) c.push(e.who); }
-  return { months: out, recent: (lists[0] || []).slice(-30).reverse(), claimers };
+  // Mỗi tài khoản đã có những ai lấy, gộp theo người: nhật ký cũ ghi tên ngắn ("tet"), bản mới ghi email ("tet@horusvn.com") nên lấy phần trước @ và hạ chữ thường làm khóa.
+  // claimBy[email tài khoản] = [{ n: tên, c: số lần lấy, t: lần lấy gần nhất }], người lấy gần đây nhất đứng đầu. Tính trên cả 6 tháng nhật ký.
+  const claimBy = {}, claimers = {};
+  for (const ev of lists) for (const e of ev || []) if (e.type === "claim" && e.who) {
+    const n = String(e.who).split("@")[0].trim().toLowerCase(); if (!n) continue;
+    const arr = (claimBy[e.email] = claimBy[e.email] || []); let r = arr.find((x) => x.n === n);
+    if (!r) arr.push(r = { n, c: 0, t: 0 });
+    r.c++; if (e.t > r.t) r.t = e.t;
+  }
+  for (const k in claimBy) { claimBy[k].sort((x, y) => y.t - x.t); claimers[k] = claimBy[k].map((x) => x.n); }
+  return { months: out, recent: (lists[0] || []).slice(-30).reverse(), claimers, claimBy };
 }
 
 // ---------- /tripo/* ----------
