@@ -385,6 +385,7 @@
         <div style="margin:10px 0 2px"><b>2. Gạt công tắc</b> <b>Allow User Scripts</b> sang bật:
         <div style="max-width:100%;width:520px;aspect-ratio:686/94;overflow:hidden;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="display:block;width:100%;margin-top:-14%"></div></div>
         <div style="margin:10px 0 2px"><button type="button" id="tpToggleReload" class="pri" style="display:block;width:100%;padding:11px 14px">3. Bật xong, tải lại trang</button></div>
+        <div style="margin:10px 0 0;text-align:center"><button type="button" id="tpToggleRestart" style="font-size:12px">Lỡ xóa tiện ích / chưa cài? Cài lại từ bước 1</button></div>
       </div>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.6"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b>
       <div style="margin:10px 0 2px"><a class="btn pri" data-setup="store" id="tpmStoreLink" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;padding:11px 14px">1. Cài <span id="tpBrExt">Tampermonkey</span> cho <span id="tpBrName">Chrome</span></a>
@@ -945,6 +946,12 @@ Array.prototype.forEach.call(document.querySelectorAll('.tpCopyExt'), function(b
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(ok, fail); else fail();
 }); });
 $('tpToggleReload').addEventListener('click', function(){ tpToggleSave({ n: 2, o: Date.now(), t: Date.now() }); location.reload(); });   // chưa bật thì sau khi tải lại banner vẫn hiện, không tự tải thêm
+$('tpToggleRestart').addEventListener('click', function(){   // lỡ xóa tiện ích giữa chừng: bỏ trạng thái "chỉ còn bật công tắc", quay về hộp cài từ bước 1
+  tpToggleClear(); tpSetupClear(); TP_TOG_OPENED = true;
+  $('tpmNote').textContent = 'Cài tiện ích tự đăng nhập xong mới lấy được tài khoản.';
+  $('tpmShowToggle').style.display = /Firefox\//.test(navigator.userAgent) ? 'none' : '';
+  tpSetupStart();
+});
 $('tpmShowToggle').addEventListener('click', function(){ $('tpmToggle').style.display = ''; this.style.display = 'none'; try{ $('tpmToggle').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){} });
 $('tpmReload').addEventListener('click', function(){ tpSetupClear(); location.reload(); });
 $('tpmEye').addEventListener('click', function(){ TP_SHOW = !TP_SHOW; tpRenderPass(); });
