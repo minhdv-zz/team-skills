@@ -392,7 +392,7 @@
       <div class="tpBr" data-br="firefox" style="margin:2px 0 2px 14px">&bull; <b>Firefox</b>: mở <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey</a> &rarr; bấm <b>Thêm vào Firefox</b> &rarr; <b>Thêm</b> (Add)</div>
       <span class="fine">Xong sẽ thấy biểu tượng ở thanh công cụ (có thể nằm trong nút hình mảnh ghép). Đã có sẵn thì qua bước 2.</span><br>
       <b>Bước 2. Cài script tự đăng nhập:</b> mở <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">link này</a> &rarr; tab mới hiện nút <b>Cài đặt</b> (Install; Violentmonkey: <b>Xác nhận cài đặt</b>) &rarr; bấm. Rồi quay lại tab này, trang tự tải lại.
-      <div class="row" style="margin-top:8px"><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
+      <div class="row" style="margin-top:8px"><button type="button" id="tpmShowToggle" style="font-size:12px">Đã cài rồi mà vẫn hiện hộp này?</button><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
   </div>
@@ -733,6 +733,7 @@ function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện h
   $('tpmToggle').style.display = tg ? '' : 'none';
   if(tg){ $('tpmNote').textContent = 'Bật xong công tắc này mới lấy được tài khoản.'; $('tpmWarn').style.display = 'none'; }
   else tpSetupStart();
+  $('tpmShowToggle').style.display = (tg || /Firefox\//.test(navigator.userAgent)) ? 'none' : '';   // Chrome/Edge: đã cài mà không nhận thì thường do công tắc Allow User Scripts đang tắt
   $('tpm').classList.add('on');
 }
 function tpSetStudio(){
@@ -930,6 +931,7 @@ Array.prototype.forEach.call(document.querySelectorAll('.tpCopyExt'), function(b
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(ok, fail); else fail();
 }); });
 $('tpToggleReload').addEventListener('click', function(){ tpToggleSave({ n: 2, o: Date.now(), t: Date.now() }); location.reload(); });   // chưa bật thì sau khi tải lại banner vẫn hiện, không tự tải thêm
+$('tpmShowToggle').addEventListener('click', function(){ $('tpmToggle').style.display = ''; this.style.display = 'none'; try{ $('tpmToggle').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){} });
 $('tpmReload').addEventListener('click', function(){ tpSetupClear(); location.reload(); });
 $('tpmEye').addEventListener('click', function(){ TP_SHOW = !TP_SHOW; tpRenderPass(); });
 $('tpAddBtn').addEventListener('click', function(){
