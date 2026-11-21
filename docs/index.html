@@ -394,6 +394,7 @@
       <b>Bước 2. Cài script tự đăng nhập:</b> mở <a data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer">link này</a> &rarr; tab mới hiện nút <b>Cài đặt</b> (Install; Violentmonkey: <b>Xác nhận cài đặt</b>) &rarr; bấm. Rồi quay lại tab này, trang tự tải lại.
       <div class="row" style="margin-top:8px"><button type="button" id="tpmShowToggle" style="font-size:12px">Đã cài rồi mà vẫn hiện hộp này?</button><button type="button" id="tpmReload">Đã cài xong, tải lại trang</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
+    <div id="tpmWho" style="display:none;margin:10px 0"></div>
     <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
   </div>
 </div>
@@ -741,13 +742,21 @@ function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
 function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
-function tpCloseCred(){ $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; }
+function tpCloseCred(){ $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
 function tpShowCred(email, pass, note, id){
   TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = ''; $('tpmToggle').style.display = 'none';
   $('tpmNote').textContent = note || ''; $('tpmWarn').style.display = 'none';
   $('tpmEmail').textContent = email; TP_PASS = pass; TP_SHOW = false; tpRenderPass(); tpSetStudio(email, pass);
+  tpShowWho(email);
   $('tpm').classList.add('on');
+}
+function tpShowWho(email){   // admin: danh sách người đã lấy tài khoản này (máy chủ chỉ gửi cho admin)
+  var box = $('tpmWho'), w = TP.stats && TP.stats.claimers ? TP.stats.claimers[email] : null;
+  if(!tpIsAdmin() || !w){ box.style.display = 'none'; return; }
+  box.innerHTML = '<div class="fine" style="margin:0 0 4px"><b>' + w.length + ' người đã lấy tài khoản này</b></div>'
+    + (w.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + w.map(function(n){ return '<span class="chip ok" style="margin:0">' + esc(n) + '</span>'; }).join('') + '</div>' : '<div class="fine" style="margin:0">Chưa có ai.</div>');
+  box.style.display = '';
 }
 function tpFail(e){ // 401: sai mật khẩu, quay lại màn nhập. 429 và lỗi khác: chỉ báo, giữ nguyên màn hình
   if(e.status === 401){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(e.message); }
