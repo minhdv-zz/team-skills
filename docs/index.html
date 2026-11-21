@@ -386,7 +386,7 @@
         <b>3.</b> Quay lại tab này (trang tự tải lại) <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
       </div>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.8"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b><br>
-      <b>Bước 1. Cài trình quản lý script</b> (chọn đúng trình duyệt của bạn, dòng của bạn có dấu &#10003;):
+      <b>Bước 1. Cài trình quản lý script</b> (chọn dòng có nhãn <b style="color:#6ee7a0">Trình duyệt của bạn</b>. Nhãn này chỉ cho biết bạn đang dùng trình duyệt nào, <b>không có nghĩa là đã cài</b>):
       <div class="tpBr" data-br="chrome" style="margin:2px 0 2px 14px">&bull; <b>Chrome</b>: mở <a data-setup="store" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer">Tampermonkey</a> &rarr; bấm <b>Thêm vào Chrome</b> (Add to Chrome) &rarr; <b>Thêm tiện ích</b></div>
       <div class="tpBr" data-br="edge" style="margin:2px 0 2px 14px">&bull; <b>Edge</b>: mở <a data-setup="store" href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener noreferrer">Tampermonkey</a> &rarr; bấm <b>Lấy</b> (Get) &rarr; <b>Thêm tiện ích</b></div>
       <div class="tpBr" data-br="firefox" style="margin:2px 0 2px 14px">&bull; <b>Firefox</b>: mở <a data-setup="store" href="https://addons.mozilla.org/firefox/addon/violentmonkey/" target="_blank" rel="noopener noreferrer">Violentmonkey</a> &rarr; bấm <b>Thêm vào Firefox</b> &rarr; <b>Thêm</b> (Add)</div>
@@ -717,11 +717,11 @@ function tpAutoOn(){
 function tpSetupStart(){   // chỉ hiện hướng dẫn: KHÔNG tự mở tab cửa hàng nữa, chỉ làm theo khi người dùng tự bấm link ở bước 1/2 (trước đây mỗi lần bấm là bật thêm tab nên rất phiền)
   $('tpmWarn').style.display = ''; tpMarkBrowser(); var old = tpSetupGet(); if(!old) tpSetupSave({ s: 'idle', n: 0 });
 }
-function tpMarkBrowser(){   // dấu ✓ + tô đậm dòng cài tiện ích đúng trình duyệt đang dùng
+function tpMarkBrowser(){   // nhãn 'Trình duyệt của bạn' + tô đậm dòng cài tiện ích đúng trình duyệt đang dùng
   var ua = navigator.userAgent, b = /Firefox\//.test(ua) ? 'firefox' : /Edg\//.test(ua) ? 'edge' : 'chrome';
   Array.prototype.forEach.call(document.querySelectorAll('#tpmWarn .tpBr'), function(d){
     var me = d.getAttribute('data-br') === b; d.style.opacity = me ? '1' : '.55';
-    var t = d.querySelector('.tpTick'); if(me && !t){ t = document.createElement('b'); t.className = 'tpTick'; t.textContent = ' \u2713'; t.style.color = '#6ee7a0'; d.insertBefore(t, d.firstChild); } });
+    var t = d.querySelector('.tpTick'); if(me && !t){ t = document.createElement('b'); t.className = 'tpTick'; t.textContent = '\u25B6 Trình duyệt của bạn: '; t.style.color = '#6ee7a0'; d.insertBefore(t, d.firstChild); } });
 }
 function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện hướng dẫn cài, không lấy và không hiện tài khoản
   TP_CLAIM_ID = ''; TP_PASS = ''; TP_SHOW = false; $('tpmEmpty').style.display = 'none'; $('tpmEmail').textContent = '';
