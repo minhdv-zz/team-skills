@@ -380,10 +380,11 @@
     <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre></div>
     <div class="warnbox" id="tpmToggle" style="display:none;margin:10px 0;line-height:1.8">
         <b>Bật công tắc cho Tampermonkey (làm 1 lần)</b><br>
-        <b>1.</b> <button type="button" class="tpCopyExt" style="padding:2px 10px;font-size:12px">Copy đường dẫn</button> rồi mở tab mới: <b>Ctrl+T</b>, <b>Ctrl+V</b>, <b>Enter</b><br>
-        <b>2.</b> Bật công tắc <b>Allow User Scripts</b>:
-        <div style="max-width:100%;width:520px;aspect-ratio:686/94;overflow:hidden;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="display:block;width:100%;margin-top:-14%"></div>
-        <b>3.</b> Quay lại tab này (trang tự tải lại) <button type="button" id="tpToggleReload" style="padding:2px 10px;font-size:12px">Đã bật xong, tải lại</button>
+        <div style="margin:10px 0 2px"><button type="button" class="tpCopyExt pri" style="display:block;width:100%;padding:11px 14px">1. Copy đường dẫn</button>
+          <div class="fine" style="margin:4px 0 0">Mở tab mới: <b>Ctrl+T</b>, <b>Ctrl+V</b>, <b>Enter</b>.</div></div>
+        <div style="margin:10px 0 2px"><b>2. Gạt công tắc</b> <b>Allow User Scripts</b> sang bật:
+        <div style="max-width:100%;width:520px;aspect-ratio:686/94;overflow:hidden;border-radius:8px;margin:6px 0;border:1px solid var(--line)"><img src="img/allow-user-scripts.png" alt="Bật Allow User Scripts" style="display:block;width:100%;margin-top:-14%"></div></div>
+        <div style="margin:10px 0 2px"><button type="button" id="tpToggleReload" class="pri" style="display:block;width:100%;padding:11px 14px">3. Bật xong, tải lại trang</button></div>
       </div>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.6"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b>
       <div style="margin:10px 0 2px"><a class="btn pri" data-setup="store" id="tpmStoreLink" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;padding:11px 14px">1. Cài <span id="tpBrExt">Tampermonkey</span> cho <span id="tpBrName">Chrome</span></a>
@@ -940,7 +941,7 @@ document.addEventListener('visibilitychange', function(){ tpSetupStep(); tpToggl
 })();
 Array.prototype.forEach.call(document.querySelectorAll('.tpCopyExt'), function(btn){ btn.addEventListener('click', function(){
   var u = /Edg\//.test(navigator.userAgent) ? 'edge://extensions/?id=iikmkjmpaadaobahmlepeloendndfphd' : 'chrome://extensions/?id=dhdgffkkebhmkfjojejmpbldmpobfkfo', b = this;
-  var ok = function(){ b.textContent = 'Đã copy, giờ nhấn Ctrl+T rồi Ctrl+V, Enter'; }, fail = function(){ prompt('Copy đường dẫn này rồi dán vào thanh địa chỉ:', u); };
+  var ok = function(){ b.textContent = 'Đã copy \u2713'; }, fail = function(){ prompt('Copy đường dẫn này rồi dán vào thanh địa chỉ:', u); };
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(ok, fail); else fail();
 }); });
 $('tpToggleReload').addEventListener('click', function(){ tpToggleSave({ n: 2, o: Date.now(), t: Date.now() }); location.reload(); });   // chưa bật thì sau khi tải lại banner vẫn hiện, không tự tải thêm
