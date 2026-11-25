@@ -800,7 +800,7 @@ function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
 function tpRenderPass(){ var ad = tpIsAdmin(), pv = ad ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = ad ? 'flex' : 'none'; $('tpmPassTxt').textContent = ad ? TP_PASS : ''; }   // admin: mật khẩu luôn hiện, không ẩn
-function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = ''; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
+function tpCloseCred(){ TP_SEQ++; tpPending(false); $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = ''; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
 var TP_NOTE = 'Cả nhóm dùng chung tài khoản đang chọn. Hết credit thì bấm Đã hết credit bên dưới để chuyển sang tài khoản tiếp theo.';   // một câu cố định: chọn qua lại không làm chữ đổi
 function tpRenderAll(cur){   // danh sách mọi tài khoản còn credit (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
@@ -824,21 +824,45 @@ function tpRenderAll(cur){   // danh sách mọi tài khoản còn credit (email
     }).join('') + '</div>';
   box.style.display = '';
 }
+var TP_SEQ = 0, TP_CHAIN = Promise.resolve(), TP_PENDING = false;
+function tpPending(on){   // đang chờ máy chủ xác nhận tài khoản vừa chọn: chưa có mật khẩu nên khóa nút Đăng nhập / Hết credit
+  TP_PENDING = on;
+  var st = $('tpmStudio'), em = $('tpmEmpty');
+  st.style.opacity = on ? '.55' : ''; st.style.pointerEvents = on ? 'none' : ''; st.textContent = on ? 'Đang chọn…' : 'Đăng nhập Tripo';
+  em.disabled = on;
+}
+function tpPickMark(id){   // tô sáng dòng vừa chọn NGAY, không chờ máy chủ
+  Array.prototype.forEach.call($('tpmAll').querySelectorAll('input[name=tpPick]'), function(r){
+    var me = r.value === id, l = r.parentNode;
+    r.checked = me; l.style.borderColor = me ? 'var(--acc,#7c5cff)' : 'var(--line)'; l.style.background = me ? 'rgba(124,92,255,.16)' : 'rgba(255,255,255,.03)';
+  });
+}
 $('tpmAll').addEventListener('change', function(e){
   var r = e.target; if(!r || r.name !== 'tpPick' || !r.checked) return;
-  var id = r.value, prev = TP_CLAIM_ID;
-  if(id === prev) return;
-  if(TP.busy){ tpRenderAll($('tpmEmail').textContent); return; }
-  TP.busy = true;
-  tpCall('select', { id: id }).then(function(j){
-    TP.accs.forEach(function(x){ if(x.status === 'using' && x.id !== id) x.status = 'ok'; if(x.id === id) x.status = 'using'; });
-    var sc = $('tpmAll').firstChild && $('tpmAll').children[1] ? $('tpmAll').children[1].scrollTop : 0;
-    tpShowCred(j.email, j.password, TP_NOTE, id);
-    if($('tpmAll').children[1]) $('tpmAll').children[1].scrollTop = sc;
-  }).catch(function(err){ tpRenderAll($('tpmEmail').textContent); tpFail(err); }).then(function(){ TP.busy = false; });
+  var id = r.value, prev = { id: TP_CLAIM_ID, email: $('tpmEmail').textContent, pass: TP_PASS, pending: TP_PENDING };
+  if(id === prev.id) return;
+  var acc = TP.accs.filter(function(x){ return x.id === id; })[0];
+  var seq = ++TP_SEQ;
+  // Giao diện đổi ngay: dòng sáng lên, email mới hiện, nút Đăng nhập chuyển "Đang chọn…" tới khi máy chủ trả mật khẩu.
+  tpPickMark(id); TP_CLAIM_ID = id; TP_PASS = ''; if(acc) $('tpmEmail').textContent = acc.email; tpPending(true);
+  // Các lượt chọn xếp hàng theo thứ tự; lượt bị chọn đè thì bỏ qua (bấm A rồi B liền tay chỉ gửi B).
+  TP_CHAIN = TP_CHAIN.then(function(){
+    if(seq !== TP_SEQ) return;
+    return tpCall('select', { id: id }).then(function(j){
+      if(seq !== TP_SEQ) return;
+      TP.accs.forEach(function(x){ if(x.status === 'using' && x.id !== id) x.status = 'ok'; if(x.id === id) x.status = 'using'; });
+      var sc = $('tpmAll').children[1] ? $('tpmAll').children[1].scrollTop : 0;
+      tpShowCred(j.email, j.password, TP_NOTE, id);
+      if($('tpmAll').children[1]) $('tpmAll').children[1].scrollTop = sc;
+    }, function(err){
+      if(seq !== TP_SEQ) return;
+      TP_CLAIM_ID = prev.id; TP_PASS = prev.pass; $('tpmEmail').textContent = prev.email; tpPending(prev.pending); tpPickMark(prev.id);   // lỗi: trả về lựa chọn cũ
+      tpFail(err);
+    });
+  });
 });
 function tpShowCred(email, pass, note, id){
-  TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = ''; $('tpmToggle').style.display = 'none';
+  tpPending(false); TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = ''; $('tpmToggle').style.display = 'none';
   $('tpmNote').textContent = note || ''; $('tpmWarn').style.display = 'none';
   $('tpmEmail').textContent = email; TP_PASS = pass; TP_SHOW = false; tpRenderPass(); tpSetStudio(email, pass);
   tpShowWho(email); tpRenderAll(email);
@@ -943,7 +967,7 @@ $('tpClaim').addEventListener('click', function(){
     var cur = tpIsAdmin() ? null : pick(TP.accs);   // admin: reveal không kiểm tra trạng thái nên luôn lấy danh sách mới; thành viên: server tự từ chối (403) nếu danh sách trên trang đã cũ
     var first = cur ? tpCall('reveal', { id: cur.id }).then(function(j){ return { j: j, id: cur.id }; }).catch(function(e){ if(e.status === 401 || e.status === 423 || e.status === 429) throw e; return fresh(); }) : fresh();
     return first.then(function(r){ tpShowCred(r.j.email, r.j.password, note, r.id); })
-      .then(function(){ tpCall('list').then(function(l){ if(!TP.busy) tpApply(l); }).catch(function(){}); })   // làm mới nền, không chặn hộp đã hiện; bỏ qua nếu người dùng đã bấm việc khác
+      .then(function(){ tpCall('list').then(function(l){ if(!TP.busy && !TP_PENDING) tpApply(l); }).catch(function(){}); })   // làm mới nền, không chặn hộp đã hiện; bỏ qua nếu người dùng đã bấm việc khác
       .then(function(){ btn.disabled = false; btn.innerHTML = label; }, function(e){ btn.disabled = false; btn.innerHTML = label; throw e; });
   });
 });
@@ -953,6 +977,7 @@ $('tpmEmpty').addEventListener('click', function(){
   tpGuard(function(){ return tpCall('update', { id: id, status: 'empty' }).then(function(){ tpCloseCred(); toast('Đã đánh dấu hết. Bấm Lấy tài khoản để lấy tài khoản khác.', true); return tpLoad(); }); });
 });
 $('tpmStudio').addEventListener('click', function(e){
+  if(TP_PENDING){ e.preventDefault(); return; }
   if(!TP_PASS) return;
   if(!tpAutoOn()){ e.preventDefault(); tpNeedSetup(); return; }   // luôn bắt đầu lại từ bước 1; chỉ không mở lại cửa hàng nếu vừa mở dưới 20 giây   // chưa cài script (trang không thấy dấu hiệu data-tripo-autologin): không mở Tripo, mở sẵn trang cài tiện ích và chỉ chỗ cài
   var root = document.documentElement;
