@@ -398,7 +398,7 @@ async function tripo(req, env, url) {
     await putAccounts(env, accs); await logEvs(env, [["claim", a]], who);
     return json({ account: P(a), email: a.email, password });
   }
-  if (op === "reveal" && !isAdmin && a.status !== "using") return json({ error: "Chỉ xem được tài khoản đang dùng chung" }, 403);
+  if (op === "reveal" && !isAdmin && a.status !== "using" && a.status !== "empty") return json({ error: "Chỉ xem được tài khoản đang dùng chung" }, 403);
   if (op === "reveal") return json({ email: a.email, password: await unseal(env, a.secret) });
 
   if (op === "delete") {
