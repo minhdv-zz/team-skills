@@ -692,13 +692,15 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) t
 // Chỉ chủ (máy chủ báo admin) thấy danh sách tài khoản, nút Xem/Xóa, thêm tài khoản, nhật ký. Lưu ý: đây mới là ẩn trên giao diện.
 function tpIsAdmin(){ return !!TP.admin; }   // do máy chủ báo; máy chủ mới là nơi chặn quyền thật
 function tpRender(){
-  $('tpAdmin').style.display = tpIsAdmin() ? '' : 'none';
-  $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
-  ['tpHeroCta', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });
-  var cc0 = $('tpChartCard'), dst = tpIsAdmin() ? $('tpAdmin') : $('tpHeroChart');   // thành viên: bảng nằm ngay trong hộp Lấy tài khoản; admin: trong khu quản lý
-  if(cc0.parentNode !== dst) dst.insertBefore(cc0, tpIsAdmin() ? $('tpList') : null);   // chủ chỉ cần dòng "Bạn: ..." + Đăng xuất
-  tpRenderChart();   // bảng credit theo tháng: mọi tài khoản đều thấy
-  if(!tpIsAdmin()) return;
+  // Giao diện giống nhau cho admin và thành viên (chỉ khác nút "Lấy tài khoản" của thành viên). Quyền thật do máy chủ chặn: việc nào thành viên không được thì máy chủ trả lỗi và trang chỉ báo lại.
+  $('tpAdmin').style.display = '';
+  $('tpHero').style.cssText = 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px';
+  $('tpHeroNote').style.display = 'none';
+  $('tpHeroCta').style.display = tpIsAdmin() ? 'none' : '';   // thành viên vẫn cần nút Lấy tài khoản (admin dùng nút Xem/Đăng nhập từng dòng)
+  var cc0 = $('tpChartCard'), dst = $('tpAdmin');
+  if(cc0.parentNode !== dst) dst.insertBefore(cc0, $('tpList'));
+  if(!tpIsAdmin()) $('tpMemList').innerHTML = '<div class="fine" style="margin:6px 0">Chỉ admin xem và sửa được danh sách này.</div>';
+  tpRenderChart();
   tpRenderList();
 }
 function tpRenderChart(){
@@ -710,8 +712,8 @@ function tpRenderChart(){
   var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || emptyBy[m.month] > 0; });
   var nf = function(v){ return Number(v).toLocaleString('vi-VN'); };
   var th = function(t){ return '<div class="fine" style="margin:0;text-align:center">' + t + '</div>'; };
-  var adm = tpIsAdmin(), cols = '84px repeat(4, 1fr)';
-  var cc = $('tpChartCard'); cc.style.margin = adm ? '0 0 14px' : '0'; cc.style.background = adm ? '' : 'rgba(0,0,0,.22)';
+  var cols = '84px repeat(4, 1fr)';
+  var cc = $('tpChartCard'); cc.style.margin = '0 0 14px'; cc.style.background = '';
   var box = 'border:1px solid var(--line);border-radius:8px;padding:10px 8px;text-align:center;background:rgba(255,255,255,.03);font-size:16px';   // mỗi số một ô riêng có viền cho dễ nhìn
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:8px;align-items:stretch;margin-top:8px">' + cells.map(function(c){ return '<div style="' + box + ';display:flex;align-items:center;justify-content:center">' + c + '</div>'; }).join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
@@ -732,7 +734,7 @@ function tpRenderChart(){
     + '</div></details>';
 }
 function tpRenderList(){
-  var a = TP.accs, isOwner = tpWho().toLowerCase() === TPOWNER;
+  var a = TP.accs;
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
     var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // danh sách tên đã gộp theo người   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước
@@ -742,17 +744,17 @@ function tpRenderList(){
       : '<span class="chip ' + cls2 + '">' + esc(stTxt) + '</span>';
     var btn = function(act, label, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-act="' + act + '" data-id="' + esc(x.id) + '">' + label + '</button>'; };
     return '<div class="card" style="margin-bottom:8px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px">'
-      + '<div style="flex:1;min-width:220px"><b style="word-break:break-all">' + esc(x.email) + '</b>' + (x.note ? '<div class="fine" style="margin:0">' + esc(x.note) + '</div>' : '') + '<div style="margin-top:4px">' + chip + '</div></div>'
+      + '<div style="flex:1;min-width:220px"><b style="word-break:break-all">' + (x.email ? esc(x.email) : '<span class="fine" style="margin:0;font-weight:400">(tài khoản đã hết credit)</span>') + '</b>' + (x.note ? '<div class="fine" style="margin:0">' + esc(x.note) + '</div>' : '') + '<div style="margin-top:4px">' + chip + '</div></div>'
       + '<div style="min-width:96px;text-align:center" title="' + (x.creditAt ? 'Cập nhật ' + tpAgo(x.creditAt) : 'Chưa đọc được. Bấm Xem để mở Tripo, số sẽ tự cập nhật.') + '">'
       + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0">&#9889; chưa có</span>' : (Date.now() - x.creditAt > 3 * 3600 * 1000 ? '<span style="font-size:20px;font-weight:700;color:var(--muted,#8b949e);opacity:.7">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0;color:#e3b341">số cũ &middot; ' + tpAgo(x.creditAt) + '</div>' : '<span style="font-size:20px;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0">' + tpAgo(x.creditAt) + '</div>')) + '</div>'
-      + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (isOwner ? btn('reveal', 'Xem', 'pri') : '')   // chỉ chủ thấy Xem/Xóa; admin phụ chỉ ẩn nút trên giao diện, quyền ở máy chủ giữ nguyên
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + btn('reveal', 'Xem', 'pri')   // mọi người thấy đủ nút; việc nào không đủ quyền thì máy chủ từ chối và trang báo lỗi
       + btn('login', 'Đăng nhập')
-      + (x.status !== 'empty' ? btn('empty', 'Đã hết credit') : btn('ok', 'Còn lại')) + (isOwner ? btn('delete', 'Xóa', 'danger') : '') + '</div></div>';
+      + (x.status !== 'empty' ? btn('empty', 'Đã hết credit') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
   }).join('');
   $('tpList').innerHTML = rows || '<div class="card">Chưa có tài khoản nào. Mở mục &ldquo;Thêm tài khoản mới&rdquo; bên dưới.</div>';
   var names = { claim: 'lấy', empty: 'đánh dấu hết', add: 'thêm', del: 'xóa' };
   var rec = TP.stats ? TP.stats.recent : [];
-  $('tpLog').innerHTML = rec.length ? rec.map(function(e){ return '<div>' + tpAgo(e.t) + ': <b>' + esc(e.who || '?') + '</b> ' + (names[e.type] || esc(e.type)) + ' ' + esc(e.email) + '</div>'; }).join('') : 'Chưa có.';
+  $('tpLog').innerHTML = rec.length ? rec.map(function(e){ return '<div>' + tpAgo(e.t) + ': <b>' + esc(e.who || '?') + '</b> ' + (names[e.type] || esc(e.type)) + ' ' + esc(e.email) + '</div>'; }).join('') : (tpIsAdmin() ? 'Chưa có.' : 'Chỉ admin xem được.');
 }
 var TP_PASS = '', TP_SHOW = false, TP_STUDIO = 'https://studio.tripo3d.ai/';
 // Link luôn là link thường tới Tripo, không đưa email hay mật khẩu vào URL. Có userscript tự đăng nhập thì khi bấm,
