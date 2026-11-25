@@ -780,7 +780,7 @@ function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email 
     + '<div style="display:flex;flex-direction:column;gap:10px;max-height:52vh;overflow:auto;padding:2px">' + a.map(function(x){
       var me = x.email.toLowerCase() === cl, old = x.creditAt && Date.now() - x.creditAt > 3 * 3600 * 1000;   // quá 3 giờ chưa cập nhật: làm mờ + ghi 'số cũ'
       var cr = x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0;font-size:14px;font-weight:400">&#9889; chưa có số</span>'
-        : '<span style="font-size:24px;font-weight:800;line-height:1;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + (old ? ';opacity:.55' : '') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:3px 0 0;font-size:12px' + (old ? ';color:#e3b341' : '') + '">' + (old ? 'số cũ &middot; ' : '') + (x.creditAt ? tpAgo(x.creditAt) : 'credit') + '</div>';
+        : '<span style="font-size:24px;font-weight:800;line-height:1;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + (old ? ';opacity:.55' : '') + '">&#9889; ' + x.credit + '</span>';
       return '<label style="display:flex;align-items:center;gap:16px;padding:16px 18px;cursor:pointer;border-radius:12px;border:2px solid ' + (me ? 'var(--acc,#7c5cff)' : 'var(--line)') + ';background:' + (me ? 'rgba(124,92,255,.16)' : 'rgba(255,255,255,.03)') + '">'
         + '<div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600;word-break:break-all">' + esc(x.email) + '</div>'
         + '</div>'
