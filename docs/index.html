@@ -217,6 +217,7 @@
             <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì trang sẽ chỉ cách cài). Mật khẩu được script tự điền, không hiện ra màn hình.</span></li>
             <li><b>Hết credit thì bấm &ldquo;Đã hết credit&rdquo;</b><span>Nút nằm ngay trong hộp tài khoản. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
+          <div id="tpHeroChart" style="flex:1;min-width:300px"></div>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Đăng xuất</button></span>
         </div>
         <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết credit</b> thì mới chuyển sang tài khoản tiếp theo.</div>
@@ -691,7 +692,10 @@ function tpIsAdmin(){ return !!TP.admin; }   // do máy chủ báo; máy chủ m
 function tpRender(){
   $('tpAdmin').style.display = tpIsAdmin() ? '' : 'none';
   $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
-  ['tpHeroCta', 'tpHeroSteps', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });   // chủ chỉ cần dòng "Bạn: ..." + Đăng xuất
+  ['tpHeroCta', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });
+  $('tpHeroSteps').style.display = 'none';   // bỏ 3 bước hướng dẫn, chỗ đó dành cho bảng credit
+  var cc0 = $('tpChartCard'), dst = tpIsAdmin() ? $('tpAdmin') : $('tpHeroChart');   // thành viên: bảng nằm ngay trong hộp Lấy tài khoản; admin: trong khu quản lý
+  if(cc0.parentNode !== dst) dst.insertBefore(cc0, tpIsAdmin() ? $('tpList') : null);   // chủ chỉ cần dòng "Bạn: ..." + Đăng xuất
   tpRenderChart();   // bảng credit theo tháng: mọi tài khoản đều thấy
   if(!tpIsAdmin()) return;
   tpRenderList();
@@ -705,18 +709,18 @@ function tpRenderChart(){
   var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || emptyBy[m.month] > 0; });
   var nf = function(v){ return Number(v).toLocaleString('vi-VN'); };
   var th = function(t){ return '<div class="fine" style="margin:0">' + t + '</div>'; };
-  var cols = tpIsAdmin() ? '70px 1fr 1fr 1fr 90px' : '64px 130px 130px 200px 100px';   // thành viên: bảng gọn, không kéo hết chiều ngang
-  var cc = $('tpChartCard'); cc.style.width = tpIsAdmin() ? '' : 'fit-content'; cc.style.maxWidth = '100%'; cc.style.margin = tpIsAdmin() ? '0 0 14px' : '12px 0 14px'; cc.style.padding = tpIsAdmin() ? '' : '14px 16px';
+  var adm = tpIsAdmin(), cols = adm ? '70px 1fr 1fr 1fr 90px' : '56px 1fr 1fr 1fr';   // thành viên: 4 cột (bỏ "Tài khoản hết") cho vừa trong hộp
+  var cc = $('tpChartCard'); cc.style.margin = adm ? '0 0 14px' : '0'; cc.style.padding = adm ? '' : '12px 14px'; cc.style.background = adm ? '' : 'rgba(0,0,0,.22)';
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
   var mxU = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.start != null && m.left != null ? Math.max(0, m.start - m.left) : 0; })));
-  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Còn lại hiện tại') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Tài khoản hết') + '</div>'
+  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Còn lại hiện tại') + th(adm ? 'Đã dùng (đầu tháng \u2212 hiện tại)' : 'Đã dùng') + (adm ? th('Tài khoản hết') : '') + '</div>'
     + ms.map(function(m, i){
       var has = m.start != null && m.left != null, u = has ? Math.max(0, m.start - m.left) : 0;
       var used = !has ? none : '<b>' + nf(u) + '</b><div style="height:5px;margin-top:4px;width:' + Math.max(2, Math.round(u / mxU * 100)) + '%;background:var(--acc);border-radius:3px"></div>';
       var start = m.start == null ? none : '<b>' + nf(m.start) + '</b>';
       var left = m.left == null ? none : '<b style="color:var(--ok)">' + nf(m.left) + '</b>' + (i === 0 ? '' : ' <span class="fine" style="margin:0">(cuối tháng)</span>');
-      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + start + '</div>', '<div>' + left + '</div>', '<div>' + used + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
+      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + start + '</div>', '<div>' + left + '</div>', '<div>' + used + '</div>'].concat(adm ? ['<div>' + (emptyBy[m.month] || 0) + '</div>'] : []));
     }).join('')
     + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
     + '\u2022 <b>Credit đầu tháng</b> = tổng credit các tài khoản trong danh sách lúc đầu tháng (số còn lại cuối tháng trước; tài khoản mới thêm giữa tháng thì tính từ lần đọc đầu tiên).<br>'
