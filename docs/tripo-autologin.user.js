@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.17.1
+// @version      2.18.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.17.1';
+  var VER = '2.18.0';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -283,7 +283,7 @@
   var acctEmail = cred.e, lastGreet = 0;
   var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
   if (passive) setTimeout(function () {   // sau khi ô báo (say) đã dựng xong
-    try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools (hết hạn?). Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé.', 30000); } } catch (e) { /* bỏ qua */ }
+    try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools. Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé. [chẩn đoán: bản chung ' + (GM_getValue(KEY, '') ? 'còn' : 'mất') + ', bản riêng ' + (tabMap()[tabId()] ? 'còn' : 'mất') + ', tab ' + tabId() + '. Nhật ký: ' + trailText() + ']', 120000); } } catch (e) { /* bỏ qua */ }
   }, 0);
 
   function txt(el) { return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
@@ -297,15 +297,19 @@
   }
 
   // Ô báo trạng thái ở góc trái trên cùng trang Tripo, đồng thời ghi vào Console. Giúp biết script đang dừng ở bước nào.
+  // Nhật ký các bước (lưu qua các lần tải lại trang) để khi đứng im thì ô báo cho thấy đã làm gì trước đó.
+  function trailPush(msg) { try { var a = JSON.parse(GM_getValue('tripoTrail', '') || '[]'); if (!Array.isArray(a)) a = []; var n = Date.now(); a = a.filter(function (x) { return n - x.t < 300000; }); a.push({ t: n, m: String(msg).slice(0, 60) }); GM_setValue('tripoTrail', JSON.stringify(a.slice(-14))); } catch (e) { /* bỏ qua */ } }
+  function trailText() { try { var a = JSON.parse(GM_getValue('tripoTrail', '') || '[]'), n = Date.now(); return a.map(function (x) { return '-' + Math.round((n - x.t) / 1000) + 's ' + x.m; }).join(' / '); } catch (e) { return ''; } }
   var badge = null, lastMsg = '';
   function say(msg, keepMs) {
     if (msg === lastMsg && !keepMs) return;   // cùng một thông báo thì không ghi lại (tránh nhấp nháy và tránh kích hoạt vòng lặp)
     lastMsg = msg;
+    trailPush(msg);
     try { console.log('[Team Tools v' + VER + ' +' + ((Date.now() - started) / 1000).toFixed(1) + 's] ' + msg); } catch (e) { /* bỏ qua */ }
     var root = document.documentElement; if (!root) return;
     if (!badge || !badge.isConnected) {
       badge = document.createElement('div');
-      badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:2147483647;background:#1c1640;color:#fff;border:1px solid #7c5cff;border-radius:8px;padding:6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:340px;pointer-events:none';
+      badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:2147483647;background:#1c1640;color:#fff;border:1px solid #7c5cff;border-radius:8px;padding:6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:520px;pointer-events:none';
       root.appendChild(badge);
     }
     badge.textContent = 'Team Tools v' + VER + ' (+' + ((Date.now() - started) / 1000).toFixed(1) + 's): ' + msg;
@@ -602,7 +606,7 @@
     }
     return 'doing';
   }
-  function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } tabSave(null); if (msg) say(msg, keepMs); return true; }
+  function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } tabSave(null); if (msg) say(keepMs >= 20000 ? msg + ' [Nhật ký: ' + trailText() + ']' : msg, keepMs); return true; }
 
   function pressContinue(pw) {   // chỉ nhận nút Continue nằm cùng khối với ô mật khẩu (tổ tiên gần nhất có chứa nút)
     var b = null;
