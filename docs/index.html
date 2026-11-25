@@ -662,7 +662,7 @@ function tpCreditSync(){
   if(!raw || !TP.accs.length) return;
   root.removeAttribute('data-tripo-credit');
   var c; try { c = JSON.parse(raw); } catch(e) { return; }
-  if(!c || typeof c !== 'object' || Date.now() - c.t > 10 * 60 * 1000) return;   // quá 10 phút thì bỏ, số có thể đã cũ
+  if(!c || typeof c !== 'object' || Date.now() - c.t > 50 * 60 * 1000) return;   // quá 50 phút thì bỏ, số có thể đã cũ
   var acc = TP.accs.filter(function(x){ return x.email.toLowerCase() === String(c.e).toLowerCase(); })[0];
   if(!acc || !Number.isInteger(c.c) || c.c < 0) return;
   tpCall('credit', { id: acc.id, credit: c.c, at: c.t }).then(function(j){
@@ -670,6 +670,23 @@ function tpCreditSync(){
   }).catch(function(){ if(!c.r && !root.hasAttribute('data-tripo-credit')){ c.r = 1; root.setAttribute('data-tripo-credit', JSON.stringify(c)); } });   // lỗi thì giữ lại để gửi lại đúng một lần (lần tải danh sách kế tiếp)
 }
 document.addEventListener('team-tripo-credit', function(){ if($('tpMain').style.display !== 'none') tpCreditSync(); });
+// Credit do BẤT KỲ thành viên nào đang mở Tripo đẩy lên: trang tự hỏi lại server mỗi 30 giây (và khi quay lại tab) để số luôn mới,
+// chỉ cập nhật số credit, không đụng trạng thái/hộp đang mở của người đang xem.
+var tpPolling = false;
+function tpPollCredit(){
+  if(tpPolling || document.hidden || !TP.accs.length || $('tpMain').style.display === 'none') return;
+  tpPolling = true;
+  tpCall('list').then(function(j){
+    var by = {}; (j.accounts || []).forEach(function(a){ by[a.id] = a; });
+    var ch = false;
+    TP.accs.forEach(function(a){ var n = by[a.id]; if(n && (n.credit !== a.credit || n.creditAt !== a.creditAt)){ a.credit = n.credit; a.creditAt = n.creditAt; ch = true; } });
+    if(!ch) return;
+    tpRender();
+    if($('tpm').classList.contains('on') && $('tpmAll').style.display !== 'none'){ var sb = $('tpmAll').children[1], st = sb ? sb.scrollTop : 0; tpRenderAll($('tpmEmail').textContent); if($('tpmAll').children[1]) $('tpmAll').children[1].scrollTop = st; }
+  }).catch(function(){ /* lỗi mạng/quyền: bỏ qua, lần sau thử lại */ }).then(function(){ tpPolling = false; });
+}
+setInterval(tpPollCredit, 30000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) tpPollCredit(); });
 // Chỉ chủ (máy chủ báo admin) thấy danh sách tài khoản, nút Xem/Xóa, thêm tài khoản, nhật ký. Lưu ý: đây mới là ẩn trên giao diện.
 function tpIsAdmin(){ return !!TP.admin; }   // do máy chủ báo; máy chủ mới là nơi chặn quyền thật
 function tpRender(){

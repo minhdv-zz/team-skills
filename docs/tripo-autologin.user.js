@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.10
+// @version      2.10.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.10');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.10.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -41,7 +41,7 @@
       var raw = ''; try { raw = GM_getValue(CKEY, '') || ''; } catch (e) { return; }
       if (!raw) return;
       var v = null; try { v = JSON.parse(raw); } catch (e) { v = null; }
-      if (!v || typeof v.e !== 'string' || !Number.isInteger(v.c) || !(Date.now() - v.t < 10 * 60 * 1000)) return;
+      if (!v || typeof v.e !== 'string' || !Number.isInteger(v.c) || !(Date.now() - v.t < 50 * 60 * 1000)) return;
       var put = function () {
         var r = document.documentElement; if (!r) return false;
         r.setAttribute('data-tripo-credit', JSON.stringify({ e: v.e, c: v.c, t: v.t }));
@@ -305,7 +305,7 @@
     return 'KHÔNG đọc được credit. Cửa sổ rộng ' + window.innerWidth + 'px. Chữ thấy ở thanh trên (x:chữ): ' + (out.join(' | ') || '(không có)');
   }
   function watchCredit(email) {
-    var t0 = Date.now(), cand = null, candAt = 0, sent = null, goneAt = 0, last = 0, diagShown = false;
+    var t0 = Date.now(), cand = null, candAt = 0, sent = null, sentAt = 0, goneAt = 0, last = 0, diagShown = false;
     var iv = setInterval(function () {
       var now = Date.now();
       if (now - t0 < 3000) return;   // chờ giao diện đổi sang tài khoản mới (tránh số cũ hoặc số tạm lúc vừa đăng nhập)
@@ -320,11 +320,15 @@
         return;
       }
       goneAt = 0;
-      if (v === sent) { cand = null; return; }
+      if (v === sent) {   // số không đổi: cứ 2 phút báo lại một lần để Team Tools biết số vẫn còn đúng (không bị coi là 'số cũ')
+        cand = null;
+        if (now - sentAt > 120000) { try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sentAt = now; } catch (e) { /* bỏ qua */ } }
+        return;
+      }
       if (v !== cand) { cand = v; candAt = now; return; }   // số mới: phải giữ nguyên thêm 0,7 giây (loại số tạm lúc đang tải)
       if (now - candAt < 1000) return;
       if (!passive) rememberName(email);   // số đã ổn định và chắc chắn là tài khoản này (vừa đăng nhập / đã xác nhận): nhớ tên trong lời chào
-      try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sent = v; cand = null; say('credit còn ' + v + ', đã gửi cho Team Tools.', 4000); } catch (e) { /* bỏ qua */ }
+      try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sent = v; sentAt = now; cand = null; say('credit còn ' + v + ', đã gửi cho Team Tools.', 4000); } catch (e) { /* bỏ qua */ }
     }, 400);
   }
   // ---- Đăng xuất khi trình duyệt đang ở tài khoản khác ----
