@@ -760,20 +760,32 @@ function tpSetStudio(){
 function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
 function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
-function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email + credit), tài khoản cả nhóm đang dùng được đánh dấu
+function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
   var box = $('tpmAll'), a = (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; });
   if(!a.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
   var cl = String(cur || '').toLowerCase();
-  a.sort(function(x, y){ return ((y.email.toLowerCase() === cl) - (x.email.toLowerCase() === cl)) || x.email.localeCompare(y.email); });
-  box.innerHTML = '<div class="fine" style="margin:0 0 6px"><b>Tài khoản còn token (' + a.length + ')</b></div>'
+  a.sort(function(x, y){ return x.email.localeCompare(y.email); });
+  box.innerHTML = '<div class="fine" style="margin:0 0 6px"><b>Tài khoản còn token (' + a.length + ')</b> &middot; tích để chọn tài khoản dùng</div>'
     + '<div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px">' + a.map(function(x, i){
       var me = x.email.toLowerCase() === cl;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;' + (i ? 'border-top:1px solid var(--line);' : '') + '"><span style="flex:1;word-break:break-all;font-size:13px">' + esc(x.email) + '</span>'
-        + (me ? '<span class="chip wait">đang dùng</span>' : '')
-        + '<span style="white-space:nowrap;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">' + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0;font-weight:400">&#9889; chưa có</span>' : '&#9889; ' + x.credit) + '</span></div>';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;' + (i ? 'border-top:1px solid var(--line);' : '') + (me ? 'background:rgba(128,90,255,.12);' : '') + '">'
+        + '<span style="flex:1;word-break:break-all;font-size:13px">' + esc(x.email) + '</span>'
+        + '<span style="white-space:nowrap;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">' + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0;font-weight:400">&#9889; chưa có</span>' : '&#9889; ' + x.credit) + '</span>'
+        + '<input type="radio" name="tpPick" value="' + esc(x.id) + '"' + (me ? ' checked' : '') + ' style="width:18px;height:18px;flex:none;accent-color:#7c5cff"></label>';
     }).join('') + '</div>';
   box.style.display = '';
 }
+$('tpmAll').addEventListener('change', function(e){
+  var r = e.target; if(!r || r.name !== 'tpPick' || !r.checked) return;
+  var id = r.value, prev = TP_CLAIM_ID;
+  if(id === prev) return;
+  if(TP.busy){ tpRenderAll($('tpmEmail').textContent); return; }
+  TP.busy = true; $('tpmAll').style.opacity = '.6';
+  tpCall('select', { id: id }).then(function(j){
+    TP.accs.forEach(function(x){ if(x.status === 'using' && x.id !== id) x.status = 'ok'; if(x.id === id) x.status = 'using'; });
+    tpShowCred(j.email, j.password, 'Đã chọn tài khoản này cho cả nhóm. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.', id);
+  }).catch(function(err){ tpRenderAll($('tpmEmail').textContent); tpFail(err); }).then(function(){ TP.busy = false; $('tpmAll').style.opacity = ''; });
+});
 function tpShowCred(email, pass, note, id){
   TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = ''; $('tpmToggle').style.display = 'none';
   $('tpmNote').textContent = note || ''; $('tpmWarn').style.display = 'none';

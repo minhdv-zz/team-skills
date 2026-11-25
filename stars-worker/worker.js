@@ -340,6 +340,15 @@ async function tripo(req, env, url) {
     return json({ credit: cm[a.id].c, creditAt: cm[a.id].t });
   }
 
+  // Chọn tài khoản cả nhóm sẽ dùng (tích trong hộp Lấy tài khoản): tài khoản này thành "đang dùng", cái đang dùng trước đó về "còn dùng được".
+  if (op === "select") {
+    if (a.status === "empty") return json({ error: "Tài khoản này đã hết token" }, 409);
+    const password = await unseal(env, a.secret); // giải mã trước, lỗi thì chưa đổi trạng thái
+    for (const x of accs) if (x.status === "using" && x.id !== a.id) { x.status = "ok"; x.usedBy = ""; }
+    a.status = "using"; a.usedBy = who; a.usedAt = Date.now();
+    await putAccounts(env, accs); await logEvs(env, [["claim", a]], who);
+    return json({ account: P(a), email: a.email, password });
+  }
   if (op === "reveal" && !isAdmin && a.status !== "using") return json({ error: "Chỉ xem được tài khoản đang dùng chung" }, 403);
   if (op === "reveal") return json({ email: a.email, password: await unseal(env, a.secret) });
 
