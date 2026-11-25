@@ -294,8 +294,9 @@ async function tripo(req, env, url) {
   // Người không phải chủ chỉ thấy id + trạng thái: không có email, ghi chú, người dùng, credit của tài khoản.
   // Thành viên thấy email + số credit của các tài khoản CÒN credit (theo yêu cầu chủ), không thấy ghi chú/người dùng/mật khẩu; tài khoản đã hết thì vẫn ẩn email.
   const P = isAdmin ? (a) => pub(a, cm) : (a) => { const live = a.status !== "empty"; return ({ id: a.id, email: live ? a.email : "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: live && cm[a.id] ? cm[a.id].c : null, creditAt: live && cm[a.id] ? cm[a.id].t : 0 }); };
-  const adminOnly = ["add", "delete", "members", "members_set"];
+  const adminOnly = ["add", "delete", "members", "members_set", "locks", "unlock"];
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
+  if (op === "locks" || op === "unlock") { const g = env.GUARD.get(env.GUARD.idFromName("tripo")); return json(op === "unlock" ? await g.unlock() : await g.status()); }   // admin đã đăng nhập (qua đủ Gmail + mật khẩu admin, vẫn bị đếm lần sai) xem / gỡ khóa thẳng trong trang, không cần mã TRIPO_ADMIN
 
   if (op === "list") {
     const accsP = getAccounts(env);

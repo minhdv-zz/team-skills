@@ -249,6 +249,10 @@
           <button class="pri" id="tpMembersBtn">Thêm</button>
         </div>
       </details>
+      <div id="tpLocks" class="card" style="display:none;margin-top:14px;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>Khóa nhập sai mật khẩu</b><span id="tpLocksState" class="fine" style="margin:0"></span><span style="margin-left:auto;display:flex;gap:8px"><button type="button" id="tpLocksRefresh">Làm mới</button><button type="button" id="tpLocksOpen" class="danger" style="display:none">Gỡ hết khóa</button></span></div>
+        <div id="tpLocksList" class="fine" style="margin:0;white-space:pre-wrap"></div>
+      </div>
       <details class="help" style="margin-top:14px">
         <summary>Nhật ký gần đây</summary>
         <div id="tpLog" class="fine" style="font-size:13.5px"></div>
@@ -633,6 +637,22 @@ function tpLockFmt(j){
   return (L.length ? 'Đang khóa:\n' + L.map(function(x){ return ' \u2022 ' + nm(x.scope) + ' (từ ' + new Date(x.t).toLocaleString('vi-VN') + ')'; }).join('\n') : 'Không có khóa nào.')
     + (F.length ? '\nSố lần sai trong 24 giờ:\n' + F.map(function(x){ return ' \u2022 ' + nm(x.scope) + ': ' + x.n; }).join('\n') : '');
 }
+function tpLocksLoad(){   // admin đã đăng nhập: hiện thẳng danh sách khóa / lần sai theo IP
+  var box = $('tpLocks'); if(!tpIsAdmin()){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  tpCall('locks').then(function(j){
+    var L = j.locks || [], F = j.fails || [];
+    $('tpLocksState').textContent = L.length ? L.length + ' khóa đang bật' : 'Không có khóa nào';
+    $('tpLocksState').style.color = L.length ? '#ffb4ac' : '';
+    $('tpLocksOpen').style.display = L.length || F.length ? '' : 'none';
+    $('tpLocksList').textContent = tpLockFmt(j) + '\n(Chỉ thấy IP và số lần sai; máy chủ không ghi Gmail đã gõ.)';
+  }).catch(function(e){ $('tpLocksState').textContent = ''; $('tpLocksList').textContent = e.message; });
+}
+$('tpLocksRefresh').addEventListener('click', tpLocksLoad);
+$('tpLocksOpen').addEventListener('click', function(){
+  if(!confirm('Gỡ hết khóa và xóa số lần sai? Mọi người nhập lại mật khẩu được ngay.')) return;
+  tpCall('unlock').then(function(){ toast('Đã gỡ hết khóa', true); tpLocksLoad(); }).catch(function(e){ toast(e.message, false); });
+});
 function tpLockDo(op){
   var k = $('tpLockKey').value.trim(), out = $('tpLockOut'); if(!k){ out.textContent = 'Dán mã quản trị trước.'; return; }
   if(op === 'unlock' && !confirm('Gỡ hết khóa và xóa số lần sai? Mọi người nhập lại mật khẩu được ngay.')) return;
@@ -652,7 +672,7 @@ function tpAgo(t){
   var h = Math.round(m / 60); if(h < 24) return h + ' giờ trước';
   return Math.round(h / 24) + ' ngày trước';
 }
-function tpLockVis(){ $('tpLockBox').style.display = ($('tpGate').style.display !== 'none' || tpIsAdmin()) ? '' : 'none'; }   // màn đăng nhập: ai cũng thấy (cần mã mới dùng được); đã đăng nhập: chỉ admin
+function tpLockVis(){ $('tpLockBox').style.display = $('tpGate').style.display !== 'none' ? '' : 'none'; }   // màn đăng nhập: ai cũng thấy (cần mã mới dùng được); đã đăng nhập: chỉ admin
 function tpShowGate(msg){
   TP.accs = []; TP.stats = null; $('tpList').innerHTML = ''; $('tpLog').innerHTML = ''; tpCloseCred();
   $('tpGate').style.display = ''; $('tpMain').style.display = 'none';
@@ -684,6 +704,7 @@ function tpApply(j){
   $('tpMe').textContent = 'Bạn: ' + tpWho();
   tpRender();
   tpCreditSync();
+  tpLocksLoad();
 }
 // Credit do userscript đọc từ trang Tripo (thuộc tính data-tripo-credit): khớp theo email rồi lưu lên server.
 function tpCreditSync(){
