@@ -760,6 +760,7 @@ function tpSetStudio(){
 function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
 function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = ''; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
+var TP_NOTE = 'Cả nhóm dùng chung tài khoản đang chọn. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.';   // một câu cố định: chọn qua lại không làm chữ đổi
 function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
   var box = $('tpmAll'), a = (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; }), md = box.parentNode;
   var hide = a.length ? 'none' : '';   // có danh sách thì ô Email đơn ở trên thừa (email vẫn nằm trong #tpmEmail để đăng nhập)
@@ -786,11 +787,13 @@ $('tpmAll').addEventListener('change', function(e){
   var id = r.value, prev = TP_CLAIM_ID;
   if(id === prev) return;
   if(TP.busy){ tpRenderAll($('tpmEmail').textContent); return; }
-  TP.busy = true; $('tpmAll').style.opacity = '.6';
+  TP.busy = true;
   tpCall('select', { id: id }).then(function(j){
     TP.accs.forEach(function(x){ if(x.status === 'using' && x.id !== id) x.status = 'ok'; if(x.id === id) x.status = 'using'; });
-    tpShowCred(j.email, j.password, 'Đã chọn tài khoản này cho cả nhóm. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.', id);
-  }).catch(function(err){ tpRenderAll($('tpmEmail').textContent); tpFail(err); }).then(function(){ TP.busy = false; $('tpmAll').style.opacity = ''; });
+    var sc = $('tpmAll').firstChild && $('tpmAll').children[1] ? $('tpmAll').children[1].scrollTop : 0;
+    tpShowCred(j.email, j.password, TP_NOTE, id);
+    if($('tpmAll').children[1]) $('tpmAll').children[1].scrollTop = sc;
+  }).catch(function(err){ tpRenderAll($('tpmEmail').textContent); tpFail(err); }).then(function(){ TP.busy = false; });
 });
 function tpShowCred(email, pass, note, id){
   TP_CLAIM_ID = id || ''; $('tpmEmpty').style.display = id ? '' : 'none'; $('tpmCred').style.display = ''; $('tpmStudio').style.display = ''; $('tpmToggle').style.display = 'none';
@@ -885,7 +888,7 @@ $('tpClaim').addEventListener('click', function(){
   // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết token": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
   // (lấy cái dùng gần nhất), không thì mới lấy tài khoản mới. Làm ở trang để chạy được với cả Worker bản cũ.
   // Nhanh: dùng danh sách đã có sẵn trên trang (khỏi gọi list trước), hiện hộp ngay khi có mật khẩu, làm mới danh sách chạy nền sau đó.
-  var note = 'Đây là tài khoản cả nhóm đang dùng. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.';
+  var note = TP_NOTE;
   var btn = $('tpClaim'), label = btn.innerHTML;
   function pick(accs){ return (accs || []).filter(function(x){ return x.status === 'using'; }).sort(function(x, y){ return (y.usedAt || 0) - (x.usedAt || 0); })[0]; }
   function fresh(){   // danh sách trên trang đã cũ hoặc chưa có: lấy bản mới rồi làm lại
