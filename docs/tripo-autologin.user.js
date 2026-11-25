@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.7
+// @version      2.9.8
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.7');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.9.8');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -65,6 +65,60 @@
 
   // ---------- Trên Tripo Studio ----------
   if (host !== 'studio.tripo3d.ai') return;
+
+  // ---- Tự tắt hộp quảng cáo "Upgrade your plan" (gói trả phí, Black Friday...) ----
+  // Tìm tiêu đề "Upgrade your plan", bấm nút X ở góc phải trên của hộp. Không thấy nút X thì gửi phím Esc, vẫn không được thì ẩn hộp đi.
+  (function () {
+    var tries = 0, lastAt = 0, seenAt = 0, TITLE_RE = /^upgrade your plan$/i;
+    function vis(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+    function fire(el) {
+      ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(function (n) {
+        try { el.dispatchEvent(new MouseEvent(n, { bubbles: true, cancelable: true, view: window })); } catch (e) { /* bỏ qua */ }
+      });
+    }
+    function findTitle() {
+      var els = document.querySelectorAll('h1,h2,h3,h4,div,span,p');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el.children.length > 1) continue;
+        if (!TITLE_RE.test((el.textContent || '').trim())) continue;
+        if (vis(el)) return el;
+      }
+      return null;
+    }
+    function findClose(title) {
+      for (var a = title.parentElement, k = 0; a && k < 10; a = a.parentElement, k++) {
+        var ar = a.getBoundingClientRect(); if (ar.width < 300) continue;
+        var cs = a.querySelectorAll('button,[role=button],[aria-label],[class*=close],[class*=Close],svg,i,span,div'), best = null;
+        for (var j = 0; j < cs.length; j++) {
+          var c = cs[j], r = c.getBoundingClientRect();
+          if (!(r.width >= 14 && r.width <= 60 && r.height >= 14 && r.height <= 60)) continue;
+          if (!(r.left > ar.right - 100 && r.top >= ar.top - 6 && r.top < ar.top + 110)) continue;
+          if ((c.textContent || '').trim().length > 2) continue;
+          if (!best || r.left > best.getBoundingClientRect().left) best = c;
+        }
+        if (best) return best.closest('button,[role=button]') || best;
+      }
+      return null;
+    }
+    function hideModal(title) {
+      for (var a = title.parentElement; a && a !== document.body; a = a.parentElement) {
+        var st = getComputedStyle(a), r = a.getBoundingClientRect();
+        if ((st.position === 'fixed' || st.position === 'absolute') && r.width > window.innerWidth * 0.5 && r.height > window.innerHeight * 0.5) { a.style.display = 'none'; try { document.body.style.overflow = ''; } catch (e) { /* bỏ qua */ } return true; }
+      }
+      return false;
+    }
+    function tick() {
+      if (!document.body || document.body.textContent.indexOf('Upgrade your plan') < 0) { tries = 0; return; }   // kiểm tra rẻ trước, không đụng layout
+      var now = Date.now(); if (now - lastAt < 700) return; lastAt = now;
+      var t = findTitle(); if (!t) { tries = 0; return; }
+      tries++;
+      if (tries <= 2) { var x = findClose(t); if (x) { fire(x); return; } }
+      if (tries <= 4) { ['keydown', 'keyup'].forEach(function (n) { try { document.dispatchEvent(new KeyboardEvent(n, { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true })); } catch (e) { /* bỏ qua */ } }); return; }
+      if (hideModal(t)) tries = 0;
+    }
+    setInterval(tick, 500);
+  })();
   function readCred() {
     var c = null;
     try { c = JSON.parse(GM_getValue(KEY, '') || 'null'); } catch (e) { c = null; }
