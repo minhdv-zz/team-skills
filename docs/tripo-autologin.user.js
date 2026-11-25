@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.12.0
+// @version      2.13.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.12.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.13.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -445,7 +445,7 @@
   // Chưa có ảnh menu đăng xuất thật của Tripo nên dò theo cách chung: bấm lần lượt các ảnh đại diện ở góc phải trên, thấy mục có chữ
   // đăng xuất (nhiều ngôn ngữ) thì bấm, thấy hộp xác nhận thì bấm xác nhận. Mỗi bước đều báo ở ô góc trái để biết dừng ở đâu.
   var LOGOUT_RE = /^(log\s*out|sign\s*out|logout|đăng xuất|退出登录|退出|登出|注销)$/, CONFIRM_RE = /^(confirm|ok|yes|sure|log\s*out|sign\s*out|xác nhận|đồng ý|đăng xuất|确认|确定|是|退出登录|退出)$/;
-  var lo = { on: false, t0: 0, openAt: 0, idx: 0, clickedAt: 0, cands: null, startUrl: '', backAt: 0, hoverCand: null, hoverAt: 0, hoverClicked: false, diag: '' };
+  var lo = { on: false, t0: 0, openAt: 0, idx: 0, clickedAt: 0, cands: null, startUrl: '', backAt: 0, hoverCand: null, hoverAt: 0, hoverClicked: false, diag: '', tried: [] };
   function pageUrl() { return location.href.split('#')[0]; }
   function avatarCandidates() {
     var out = [], els = document.querySelectorAll('img,div,span,button,a,svg'), upEl = findUpgrade();
@@ -518,10 +518,13 @@
       click(lo.hoverCand); return 'doing';
     }
     if (now - lo.openAt > 2200) {   // chưa thấy mục đăng xuất: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần: rê chuột, 0,9 giây sau bấm; hết lượt thì dừng)
-      if (!lo.cands || !lo.cands.length) { lo.cands = avatarCandidates(); lo.idx = 0; }
-      if (lo.cands.length && lo.idx >= lo.cands.length) { lo.diag = 'thử ' + lo.cands.length + ' ảnh [' + lo.cands.map(describe).join('; ') + ']; chữ thấy: ' + menuDump(); return 'fail'; }
-      if (!lo.cands.length) { lo.diag = 'không thấy ảnh đại diện nào; chữ thấy: ' + menuDump(); lo.cands = null; if (now - lo.t0 > 8000) return 'fail'; lo.openAt = now - 1500; return 'doing'; }
-      var c = lo.cands[lo.idx++];
+      lo.cands = avatarCandidates().filter(function (e) { return lo.tried.indexOf(e) < 0; });   // tính lại mỗi lượt (thanh đầu trang có thể hiện muộn), bỏ ảnh đã thử
+      if (!lo.cands.length) {
+        lo.diag = (lo.tried.length ? 'đã thử ' + lo.tried.length + ' ảnh [' + lo.tried.map(describe).join('; ') + ']' : 'không thấy ảnh đại diện nào') + '; chữ thấy: ' + menuDump();
+        if (lo.tried.length || now - lo.t0 > 10000) return 'fail';
+        lo.openAt = now - 1500; return 'doing';
+      }
+      var c = lo.cands[0]; lo.tried.push(c);
       lo.openAt = now;
       if (c) {
         say('mở menu tài khoản để đăng xuất…');
@@ -543,8 +546,20 @@
     return true;   // đã bấm; chưa kết thúc, còn theo dõi kết quả
   }
 
+  // Chờ trang Tripo tải xong thật sự (load + thanh đầu trang đã hiện + yên 1,5 giây) rồi mới bấm gì, để khỏi bấm khi giao diện chưa dựng xong.
+  var loadedAt = 0, headerAt = 0;
+  function pageReady() {
+    var now = Date.now();
+    if (document.readyState !== 'complete') { loadedAt = 0; return now - started > 25000; }
+    if (!loadedAt) loadedAt = now;
+    var hdr = readCredit() !== null || !!findUpgrade() || !!findText(LOGIN_RE) || avatarCandidates().length > 0 || !!findInput('password', /password/i);
+    if (hdr && !headerAt) headerAt = now;
+    if (!hdr) headerAt = 0;
+    return (now - loadedAt > 2500 && headerAt && now - headerAt > 1500) || now - started > 25000;
+  }
   function step() {
     if (done) return true;
+    if (!pageReady()) { say('chờ trang Tripo tải xong…'); return false; }
     if (blockerOpen()) { say('đang đóng hộp quảng cáo gói trước…'); return false; }
     if (Date.now() - started > TOTAL) return finish('Không thấy form đăng nhập sau 2 phút. Bạn đăng nhập tay nhé.', 20000);
     var pw = findInput('password', /password/i), em = findInput('email', /e-?mail/i);
