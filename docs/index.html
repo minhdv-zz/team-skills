@@ -223,7 +223,7 @@
       </div>
       <div id="tpAdmin" style="display:none">
       <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
-      <div class="card" style="margin-bottom:14px"><h3>Tháng này và 5 tháng trước</h3><div id="tpChart"></div></div>
+      <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng (tháng này và 5 tháng trước)</h3><div id="tpChart"></div></div>
       <div id="tpList"></div>
       <details class="help" style="margin-top:14px">
         <summary>Thêm tài khoản mới</summary>
@@ -682,12 +682,19 @@ function tpRender(){
   var cur = TP.stats && TP.stats.months[0] || { emptied: 0, claimed: 0 };
   function tile(v, l, c){ return '<div class="card" style="gap:0;padding:12px 14px"><div style="font-size:26px;font-weight:700;color:' + c + '">' + v + '</div><div class="fine" style="margin:0">' + l + '</div></div>'; }
   $('tpTiles').innerHTML = tile(n.ok, 'Còn dùng được', 'var(--ok)') + tile(n.using, 'Đang dùng', '#e3b341') + tile(n.empty, 'Đã hết token', '#ffb4ac')
+    + tile(cur.left == null ? '\u2014' : Number(cur.left).toLocaleString('vi-VN'), 'Tổng credit còn lại', 'var(--ok)') + tile(cur.used == null ? '\u2014' : Number(cur.used).toLocaleString('vi-VN'), 'Credit đã dùng tháng này', 'var(--acc)')
     + tile(cur.emptied, 'Hết token trong tháng này', '#ffb4ac') + tile(cur.claimed, 'Lượt lấy tháng này', 'var(--text)');
-  var ms = (TP.stats ? TP.stats.months : []).slice().reverse(), mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.emptied; })));
-  $('tpChart').innerHTML = '<div style="display:flex;gap:10px;align-items:flex-end;height:120px;margin-top:8px">' + ms.map(function(m){
-    var h = Math.round(m.emptied / mx * 80);
-    return '<div style="flex:1;text-align:center"><div style="font-weight:700">' + m.emptied + '</div><div style="height:' + h + 'px;min-height:2px;background:var(--acc);border-radius:4px 4px 0 0"></div><div class="fine" style="margin:4px 0 0">' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(2, 4)) + '</div></div>';
-  }).join('') + '</div><div class="fine">Cột = số tài khoản bị đánh dấu hết trong tháng.</div>';
+  // Cột = credit đã dùng trong tháng (tổng phần giảm giữa các lần userscript đọc số credit). Dưới cột: credit còn lại cuối tháng (tháng này = hiện tại) và số tài khoản bị đánh dấu hết.
+  var ms = (TP.stats ? TP.stats.months : []).slice().reverse(), mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.used || 0; })));
+  var nf = function(v){ return v == null ? '\u2014' : Number(v).toLocaleString('vi-VN'); };
+  $('tpChart').innerHTML = '<div style="display:flex;gap:10px;align-items:flex-end;height:130px;margin-top:8px">' + ms.map(function(m){
+    var h = m.used ? Math.round(m.used / mx * 90) : 0;
+    return '<div style="flex:1;min-width:0;text-align:center"><div style="font-weight:700">' + nf(m.used) + '</div><div style="height:' + h + 'px;min-height:2px;background:var(--acc);border-radius:4px 4px 0 0"></div></div>';
+  }).join('') + '</div><div style="display:flex;gap:10px;margin-top:4px">' + ms.map(function(m, i){
+    return '<div style="flex:1;min-width:0;text-align:center"><div class="fine" style="margin:0">' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(2, 4)) + '</div>'
+      + '<div style="margin-top:4px;font-weight:600;color:' + (m.left == null ? 'var(--mut)' : 'var(--ok)') + '" title="' + (i === ms.length - 1 ? 'Tổng credit còn lại hiện tại' : 'Tổng credit còn lại cuối tháng') + '">' + (m.left == null ? '\u2014' : 'còn ' + nf(m.left)) + '</div>'
+      + '<div class="fine" style="margin:2px 0 0">' + m.emptied + ' TK hết</div></div>';
+  }).join('') + '</div><div class="fine" style="margin-top:10px">Số trên cột = credit đã dùng trong tháng. \u201ccòn\u201d = tổng credit các tài khoản còn lại cuối tháng (tháng này: hiện tại). \u201cTK hết\u201d = số tài khoản bị đánh dấu hết.<br>Cách biết: script tự đăng nhập đọc số credit cạnh nút Upgrade mỗi khi mở Tripo, trang ghi lại mỗi lần số đổi. Đã dùng = tổng phần giảm giữa hai lần đọc (credit tự hết hạn cũng bị tính vào); chỉ tính từ lúc bắt đầu ghi, và chỉ biết khi có người mở Tripo (dấu \u2014 = chưa có số liệu).</div>';
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
     var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // danh sách tên đã gộp theo người   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước

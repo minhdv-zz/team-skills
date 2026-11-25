@@ -17,6 +17,7 @@ const ADMIN_EMAIL = "minhdv@horusvn.com";
 const MAX_MEMBERS = 200;
 const MAX_ACCOUNTS = 200;
 const MAX_ADD = 20;          // mỗi lần thêm (gói free: 50 thao tác KV mỗi request)
+const MAX_CREDIT_LOG = 20000;   // bản ghi đổi credit mỗi tháng (~60 byte/bản ghi)
 const MAX_EVENTS = 3000;     // mỗi tháng
 // Chống đoán mật khẩu (xem class Guard). Mỗi lượt thử giữ một "chỗ" trước khi so mật khẩu; đúng thì trả chỗ, sai thì thành một lần sai.
 // KHÓA VĨNH VIỄN: một IP sai IP_MAX lần (IPv6 gộp theo /64) bị chặn hẳn; cả hệ thống sai GLOBAL_MAX lần thì khóa mọi lượt thử.
@@ -113,13 +114,34 @@ const str = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const validId = (v) => typeof v === "string" && /^[a-f0-9]{10}$/.test(v);
 const newId = () => [...crypto.getRandomValues(new Uint8Array(5))].map((x) => x.toString(16).padStart(2, "0")).join("");
 
-async function stats(env) {
+// Lịch sử credit: mỗi lần số credit của một tài khoản ĐỔI thì ghi {t, id, c (số mới), p (số đọc trước đó, null nếu lần đầu)} vào khóa theo tháng.
+// "Đã dùng" của tháng = tổng phần giảm (p - c) các lần đọc trong tháng; "còn lại cuối tháng" = tổng credit lần đọc cuối cùng của từng tài khoản tính tới cuối tháng đó.
+const crKey = (m) => "tripo:cr:" + m.replace("-", "");
+async function logCredit(env, id, c, p, t) {
+  try {
+    const k = crKey(monthOf(t)), list = (await env.STARS.get(k, "json")) || [];
+    list.push({ t, id, c, p });
+    await env.STARS.put(k, JSON.stringify(list.slice(-MAX_CREDIT_LOG)));
+  } catch { /* bỏ qua */ }
+}
+async function stats(env, cm, ids) {
   const now = Date.now(), months = [];
   for (let i = 0; i < 6; i++) { const d = new Date(now + 7 * 3600e3); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - i); months.push(d.toISOString().slice(0, 7)); }
-  const lists = await Promise.all(months.map((m) => env.STARS.get(evKey(m), "json")));
+  const [lists, crLists] = await Promise.all([Promise.all(months.map((m) => env.STARS.get(evKey(m), "json"))), Promise.all(months.map((m) => env.STARS.get(crKey(m), "json")))]);
+  // Duyệt từ tháng cũ tới mới để mang số "còn lại" của từng tài khoản sang tháng sau (tháng không ai đọc thì giữ số lần đọc trước).
+  const last = {}, cred = {};   // last[id] = credit lần đọc gần nhất; cred[tháng] = { used, left, n }
+  for (let i = months.length - 1; i >= 0; i--) {
+    let used = 0, n = 0;
+    for (const r of crLists[i] || []) { n++; if (Number.isInteger(r.p) && r.p > r.c) used += r.p - r.c; if (ids.has(r.id)) last[r.id] = r.c; }   // đã dùng giữ cả của tài khoản đã xóa; còn lại chỉ tính tài khoản còn trong danh sách
+    const vals = Object.values(last);
+    cred[months[i]] = { used: n || vals.length ? used : null, left: vals.length ? vals.reduce((x, y) => x + y, 0) : null, n };
+  }
+  // Tháng này: số còn lại là số hiện có (lần đọc mới nhất của mọi tài khoản còn trong danh sách), không phải cuối tháng.
+  const cur = Object.entries(cm).filter(([id]) => ids.has(id)).map(([, v]) => v.c);
   const out = months.map((m, i) => {
     const ev = lists[i] || [];
-    return { month: m, emptied: new Set(ev.filter((e) => e.type === "empty").map((e) => e.email)).size, claimed: ev.filter((e) => e.type === "claim").length };
+    return { month: m, emptied: new Set(ev.filter((e) => e.type === "empty").map((e) => e.email)).size, claimed: ev.filter((e) => e.type === "claim").length,
+      used: cred[m].used, left: i === 0 ? (cur.length ? cur.reduce((x, y) => x + y, 0) : cred[m].left) : cred[m].left, readings: cred[m].n };
   });
   // Mỗi tài khoản đã có những ai lấy, gộp theo người: nhật ký cũ ghi tên ngắn ("tet"), bản mới ghi email ("tet@horusvn.com") nên lấy phần trước @ và hạ chữ thường làm khóa.
   // claimBy[email tài khoản] = [{ n: tên, c: số lần lấy, t: lần lấy gần nhất }], người lấy gần đây nhất đứng đầu. Tính trên cả 6 tháng nhật ký.
@@ -257,8 +279,10 @@ async function tripo(req, env, url) {
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
 
   if (op === "list") {
-    const [st, accs, members, admins] = await Promise.all([stats(env), getAccounts(env), isAdmin ? getMembers(env) : null, isAdmin ? getAdmins(env) : null]);   // đọc song song, không nối đuôi nhau
-    return json({ admin: isAdmin, accounts: accs.map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: members || undefined, admins: admins || undefined });
+    const accsP = getAccounts(env);
+    const [st, accs, members, admins] = await Promise.all([accsP.then((a) => stats(env, cm, new Set(a.map((x) => x.id)))), accsP, isAdmin ? getMembers(env) : null, isAdmin ? getAdmins(env) : null]);   // đọc song song, không nối đuôi nhau
+    // thành viên thường chỉ thấy số tài khoản hết/lượt lấy, không thấy credit đã dùng/còn lại
+    return json({ admin: isAdmin, accounts: accs.map(P), stats: isAdmin ? st : { months: st.months.map((m) => ({ month: m.month, emptied: m.emptied, claimed: m.claimed })), recent: [] }, members: members || undefined, admins: admins || undefined });
   }
 
   if (op === "members") return json({ members: await getMembers(env), admins: await getAdmins(env) });
@@ -289,7 +313,7 @@ async function tripo(req, env, url) {
       accs.push(a); added.push(a);
     }
     if (added.length) { await putAccounts(env, accs); await logEvs(env, added.map((a) => ["add", a]), who); }
-    return json({ added: added.length, skipped, accounts: accs.map(P), stats: await stats(env) });
+    return json({ added: added.length, skipped, accounts: accs.map(P), stats: await stats(env, cm, new Set(accs.map((a) => a.id))) });
   }
 
   if (op === "claim") {
@@ -333,9 +357,12 @@ async function tripo(req, env, url) {
     // thời điểm đọc do script gửi lên (để "x phút trước" đúng thật); không hợp lý thì dùng giờ hiện tại
     const at = Number.isInteger(b.at) && b.at <= now + 60e3 && b.at >= now - 3600e3 ? Math.min(b.at, now) : now;
     const old = cm[a.id];
+    if (old && at < old.t) return json({ credit: old.c, creditAt: old.t });   // lần đọc cũ đến muộn: bỏ, không ghi đè số mới hơn
     if (!old || old.c !== c || at - old.t > 60e3) {   // cùng số và còn mới (dưới 60 giây) thì khỏi ghi lại
+      const changed = !old || old.c !== c;
       cm[a.id] = { c, t: at };
       await env.STARS.put("tripo:credits", JSON.stringify(cm));
+      if (changed) await logCredit(env, a.id, c, old ? old.c : null, at);   // ghi lịch sử để tính "đã dùng / còn lại" theo tháng
     }
     return json({ credit: cm[a.id].c, creditAt: cm[a.id].t });
   }
