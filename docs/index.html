@@ -809,7 +809,7 @@ var TP_NOTE = 'Cả nhóm dùng chung tài khoản đang chọn. Hết credit th
 function tpRenderAll(cur, only){   // danh sách mọi tài khoản còn credit (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
   var box = $('tpmAll'), a = only ? [] : (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; }), md = box.parentNode;
   var hide = a.length ? 'none' : '';   // có danh sách thì ô Email đơn ở trên thừa (email vẫn nằm trong #tpmEmail để đăng nhập)
-  $('tpmEmailLbl').style.display = hide; $('tpmEmailBox').style.display = hide;
+  $('tpmEmailLbl').style.display = hide; $('tpmEmailBox').style.display = hide || 'flex';
   if(!a.length){ box.style.display = 'none'; box.innerHTML = ''; md.style.width = ''; return; }
   md.style.width = 'min(760px,100%)';   // hộp rộng hơn khi có danh sách cho dễ nhìn
   var cl = String(cur || '').toLowerCase();
