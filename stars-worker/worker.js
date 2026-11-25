@@ -418,7 +418,7 @@ export default {
     const url = new URL(req.url), o = req.headers.get("Origin");
     const allow = o === ORIGIN || (env.DEV_ORIGIN_OK === "1" && o && url.pathname.startsWith("/tripo/") && DEV_ORIGIN.test(o)) ? o : ORIGIN;
     const cors = { "Access-Control-Allow-Origin": allow, "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Email, X-Pass", "Vary": "Origin" };
+      "Access-Control-Allow-Headers": "Content-Type, X-Email, X-Pass, X-Admin", "Vary": "Origin" };
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     let res;
     try {
