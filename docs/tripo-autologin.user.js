@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.14.0
+// @version      2.15.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.14.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.15.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -236,7 +236,10 @@
     if (c && (typeof c.e !== 'string' || typeof c.p !== 'string' || !(Date.now() - c.t < TTL))) { GM_deleteValue(KEY); return null; }
     return c;
   }
-  var cred = readCred();
+  // Tripo đôi khi đăng nhập/đăng xuất xong ở máy chủ nhưng giao diện chưa cập nhật (tải lại trang là thấy đúng). Script tải lại đúng 1 lần cho mỗi việc.
+  function reloadOnce(tag) { try { var rt = +sessionStorage.getItem('tripoRl-' + tag) || 0; if (Date.now() - rt < 180000) return false; sessionStorage.setItem('tripoRl-' + tag, String(Date.now())); } catch (e) { return false; } try { location.reload(); } catch (e) { return false; } return true; }
+  var resumed = null; try { var rj = JSON.parse(sessionStorage.getItem('tripoAfter') || 'null'); if (rj && typeof rj.e === 'string' && Date.now() - rj.t < 90000) resumed = rj; sessionStorage.removeItem('tripoAfter'); } catch (e) { resumed = null; }
+  var cred = resumed ? { e: resumed.e, p: '' } : readCred();
   if (!cred) {   // có thể tab mở trước khi lưu xong: thử lại trong ~2 giây rồi bỏ
     var tries = 0, wait = setInterval(function () {
       cred = readCred();
@@ -501,6 +504,7 @@
     if (blockerOpen()) { lo.openAt = now; if (lo.on) lo.t0 += 0; return 'doing'; }   // hộp gói đang che: đóng xong mới tiếp tục (không tính vào 20 giây của đăng xuất)
     if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
     if (!looksLoggedIn() && !findText(LOGOUT_RE)) { return 'gone'; }
+    if (lo.clickedAt && now - lo.clickedAt > 6000 && now - lo.t0 < 20000 && reloadOnce('logout')) { say('đã bấm đăng xuất, trang chưa cập nhật: tải lại trang…'); return 'doing'; }
     if (now - lo.t0 > 20000) return 'fail';
     if (pageUrl() !== lo.startUrl) {   // lỡ bấm trúng thứ chuyển sang trang khác (ví dụ trang Creator Growth): quay lại đúng 1 lần mỗi 2 giây, không bấm gì thêm
       if (now - lo.backAt > 2000) { lo.backAt = now; lo.openAt = now; say('lỡ vào trang khác, quay lại…'); try { history.back(); } catch (e) { /* bỏ qua */ } }
@@ -561,6 +565,13 @@
     if (done) return true;
     if (!pageReady()) { say('chờ trang Tripo tải xong…'); return false; }
     if (blockerOpen()) { say('đang đóng hộp quảng cáo gói trước…'); return false; }
+    if (resumed) {   // vừa tải lại trang sau khi bấm Continue: không đăng nhập lại, chỉ xác nhận đã vào rồi theo dõi credit
+      if (!looksLoggedIn() || findInput('password', /password/i)) {
+        if (Date.now() - started > 15000) return finish('đã tải lại trang nhưng Tripo vẫn chưa đăng nhập. Bạn bấm "Lấy tài khoản" lại nhé.', 30000);
+        say('đã tải lại trang, chờ Tripo hiện trạng thái đăng nhập…'); return false;
+      }
+      watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).', 6000);
+    }
     if (Date.now() - started > TOTAL) return finish('Không thấy form đăng nhập sau 2 phút. Bạn đăng nhập tay nhé.', 20000);
     var pw = findInput('password', /password/i), em = findInput('email', /e-?mail/i);
     if (pw && em && pw !== em) {
@@ -580,6 +591,12 @@
         if (now - lastClickAt < RETRY_MS) return false;
         var emailErr = (document.body.innerText || '').toLowerCase().indexOf('valid email') >= 0;
         if (emailErr && clicks3 < MAX_CLICKS) { pressContinue(pw); return false; }
+        if (now - lastClickAt > 6000) {
+          try { sessionStorage.setItem('tripoAfter', JSON.stringify({ e: acctEmail, t: Date.now() })); } catch (e) { /* bỏ qua */ }
+          say('đã bấm Continue, trang chưa cập nhật: tải lại trang…');
+          if (reloadOnce('login')) return false;
+          try { sessionStorage.removeItem('tripoAfter'); } catch (e) { /* bỏ qua */ }
+        }
         if (now - lastClickAt > 10000) return finish('đã bấm Continue nhưng form vẫn còn. Nếu chưa đăng nhập được, bạn bấm lại Continue nhé.', 30000);
         return false;
       }
