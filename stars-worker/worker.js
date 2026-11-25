@@ -138,7 +138,8 @@ async function stats(env, cm, ids) {
     cred[months[i]] = { used: n || vals.length ? used : null, left: vals.length ? vals.reduce((x, y) => x + y, 0) : null, start: hadBefore || bv.length ? before + bv.reduce((x, y) => x + y, 0) : null, n };
   }
   // Tài khoản chưa có lần đọc nào được ghi (credit chỉ có số hiện tại): lấy số hiện tại làm mốc ĐẦU THÁNG và cất lại (khóa KV riêng theo tháng) để các lần sau không trôi theo số mới.
-  const miss = [...ids].filter((id) => cm[id] && !(id in last));
+  // CHỈ áp dụng cho tháng 11/2026 (theo yêu cầu chủ); từ tháng sau sẽ đổi cách tính, nên không tự gán mốc nữa.
+  const miss = months[0] === "2026-11" ? [...ids].filter((id) => cm[id] && !(id in last)) : [];
   if (miss.length) {
     const bk = "tripo:base:" + months[0].replace("-", "");
     let bs = {}, dirty = false;
