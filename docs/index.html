@@ -1023,7 +1023,8 @@ function setTab(t){
   $('review').style.display = t==='review' ? '' : 'none';
   $('tripo').style.display = t==='tripo' ? '' : 'none';
   updateBadge();
-  if(t==='tripo'){ $('sub').textContent=''; tripoInit(); return; }
+  if(t==='tripo'){ $('sub').textContent=''; $('perm').classList.remove('on'); tripoInit(); return; }
+  if(!LOCAL_STARTED) setTimeout(startLocal, 0);
   if(t==='review'){ $('sub').textContent=''; loadReview(); return; }
   if(t==='contrib'){ $('sub').innerHTML=''; updateContribLinks(); renderLocal(); loadLocal().then(function(){ if(TAB==='contrib') renderLocal(); }); return; }
   render();
@@ -1551,8 +1552,9 @@ function permState(){
   })).then(function(a){ return a.indexOf('prompt') >= 0 ? 'prompt' : a.indexOf('granted') >= 0 ? 'granted' : 'unknown'; });
 }
 function showPerm(){
+  if(TAB === 'tripo') return;
   $('perm').classList.add('on');
-  PERM_SKIP_TIMER = setTimeout(function(){ $('permSkip').style.display = 'block'; }, 20000);
+  PERM_SKIP_TIMER = setTimeout(function(){ $('permSkip').style.display = 'block'; }, 8000);
 }
 function hidePerm(){
   PERM_DONE = true;
@@ -1569,6 +1571,14 @@ function permDenied(){
 }
 $('permSkipLink').addEventListener('click', hidePerm);
 
+// Chỉ nối với plugin trên máy (127.0.0.1) khi người dùng vào tab cần nó. Tab Tài khoản Tripo không cần, nên không hỏi quyền và không chặn màn hình.
+var LOCAL_STARTED = false;
+function startLocal(){
+  if(LOCAL_STARTED) return Promise.resolve();
+  if(TAB === 'tripo') return loadPending().catch(function(){});   // chỉ lấy số 'Chờ duyệt' từ web, chưa đụng tới máy
+  LOCAL_STARTED = true;
+  return refresh().then(loadPending).then(function(){ if(TAB === 'review') renderReview(); });
+}
 function refresh(){
   // The browser asks for permission on the first request. If it stays pending, hold the screen with a big notice.
   if(FIRST_REFRESH){
@@ -1603,7 +1613,7 @@ document.addEventListener('visibilitychange', autoConnect);
 if(location.hash !== '#review') setTab('tripo');   // tab đầu tiên và mặc định khi tải lại trang
 function load(file){ return fetch(file + '?t=' + Date.now()).then(function(r){return r.json()}); }
 Promise.all([load('skills.json'), load('addons.json').catch(function(){return []})]).then(function(a){
-  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); if(location.hash === '#review') setTab('review'); return refresh().then(loadPending).then(function(){ if(TAB === 'review') renderReview(); });
+  ITEMS.skills = a[0]; ITEMS.addons = a[1]; render(); if(location.hash === '#review') setTab('review'); return startLocal();
 }).catch(function(){ $('grid').innerHTML='<p style="color:#f85149">Không tải được danh sách.</p>' });
 </script>
 </body>
