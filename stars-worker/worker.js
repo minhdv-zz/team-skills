@@ -249,9 +249,10 @@ async function tripo(req, env, url) {
   let b; try { b = await req.json(); } catch { b = {}; }
   if (!b || typeof b !== "object") b = {};
   const who = au.email, isAdmin = au.admin, op = url.pathname.slice(7);
-  const cm = isAdmin || op === "credit" ? await getCredits(env) : {};   // chỉ đọc khi cần (thành viên thường không dùng số credit)
+  const cm = isAdmin || op === "credit" || op === "list" ? await getCredits(env) : {};   // chỉ đọc khi cần (thành viên thường không dùng số credit)
   // Người không phải chủ chỉ thấy id + trạng thái: không có email, ghi chú, người dùng, credit của tài khoản.
-  const P = isAdmin ? (a) => pub(a, cm) : (a) => ({ id: a.id, email: "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: null, creditAt: 0 });
+  // Thành viên thấy email + số credit của các tài khoản CÒN token (theo yêu cầu chủ), không thấy ghi chú/người dùng/mật khẩu; tài khoản đã hết thì vẫn ẩn email.
+  const P = isAdmin ? (a) => pub(a, cm) : (a) => { const live = a.status !== "empty"; return ({ id: a.id, email: live ? a.email : "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: live && cm[a.id] ? cm[a.id].c : null, creditAt: live && cm[a.id] ? cm[a.id].t : 0 }); };
   const adminOnly = ["add", "delete", "members", "members_set"];
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
 
