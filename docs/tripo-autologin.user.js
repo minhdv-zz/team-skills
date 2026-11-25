@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.18.0
+// @version      2.19.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.18.0';
+  var VER = '2.19.0';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -264,7 +264,7 @@
   // Tripo đôi khi đăng nhập/đăng xuất xong ở máy chủ nhưng giao diện chưa cập nhật (tải lại trang là thấy đúng). Script tải lại đúng 1 lần cho mỗi việc.
   function reloadOnce(tag) { try { var rt = +sessionStorage.getItem('tripoRl-' + tag) || 0; if (Date.now() - rt < 180000) return false; sessionStorage.setItem('tripoRl-' + tag, String(Date.now())); } catch (e) { return false; } try { location.reload(); } catch (e) { return false; } return true; }
   var resumed = null; try { var rj = JSON.parse(sessionStorage.getItem('tripoAfter') || 'null'); if (rj && typeof rj.e === 'string' && Date.now() - rj.t < 90000) resumed = rj; sessionStorage.removeItem('tripoAfter'); } catch (e) { resumed = null; }
-  var cred = resumed ? { e: resumed.e, p: '' } : readCred();
+  var cred = readCred() || (resumed ? { e: resumed.e, p: '' } : null);   // sau khi bấm Continue vẫn còn bản riêng của tab, để trang tải lại (Tripo tự tải lại) mà đăng nhập chưa xong thì thử lại được
   if (!cred) {   // có thể tab mở trước khi lưu xong: thử lại trong ~2 giây rồi bỏ
     var tries = 0, wait = setInterval(function () {
       cred = readCred();
@@ -281,7 +281,7 @@
     cred = { e: '', p: '' };
   }
   var acctEmail = cred.e, lastGreet = 0;
-  var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
+  var resumedAt = 0, started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
   if (passive) setTimeout(function () {   // sau khi ô báo (say) đã dựng xong
     try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools. Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé. [chẩn đoán: bản chung ' + (GM_getValue(KEY, '') ? 'còn' : 'mất') + ', bản riêng ' + (tabMap()[tabId()] ? 'còn' : 'mất') + ', tab ' + tabId() + '. Nhật ký: ' + trailText() + ']', 120000); } } catch (e) { /* bỏ qua */ }
   }, 0);
@@ -613,7 +613,12 @@
     for (var n = pw.parentElement, k = 0; n && k < 8 && !b; n = n.parentElement, k++) b = findText(/^continue$/, n);
     if (!b || disabled(b)) return false;
     click(b); clicks3++; lastClickAt = Date.now(); apiEpoch = lastClickAt + 500;   // câu trả lời API trước lúc bấm đăng nhập có thể là của tài khoản khác: không dùng
-    if (clicks3 === 1) { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } tabSave(null); }   // xóa khỏi bộ nhớ tiện ích ngay sau lần bấm đầu, bản trong trang giữ lại để bấm lại nếu cần
+    try {   // đánh dấu 'vừa bấm Continue' cho lần tải lại trang tới (Tripo hay tự tải lại sau đăng nhập, hoặc sau đăng xuất làm đứt giữa chừng)
+      sessionStorage.setItem('tripoAfter', JSON.stringify({ e: acctEmail, t: Date.now() }));
+      var cn = JSON.parse(sessionStorage.getItem('tripoContN') || 'null'); cn = cn && Date.now() - cn.t < 180000 ? cn.n : 0;
+      if (clicks3 === 1) sessionStorage.setItem('tripoContN', JSON.stringify({ n: cn + 1, t: Date.now() }));
+    } catch (e) { /* bỏ qua */ }
+    if (clicks3 === 1) { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } tabSave(cred); }   // bản dùng chung xóa ngay; bản riêng của tab giữ tới khi đăng nhập xong (tự hết hạn sau 5 phút)   // xóa khỏi bộ nhớ tiện ích ngay sau lần bấm đầu, bản trong trang giữ lại để bấm lại nếu cần
     say('đã bấm Continue (lần ' + clicks3 + ')…');
     return true;   // đã bấm; chưa kết thúc, còn theo dõi kết quả
   }
@@ -633,12 +638,13 @@
     if (done) return true;
     if (!pageReady()) { say('chờ trang Tripo tải xong…'); return false; }
     if (blockerOpen()) { say('đang đóng hộp quảng cáo gói trước…'); return false; }
-    if (resumed) {   // vừa tải lại trang sau khi bấm Continue: không đăng nhập lại, chỉ xác nhận đã vào rồi theo dõi credit
-      if (!looksLoggedIn() || findInput('password', /password/i)) {
-        if (Date.now() - started > 15000) return finish('đã tải lại trang nhưng Tripo vẫn chưa đăng nhập. Bạn bấm "Lấy tài khoản" lại nhé.', 30000);
-        say('đã tải lại trang, chờ Tripo hiện trạng thái đăng nhập…'); return false;
-      }
-      watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).', 6000);
+    if (resumed) {   // vừa tải lại trang sau khi bấm Continue: nếu đã vào thì xong; chưa vào thì thử đăng nhập lại (tối đa 3 lần Continue)
+      if (looksLoggedIn() && !findInput('password', /password/i)) { watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).', 6000); }
+      if (!resumedAt) resumedAt = Date.now();
+      if (Date.now() - resumedAt < 5000) { say('đã tải lại trang, chờ Tripo hiện trạng thái đăng nhập…'); return false; }
+      var cn2 = 0; try { var cj = JSON.parse(sessionStorage.getItem('tripoContN') || 'null'); cn2 = cj && Date.now() - cj.t < 180000 ? cj.n : 0; } catch (e) { cn2 = 0; }
+      if (!cred.p || cn2 >= 3) return finish('đã tải lại trang nhưng Tripo vẫn chưa đăng nhập. Bạn bấm "Lấy tài khoản" lại nhé.', 30000);
+      resumed = null; lo.gone = true; say('chưa đăng nhập được, thử đăng nhập lại…');   // rơi xuống luồng đăng nhập bình thường
     }
     if (Date.now() - started > TOTAL) return finish('Không thấy form đăng nhập sau 2 phút. Bạn đăng nhập tay nhé.', 20000);
     var pw = findInput('password', /password/i), em = findInput('email', /e-?mail/i);
