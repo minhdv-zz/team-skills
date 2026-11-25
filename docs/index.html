@@ -204,7 +204,7 @@
       <h3 style="font-size:20px">Tài khoản Tripo của nhóm</h3>
       <div style="color:var(--mut)">Nhập tài khoản (Gmail) và mật khẩu để vào. Gmail chưa có trong danh sách nhóm thì nhờ người quản lý thêm.</div>
       <label>Tài khoản (Gmail)<br><input id="tpWhoIn" type="email" maxlength="120" autocomplete="email" placeholder="ten@horusvn.com" style="width:100%;margin-top:6px"></label>
-      <label>Mật khẩu<br><input id="tpPassIn" type="password" autocomplete="off" style="width:100%;margin-top:6px"></label>
+      <label>Mật khẩu<br><span style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="tpPassIn" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;min-width:0"><button type="button" id="tpPassEye" title="Hiện mật khẩu đang gõ" aria-label="Hiện mật khẩu" style="flex:none;padding:0 12px;height:40px">Hiện</button></span></label>
       <div id="tpErr" class="warnbox" style="display:none"></div>
       <div><button class="pri big" id="tpGo">Đăng nhập</button></div>
     </div>
@@ -902,11 +902,12 @@ $('tpGo').addEventListener('click', function(){
   var who = $('tpWhoIn').value.trim().toLowerCase();
   if(!who){ tpShowGate('Nhập Gmail của bạn.'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(who)){ tpShowGate('Gmail chưa đúng dạng, ví dụ ten@gmail.com.'); return; }
-  var pw = $('tpPassIn').value;
+  var pw = $('tpPassIn').value.trim();   // bỏ khoảng trắng/xuống dòng thừa khi dán
   if(!pw){ tpShowGate('Nhập mật khẩu.'); return; }
   localStorage.setItem('tripoWho', who); sessionStorage.setItem('tripoPass', pw); $('tpPassIn').value = '';
   tpGuard(function(){ return tpCall('list').then(tpApply); });
 });
+$('tpPassEye').addEventListener('click', function(){ var i = $('tpPassIn'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; this.textContent = show ? 'Ẩn' : 'Hiện'; });
 $('tpWhoIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpPassIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('tpGo').click(); });
 $('tpLock').addEventListener('click', function(){ sessionStorage.removeItem('tripoPass'); TP.admin = false; tpShowGate(''); });
