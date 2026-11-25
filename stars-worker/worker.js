@@ -92,6 +92,7 @@ async function same(a, b) { // so sánh thời gian không đổi
 
 // ---------- dữ liệu ----------
 const monthOf = (t) => new Date(t + 7 * 3600e3).toISOString().slice(0, 7); // giờ Việt Nam, "YYYY-MM"
+const AUTO_EMPTY_BELOW = 10;   // credit thấp hơn mức này thì tự đánh dấu hết
 const getAccounts = async (env) => (await env.STARS.get("tripo:accounts", "json")) || [];
 const putAccounts = (env, a) => env.STARS.put("tripo:accounts", JSON.stringify(a));
 const evKey = (m) => "tripo:ev:" + m.replace("-", "");
@@ -376,7 +377,13 @@ async function tripo(req, env, url) {
       await env.STARS.put("tripo:credits", JSON.stringify(cm));
       if (changed) await logCredit(env, a.id, c, old ? old.c : null, at);   // ghi lịch sử để tính "đã dùng / còn lại" theo tháng
     }
-    return json({ credit: cm[a.id].c, creditAt: cm[a.id].t });
+    // Credit dưới 10 thì tự chuyển tài khoản sang "Đã hết credit" (theo yêu cầu chủ), để lần Lấy tài khoản kế tiếp sang tài khoản khác.
+    if (c < AUTO_EMPTY_BELOW && a.status !== "empty") {
+      a.status = "empty"; a.emptyAt = now; a.usedBy = "";
+      await putAccounts(env, accs);
+      await logEvs(env, [["empty", a]], "tự động (credit " + c + ")");
+    }
+    return json({ credit: cm[a.id].c, creditAt: cm[a.id].t, status: a.status });
   }
 
   // Chọn tài khoản cả nhóm sẽ dùng (tích trong hộp Lấy tài khoản): tài khoản này thành "đang dùng", cái đang dùng trước đó về "còn dùng được".
