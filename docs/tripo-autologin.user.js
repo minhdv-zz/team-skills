@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.17.0
+// @version      2.17.1
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,14 +23,15 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
+  var VER = '2.17.1';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
-  var STUDIO = 'https://studio.tripo3d.ai/', TTL = 3 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
+  var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
   // ---------- Trên trang Team Tools ----------
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.17.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', VER);   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -300,14 +301,14 @@
   function say(msg, keepMs) {
     if (msg === lastMsg && !keepMs) return;   // cùng một thông báo thì không ghi lại (tránh nhấp nháy và tránh kích hoạt vòng lặp)
     lastMsg = msg;
-    try { console.log('[Team Tools +' + ((Date.now() - started) / 1000).toFixed(1) + 's] ' + msg); } catch (e) { /* bỏ qua */ }
+    try { console.log('[Team Tools v' + VER + ' +' + ((Date.now() - started) / 1000).toFixed(1) + 's] ' + msg); } catch (e) { /* bỏ qua */ }
     var root = document.documentElement; if (!root) return;
     if (!badge || !badge.isConnected) {
       badge = document.createElement('div');
       badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:2147483647;background:#1c1640;color:#fff;border:1px solid #7c5cff;border-radius:8px;padding:6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:340px;pointer-events:none';
       root.appendChild(badge);
     }
-    badge.textContent = 'Team Tools (+' + ((Date.now() - started) / 1000).toFixed(1) + 's): ' + msg;
+    badge.textContent = 'Team Tools v' + VER + ' (+' + ((Date.now() - started) / 1000).toFixed(1) + 's): ' + msg;
     if (keepMs) setTimeout(function () { if (badge && badge.parentNode) badge.parentNode.removeChild(badge); }, keepMs);
   }
   function disabled(el) {
