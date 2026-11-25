@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.16.0
+// @version      2.17.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -30,7 +30,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.16.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.17.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -246,11 +246,18 @@
   // Trước khi đăng nhập / đăng xuất: nếu hộp gói còn mở thì đóng nó trước và chờ, không bấm gì khác (hộp che mất menu tài khoản).
   function blockerOpen() { if (planGuard.open()) { planGuard.tick(); return true; } return false; }
   // Giữ thông tin đăng nhập sống thêm 3 phút (đăng xuất + tải lại trang có thể mất thời gian), và đánh dấu để tab sau tải lại biết mình đang giữa chừng.
-  function keepCred() { try { if (cred && cred.e && cred.p) GM_setValue(KEY, JSON.stringify({ e: cred.e, p: cred.p, t: Date.now() })); sessionStorage.setItem('tripoLoAt', String(Date.now())); } catch (e) { /* bỏ qua */ } }
+  // Bản sao riêng của TAB NÀY (mật khẩu vẫn nằm trong bộ nhớ tiện ích, không đưa vào trang): tab Tripo khác mở sẵn có thể xóa mất bản dùng chung
+  // (finish/hết hạn) lúc tab này đang đăng xuất + tải lại, khiến tab này mất thông tin đăng nhập. Bản riêng tự hết hạn sau TTL.
+  var TKEY = 'tripoCredTabs';
+  function tabId() { try { var i = sessionStorage.getItem('tripoTab'); if (!i) { i = Math.random().toString(36).slice(2); sessionStorage.setItem('tripoTab', i); } return i; } catch (e) { return 'x'; } }
+  function tabMap() { var m = {}; try { m = JSON.parse(GM_getValue(TKEY, '') || '{}') || {}; } catch (e) { m = {}; } var n = Date.now(); for (var k in m) if (!m[k] || !(n - m[k].t < TTL)) delete m[k]; return m; }
+  function tabSave(c) { try { var m = tabMap(); if (c) m[tabId()] = { e: c.e, p: c.p, t: Date.now() }; else delete m[tabId()]; GM_setValue(TKEY, JSON.stringify(m)); } catch (e) { /* bỏ qua */ } }
+  function keepCred() { try { if (cred && cred.e && cred.p) tabSave(cred); sessionStorage.setItem('tripoLoAt', String(Date.now())); } catch (e) { /* bỏ qua */ } }
   function readCred() {
     var c = null;
     try { c = JSON.parse(GM_getValue(KEY, '') || 'null'); } catch (e) { c = null; }
-    if (c && (typeof c.e !== 'string' || typeof c.p !== 'string' || !(Date.now() - c.t < TTL))) { GM_deleteValue(KEY); return null; }
+    if (c && (typeof c.e !== 'string' || typeof c.p !== 'string' || !(Date.now() - c.t < TTL))) { GM_deleteValue(KEY); c = null; }
+    if (!c) { var tc = tabMap()[tabId()]; if (tc && typeof tc.e === 'string' && typeof tc.p === 'string') c = tc; }   // bản dùng chung mất rồi thì lấy bản riêng của tab
     return c;
   }
   // Tripo đôi khi đăng nhập/đăng xuất xong ở máy chủ nhưng giao diện chưa cập nhật (tải lại trang là thấy đúng). Script tải lại đúng 1 lần cho mỗi việc.
@@ -271,10 +278,12 @@
 
   if (passive) {
     cred = { e: '', p: '' };
-    try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools (hết hạn?). Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé.', 30000); } } catch (e) { /* bỏ qua */ }
   }
   var acctEmail = cred.e, lastGreet = 0;
   var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
+  if (passive) setTimeout(function () {   // sau khi ô báo (say) đã dựng xong
+    try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools (hết hạn?). Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé.', 30000); } } catch (e) { /* bỏ qua */ }
+  }, 0);
 
   function txt(el) { return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
   function visible(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
@@ -592,14 +601,14 @@
     }
     return 'doing';
   }
-  function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } if (msg) say(msg, keepMs); return true; }
+  function finish(msg, keepMs) { done = true; cred = null; try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } tabSave(null); if (msg) say(msg, keepMs); return true; }
 
   function pressContinue(pw) {   // chỉ nhận nút Continue nằm cùng khối với ô mật khẩu (tổ tiên gần nhất có chứa nút)
     var b = null;
     for (var n = pw.parentElement, k = 0; n && k < 8 && !b; n = n.parentElement, k++) b = findText(/^continue$/, n);
     if (!b || disabled(b)) return false;
     click(b); clicks3++; lastClickAt = Date.now(); apiEpoch = lastClickAt + 500;   // câu trả lời API trước lúc bấm đăng nhập có thể là của tài khoản khác: không dùng
-    if (clicks3 === 1) { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } }   // xóa khỏi bộ nhớ tiện ích ngay sau lần bấm đầu, bản trong trang giữ lại để bấm lại nếu cần
+    if (clicks3 === 1) { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } tabSave(null); }   // xóa khỏi bộ nhớ tiện ích ngay sau lần bấm đầu, bản trong trang giữ lại để bấm lại nếu cần
     say('đã bấm Continue (lần ' + clicks3 + ')…');
     return true;   // đã bấm; chưa kết thúc, còn theo dõi kết quả
   }
