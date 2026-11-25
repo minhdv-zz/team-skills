@@ -4,7 +4,8 @@
 //     (KV "tripo:members", admin sửa trong tab). Admin = chủ (ADMIN_EMAIL) + admin phụ (KV "tripo:admins", quyền ngang chủ, cấp được cho người khác): thêm/xóa tài khoản, xem danh sách đầy đủ.
 //     Phải đúng CẢ HAI: Gmail trong danh sách + mật khẩu nhóm (header X-Pass = secret TRIPO_PASS).
 //     Secret (đặt bằng `wrangler secret put`, KHÔNG ghi vào repo):
-//       TRIPO_PASS     mật khẩu nhóm để vào tab
+//       TRIPO_PASS     mật khẩu nhóm để vào tab (thành viên)
+//       TRIPO_ADMIN_PASS  mật khẩu riêng của admin (chủ + admin phụ); chưa đặt thì admin dùng TRIPO_PASS
 //       TRIPO_ENC_KEY  chuỗi ngẫu nhiên dài, dùng mã hóa mật khẩu từng tài khoản (AES-GCM)
 //     Chống đoán Gmail: Durable Object `Guard` (đếm nguyên tử, đếm TRƯỚC khi so mật khẩu nên bắn song song cũng không lách được).
 //     KV: "tripo:accounts" = JSON mảng tài khoản, "tripo:ev:YYYYMM" = JSON mảng sự kiện của tháng đó.
@@ -209,8 +210,10 @@ async function auth(req, env) {
   const owner = email === ADMIN_EMAIL;
   let good = owner, admin = owner;
   if (!good && EMAIL_RE.test(email)) { try { const [m, ad] = await Promise.all([getMembers(env), getAdmins(env)]); good = m.includes(email); admin = good && ad.includes(email); } catch { good = false; admin = false; } }
-  const passOk = await same(req.headers.get("X-Pass") || "", env.TRIPO_PASS);
-  good = good && passOk;   // cần đủ cả Gmail trong danh sách lẫn mật khẩu nhóm
+  // Hai mật khẩu: thành viên dùng TRIPO_PASS, admin (chủ + admin phụ) dùng TRIPO_ADMIN_PASS. Chưa đặt TRIPO_ADMIN_PASS thì admin tạm dùng mật khẩu nhóm.
+  const sent = req.headers.get("X-Pass") || "";
+  const passOk = await same(sent, admin && env.TRIPO_ADMIN_PASS ? env.TRIPO_ADMIN_PASS : env.TRIPO_PASS);
+  good = good && passOk;   // cần đủ cả Gmail trong danh sách lẫn đúng mật khẩu của vai trò đó
   try { await guard.settle(r.ids, good); }
   catch { try { await guard.settle(r.ids, good); } catch { /* vẫn lỗi thì lượt giữ chỗ tự thành lần sai sau PENDING_STALE_S, an toàn hơn */ } }
   return good ? { email, admin } : { bad: json({ error: "Gmail hoặc mật khẩu không đúng" }, 401) };
