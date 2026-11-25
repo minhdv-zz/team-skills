@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.28.2
+// @version      2.28.3
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.28.2';
+  var VER = '2.28.3';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -677,8 +677,18 @@
     if (readGreetName() !== null && !findText(LOGIN_RE)) return true;   // lời chào chỉ tính khi không có nút đăng nhập (trang chưa đăng nhập cũng có thể có tiêu đề kiểu "Welcome!")
     return Date.now() - started > 1200 && !findText(LOGIN_RE) && avatarCount() > 0;   // không có nút đăng nhập mà có ảnh đại diện ở góc phải trên
   }
+  // Trang Tripo hay đang lăn (khôi phục vị trí cuộn, tải thêm ảnh thư viện): thanh đầu trang và menu tài khoản bị dịch chuyển/đóng giữa chừng nếu bấm lúc đang lăn.
+  // Nên: kéo trang về đầu một lần, rồi chỉ bấm khi trang đã yên (không lăn) ít nhất 0,6 giây.
+  var scrollAt = Date.now(), scrolledTop = false, settleT0 = 0;
+  try { window.addEventListener('scroll', function () { scrollAt = Date.now(); }, { passive: true, capture: true }); } catch (e) { /* bỏ qua */ }
+  function pageSettling() {   // true = trang đang lăn, chưa nên bấm
+    if (!scrolledTop) { scrolledTop = true; if ((window.scrollY || document.documentElement.scrollTop || 0) > 4) { try { window.scrollTo(0, 0); } catch (e) { /* bỏ qua */ } scrollAt = Date.now(); trailPush('trang đang lăn xuống, kéo về đầu'); } }
+    if (!settleT0) settleT0 = Date.now();
+    return Date.now() - scrollAt < 600 && Date.now() - settleT0 < 8000;   // lăn mãi không yên thì thôi, cứ làm tiếp
+  }
   function logoutStep() {   // trả về 'doing' | 'gone' (đã đăng xuất) | 'fail'
     var now = Date.now();
+    if (!lo.clickedAt && pageSettling()) { lo.openAt = now; if (lo.on) lo.t0 += 100; return 'doing'; }   // đang lăn: chờ yên rồi mới mở menu (không tính vào 20 giây)
     if (blockerOpen()) { lo.openAt = now; return 'doing'; }   // hộp gói đang che: đóng xong mới tiếp tục (không tính vào 20 giây của đăng xuất)
     if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
     if (!looksLoggedIn() && !findText(LOGOUT_RE)) { return 'gone'; }
@@ -710,6 +720,8 @@
       var le = learnedAvatar(); if (le) { le = le.closest('button,a,[role=button]') || le; if (lo.tried.indexOf(le) < 0) { lo.cands = lo.cands.filter(function (e) { return e !== le; }); lo.cands.unshift(le); lo.learned = le; } }   // nút đã học từ lần trước: thử đầu tiên   // tính lại mỗi lượt (thanh đầu trang có thể hiện muộn), bỏ ảnh đã thử
       if (!lo.cands.length) {
         lo.diag = (lo.tried.length ? 'đã thử ' + lo.tried.length + ' ảnh [' + lo.tried.map(describe).join('; ') + ']' : 'không thấy ảnh đại diện nào') + '; chữ thấy: ' + menuDump();
+        var exA = exactAvatar();   // nút ảnh đại diện đúng mà menu không mở (bị đóng khi trang lăn...): thử lại tối đa 2 lần nữa trước khi bỏ cuộc
+        if (exA && lo.tried.indexOf(exA) >= 0 && (lo.exN || 0) < 2 && now - lo.t0 < 15000) { lo.exN = (lo.exN || 0) + 1; lo.tried = lo.tried.filter(function (e) { return e !== exA; }); lo.openAt = now - 300; trailPush('menu chưa mở, thử lại ảnh đại diện (lần ' + (lo.exN + 1) + ')'); return 'doing'; }
         if (lo.tried.length || now - lo.t0 > 10000) return 'fail';
         lo.openAt = now - 500; return 'doing';
       }
