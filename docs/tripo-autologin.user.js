@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.27.0
+// @version      2.27.1
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.27.0';
+  var VER = '2.27.1';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -281,6 +281,7 @@
   if (passive) {
     cred = { e: '', p: '' };
   }
+  setTimeout(showSteps, 2500);   // khung dữ liệu các nút (nếu đã thu thập và chưa bấm Đóng/Sao chép)
   var acctEmail = cred.e, lastGreet = 0;
   if (cred.p) tabSave(cred);   // bản riêng của tab có ngay từ đầu (tab khác xóa bản dùng chung cũng không mất)
   var liAt = 0, resumedAt = 0, started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0, logout: 0, logoutok: 0 }, lastClick = {};
@@ -631,18 +632,17 @@
   }
   function showSteps() {
     try {
-      var raw = GM_getValue(SKEY, ''); if (!raw || raw === GM_getValue('tripoStepsShown', '')) return;
+      var raw = GM_getValue(SKEY, ''); if (!raw || raw === GM_getValue('tripoStepsDismissed', '') || document.getElementById('team-tools-steps')) return;   // hiện lại ở mọi lần mở Tripo cho tới khi bấm Sao chép/Đóng (Tripo hay tự tải lại trang làm khung biến mất trước khi kịp chụp)
       var all = JSON.parse(raw), n = 0; for (var k in all) if (k !== '_t') n++;
       if (n < 3) return;
-      GM_setValue('tripoStepsShown', raw);
-      var box = document.createElement('div');
+      var box = document.createElement('div'); box.id = 'team-tools-steps';
       box.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483647;width:560px;max-width:96vw;background:#1c1640;color:#fff;border:1px solid #7c5cff;border-radius:8px;padding:8px 10px;font:12px/1.4 system-ui,sans-serif';
       box.innerHTML = '<div style="margin-bottom:4px"><b>Team Tools v' + VER + '</b>: dữ liệu các nút của Tripo (không có mật khẩu). Bấm <b>Sao chép</b> rồi dán cho người sửa script.</div>';
       var ta = document.createElement('textarea'); ta.readOnly = true; ta.value = JSON.stringify(all, null, 1); ta.style.cssText = 'width:100%;height:140px;background:#0d0b22;color:#cfe;border:1px solid #444;font:11px monospace';
       var b1 = document.createElement('button'), b2 = document.createElement('button');
       b1.textContent = 'Sao chép'; b2.textContent = 'Đóng'; [b1, b2].forEach(function (b) { b.style.cssText = 'margin:4px 6px 0 0;padding:3px 10px;cursor:pointer'; });
-      b1.onclick = function () { ta.select(); try { document.execCommand('copy'); b1.textContent = 'Đã sao chép ✓'; } catch (e) { b1.textContent = 'Bôi đen rồi Ctrl+C'; } };
-      b2.onclick = function () { box.remove(); };
+      b1.onclick = function () { ta.select(); try { document.execCommand('copy'); b1.textContent = 'Đã sao chép ✓'; GM_setValue('tripoStepsDismissed', raw); } catch (e) { b1.textContent = 'Bôi đen rồi Ctrl+C'; } };
+      b2.onclick = function () { try { GM_setValue('tripoStepsDismissed', raw); } catch (e) { /* bỏ qua */ } box.remove(); };
       box.appendChild(ta); box.appendChild(b1); box.appendChild(b2); (document.body || document.documentElement).appendChild(box);
     } catch (e) { /* bỏ qua */ }
   }
