@@ -696,7 +696,7 @@ function tpRender(){
   $('tpAdmin').style.display = '';
   $('tpHero').style.cssText = 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px';
   $('tpHeroNote').style.display = 'none';
-  $('tpHeroCta').style.display = tpIsAdmin() ? 'none' : '';   // thành viên vẫn cần nút Lấy tài khoản (admin dùng nút Xem/Đăng nhập từng dòng)
+  $('tpHeroCta').style.display = 'none';   // bỏ nút Lấy tài khoản: ai cũng dùng nút Xem/Đăng nhập trên từng dòng
   var cc0 = $('tpChartCard'), dst = $('tpAdmin');
   if(cc0.parentNode !== dst) dst.insertBefore(cc0, $('tpList'));
   if(!tpIsAdmin()) $('tpMemList').innerHTML = '<div class="fine" style="margin:6px 0">Chỉ admin xem và sửa được danh sách này.</div>';
