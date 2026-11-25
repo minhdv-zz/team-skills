@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.4
+// @version      2.9.5
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.4');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.9.5');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -234,8 +234,21 @@
   function readCredit() { var v = readCreditEn(); return v !== null ? v : readCreditLoose(); }
   // Sau khi đăng nhập: đọc credit rồi theo dõi liên tục (mỗi 1,5 giây khi đã có số) để số luôn đúng với tài khoản đang dùng (tạo ảnh bị trừ thì số đổi theo).
   // Dừng ngay khi không còn thấy số (đăng xuất hoặc đổi giao diện), để không ghi nhầm số của tài khoản khác vào email này.
+  // Chẩn đoán: liệt kê các ô chữ ngắn ở thanh trên cùng (nơi có số credit) để biết vì sao không đọc được.
+  function creditDiag() {
+    var out = [], els = document.querySelectorAll('body *');
+    for (var i = 0; i < els.length && out.length < 14; i++) {
+      var el = els[i], r = el.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0 && r.top >= 0 && r.top < 110)) continue;
+      if (el.children.length) continue;
+      var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!t || t.length > 24) continue;
+      out.push(Math.round(r.left) + ':' + t);
+    }
+    return 'KHÔNG đọc được credit. Cửa sổ rộng ' + window.innerWidth + 'px. Chữ thấy ở thanh trên (x:chữ): ' + (out.join(' | ') || '(không có)');
+  }
   function watchCredit(email) {
-    var t0 = Date.now(), cand = null, candAt = 0, sent = null, goneAt = 0, last = 0;
+    var t0 = Date.now(), cand = null, candAt = 0, sent = null, goneAt = 0, last = 0, diagShown = false;
     var iv = setInterval(function () {
       var now = Date.now();
       if (now - t0 < 3000) return;   // chờ giao diện đổi sang tài khoản mới (tránh số cũ hoặc số tạm lúc vừa đăng nhập)
@@ -243,6 +256,7 @@
       last = now;
       var v = readCredit();
       if (v === null) {
+        if (sent === null && !diagShown && now - t0 > 8000) { diagShown = true; say(creditDiag(), 90000); }   // 8 giây mà vẫn không đọc được: hiện những gì script thấy ở thanh trên để sửa cho đúng
         if (sent === null) { if (now - t0 > 45000) clearInterval(iv); return; }   // chưa gửi lần nào: chờ tối đa 45 giây
         if (!goneAt) goneAt = now;
         if (now - goneAt > 1500) clearInterval(iv);   // đã gửi rồi mà số biến mất: coi như đã đăng xuất, dừng
