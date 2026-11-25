@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.23.0
+// @version      2.24.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.23.0';
+  var VER = '2.24.0';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -532,11 +532,16 @@
     var out = [], els = document.querySelectorAll('img,div,span,button,a,svg'), upEl = findUpgrade();
     for (var i = 0; i < els.length; i++) {
       var el = els[i], r = el.getBoundingClientRect();
-      if (!(r.width >= 20 && r.width <= 64 && r.height >= 20 && r.height <= 64 && r.top >= 0 && r.top < 100 && r.left > window.innerWidth * 0.55)) continue;
+      // Không dựa vào vị trí tuyệt đối: đổi kích thước cửa sổ/thu phóng làm bố cục đổi (thanh đầu trang gọn lại, ảnh đại diện vào ngăn kéo). Chỉ lọc thô theo cỡ, ưu tiên cái nằm ở thanh đầu trang bên phải, rồi tới ảnh/ô tên "avatar" nằm trong header/nav/ngăn kéo.
+      if (!(r.width >= 18 && r.width <= 80 && r.height >= 18 && r.height <= 80)) continue;
+      var main = r.top >= 0 && r.top < 180 && r.left > window.innerWidth * 0.4;
+      var inNav = !main && !!el.closest('header,nav,aside,[role=banner],[role=navigation],[role=dialog],[class*="drawer" i],[class*="sidebar" i]');
       var isImg = el.tagName === 'IMG', cs = getComputedStyle(el), bg = !isImg && /url\(/.test(cs.backgroundImage || '');
       var br = parseFloat(cs.borderRadius) || 0, round = /%/.test(cs.borderRadius || '') ? br >= 40 : br >= r.width / 2 - 2;
       var hint = /avatar|profile|user|account/i.test((el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className) + ' ' + (el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('alt') || ''));
-      if (!isImg && !bg && !hint && !round) continue;   // ảnh đại diện có thể chỉ là hình tròn có chữ cái đầu (không có ảnh)
+      var ham = !main && r.top >= 0 && r.top < 180 && /^(button|a|div|span)$/i.test(el.tagName) && /menu|burger|hamburger|drawer|nav-?toggle|sidebar/i.test(String(el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className) + ' ' + (el.getAttribute('aria-label') || '')) && !!el.closest('button,[role=button]');   // nút ba gạch: cửa sổ hẹp thì ảnh đại diện nằm sau nó
+      if (!main && !ham && !(inNav && (hint || isImg))) continue;
+      if (!isImg && !bg && !hint && !round && !ham) continue;   // ảnh đại diện có thể chỉ là hình tròn có chữ cái đầu (không có ảnh)
       if (upEl) { var ur = upEl.getBoundingClientRect(); if (Math.abs(r.top - ur.top) < 50 && r.left > ur.left - 150 && r.left < ur.right + 4) continue; }   // biểu tượng ngay trong khối credit / Upgrade: bấm vào sẽ mở hộp chọn gói, che mất menu tài khoản
       var wrap = el.closest('button,a,[role=button]') || el.parentElement;
       var hasText = !!((el.textContent || '').trim() || (wrap && (wrap.textContent || '').trim()));   // ảnh đi kèm chữ (huy hiệu "Lv.1") để xếp sau, thử cuối cùng
@@ -545,14 +550,14 @@
       var dup = false; for (var k = 0; k < out.length; k++) if (out[k] === t || out[k].contains(t) || t.contains(out[k])) { dup = true; break; }
       if (dup) continue;
       var tr = t.getBoundingClientRect(), sq = Math.abs(tr.width - tr.height) <= 6;   // ảnh đại diện gần vuông; nút dài (huy hiệu Lv, credit) xếp sau để khỏi bấm nhầm
-      t._txt = hasText || nav; t._score = (hint ? 0 : (isImg || bg) ? 1 : 2) + (sq ? 0 : 3); out.push(t);
+      t._txt = hasText || nav; t._score = (hint ? 0 : (isImg || bg) ? 1 : 2) + (sq ? 0 : 3) + (main ? 0 : ham ? 12 : 6); out.push(t);
     }
     out.sort(function (a, b) {   // gợi ý "avatar" trước, rồi ảnh, rồi hình tròn trơn; cùng nhóm: ảnh trơn trước (phải sang trái), ảnh có chữ đi kèm thì sau (trái sang phải)
       if (a._score !== b._score) return a._score - b._score;
       if (a._score % 3 < 2 && a._txt !== b._txt) return a._txt ? 1 : -1;   // hình tròn trơn (có thể là chữ cái đầu): không xét chữ, cái ngoài cùng bên phải trước
       var d = b.getBoundingClientRect().left - a.getBoundingClientRect().left; return a._score % 3 < 2 && a._txt ? -d : d;
     });
-    return out.slice(0, 6);
+    return out.slice(0, 8);
   }
   var acAt = 0, acN = 0;
   function avatarCount() { var n = Date.now(); if (n - acAt > 250) { acN = avatarCandidates().length; acAt = n; } return acN; }   // đếm ảnh đại diện, nhớ 0,4 giây (quét nặng, không làm mỗi nhịp)
@@ -646,7 +651,7 @@
     if (document.readyState === 'loading') { hdrKind = 0; hdrAt = 0; return now - started > 30000; }
     var kind = (findInput('password', /password/i) || findUpgrade() || readCredit() !== null) ? 2 : (findText(LOGIN_RE) || avatarCount() > 0) ? 1 : 0;
     if (kind !== hdrKind) { hdrKind = kind; hdrAt = kind ? now : 0; }
-    if (!kind) return now - started > 30000;
+    if (!kind) return now - started > 6000;   // không nhận ra dấu hiệu nào (cửa sổ hẹp làm khối credit/ảnh đổi dạng): không đứng chờ mãi, sau 6 giây cứ chạy
     return now - hdrAt > (kind === 2 || document.readyState === 'complete' ? 300 : 1500) || now - started > 30000;
   }
   function step() {
