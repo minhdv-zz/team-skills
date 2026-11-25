@@ -221,7 +221,7 @@
         </div>
         <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết credit</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
-      <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng</h3><div id="tpChart"></div></div>
+      <div class="card" id="tpChartCard" style="margin-bottom:14px"><h3>Credit theo tháng</h3><div id="tpChart"></div></div>
       <div id="tpAdmin" style="display:none">
       <div id="tpList"></div>
       <details class="help" style="margin-top:14px">
@@ -705,7 +705,8 @@ function tpRenderChart(){
   var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || emptyBy[m.month] > 0; });
   var nf = function(v){ return Number(v).toLocaleString('vi-VN'); };
   var th = function(t){ return '<div class="fine" style="margin:0">' + t + '</div>'; };
-  var cols = '70px 1fr 1fr 1fr 90px';
+  var cols = tpIsAdmin() ? '70px 1fr 1fr 1fr 90px' : '64px 130px 130px 200px 100px';   // thành viên: bảng gọn, không kéo hết chiều ngang
+  var cc = $('tpChartCard'); cc.style.width = tpIsAdmin() ? '' : 'fit-content'; cc.style.maxWidth = '100%'; cc.style.margin = tpIsAdmin() ? '0 0 14px' : '12px 0 14px'; cc.style.padding = tpIsAdmin() ? '' : '14px 16px';
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
   var mxU = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.start != null && m.left != null ? Math.max(0, m.start - m.left) : 0; })));
