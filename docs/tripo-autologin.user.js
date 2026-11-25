@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.21.1
+// @version      2.22.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.21.1';
+  var VER = '2.22.0';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -555,7 +555,7 @@
     return out.slice(0, 6);
   }
   var acAt = 0, acN = 0;
-  function avatarCount() { var n = Date.now(); if (n - acAt > 400) { acN = avatarCandidates().length; acAt = n; } return acN; }   // đếm ảnh đại diện, nhớ 0,4 giây (quét nặng, không làm mỗi nhịp)
+  function avatarCount() { var n = Date.now(); if (n - acAt > 250) { acN = avatarCandidates().length; acAt = n; } return acN; }   // đếm ảnh đại diện, nhớ 0,4 giây (quét nặng, không làm mỗi nhịp)
   function describe(el) { var r = el.getBoundingClientRect(), c = el.className && el.className.baseVal !== undefined ? el.className.baseVal : (el.className || ''); return el.tagName.toLowerCase() + (c ? '.' + String(c).trim().split(/\s+/)[0].slice(0, 18) : '') + ' ' + Math.round(r.width) + 'x' + Math.round(r.height); }
   // Chẩn đoán khi không đăng xuất được: liệt kê chữ ngắn đang hiện ở nửa phải trang (để biết menu có mở không và chữ trong menu là gì).
   function menuDump() {
@@ -585,7 +585,7 @@
     if (blockerOpen()) { lo.openAt = now; return 'doing'; }   // hộp gói đang che: đóng xong mới tiếp tục (không tính vào 20 giây của đăng xuất)
     if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
     if (!looksLoggedIn() && !findText(LOGOUT_RE)) { return 'gone'; }
-    if (lo.clickedAt && now - lo.clickedAt > 3000 && now - lo.t0 < 20000 && reloadOnce('logout')) { say('đã bấm đăng xuất, tải lại trang cho chắc…'); return 'doing'; }   // Tripo hay chưa cập nhật giao diện sau đăng xuất: tải lại 1 lần để có trạng thái thật, rồi đăng nhập tiếp
+    if (lo.clickedAt && now - lo.clickedAt > 2000 && now - lo.t0 < 20000 && reloadOnce('logout')) { say('đã bấm đăng xuất, tải lại trang cho chắc…'); return 'doing'; }   // Tripo hay chưa cập nhật giao diện sau đăng xuất: tải lại 1 lần để có trạng thái thật, rồi đăng nhập tiếp
     if (now - lo.t0 > 20000) return 'fail';
     if (!lo.clickedAt && pageUrl() !== lo.startUrl) {   // (chỉ khi CHƯA bấm Logout: sau đó Tripo tự đổi URL là việc của đăng xuất) lỡ bấm trúng thứ chuyển sang trang khác (ví dụ trang Creator Growth): quay lại đúng 1 lần mỗi 2 giây, không bấm gì thêm
       if (now - lo.backAt > 2000) { lo.backAt = now; lo.openAt = now; say('lỡ vào trang khác, quay lại…'); try { history.back(); } catch (e) { /* bỏ qua */ } }
@@ -654,12 +654,12 @@
     if (resumed) {   // vừa tải lại trang sau khi bấm Continue: nếu đã vào thì xong; chưa vào thì thử đăng nhập lại (tối đa 3 lần Continue)
       if (looksLoggedIn() && !findInput('password', /password/i)) {   // phải thấy 'đã đăng nhập' liên tục 1,5 giây (trang chưa kịp hiện nút Log in cũng có thể trông như đã đăng nhập)
         if (!liAt) liAt = Date.now();
-        if (Date.now() - liAt > 1500) { watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).', 6000); }
+        if (Date.now() - liAt > 1000) { watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).', 6000); }
         return false;
       }
       liAt = 0;
       if (!resumedAt) resumedAt = Date.now();
-      if (Date.now() - resumedAt < 5000) { say('đã tải lại trang, chờ Tripo hiện trạng thái đăng nhập…'); return false; }
+      if (Date.now() - resumedAt < 3500) { say('đã tải lại trang, chờ Tripo hiện trạng thái đăng nhập…'); return false; }
       var cn2 = 0; try { var cj = JSON.parse(sessionStorage.getItem('tripoContN') || 'null'); cn2 = cj && Date.now() - cj.t < 180000 ? cj.n : 0; } catch (e) { cn2 = 0; }
       if (!cred.p || cn2 >= 3) return finish('đã tải lại trang nhưng Tripo vẫn chưa đăng nhập. Bạn bấm "Lấy tài khoản" lại nhé.', 30000);
       resumed = null; lo.gone = true; say('chưa đăng nhập được, thử đăng nhập lại…');   // rơi xuống luồng đăng nhập bình thường
@@ -683,7 +683,7 @@
         if (now - lastClickAt < RETRY_MS) return false;
         var emailErr = (document.body.innerText || '').toLowerCase().indexOf('valid email') >= 0;
         if (emailErr && clicks3 < MAX_CLICKS) { pressContinue(pw); return false; }
-        if (now - lastClickAt > 6000) {
+        if (now - lastClickAt > 4000) {
           try { sessionStorage.setItem('tripoAfter', JSON.stringify({ e: acctEmail, t: Date.now() })); } catch (e) { /* bỏ qua */ }
           say('đã bấm Continue, trang chưa cập nhật: tải lại trang…');
           if (reloadOnce('login')) return false;
