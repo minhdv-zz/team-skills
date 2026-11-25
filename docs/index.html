@@ -743,7 +743,7 @@ function tpMarkBrowser(){   // chỉ hiện nút cài đúng trình duyệt đan
 }
 function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện hướng dẫn cài, không lấy và không hiện tài khoản
   TP_CLAIM_ID = ''; TP_PASS = ''; TP_SHOW = false; $('tpmEmpty').style.display = 'none'; $('tpmEmail').textContent = '';
-  $('tpmCred').style.display = 'none'; $('tpmStudio').style.display = 'none'; $('tpmFallback').style.display = 'none'; $('tpmAll').style.display = 'none';
+  $('tpmCred').style.display = 'none'; $('tpmStudio').style.display = 'none'; $('tpmFallback').style.display = 'none'; $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = '';
   $('tpmNote').textContent = document.documentElement.hasAttribute('data-tripo-autologin')
     ? 'Script tự đăng nhập trên máy này là bản cũ. Cài lại bản mới xong mới lấy được tài khoản.'
     : 'Cài tiện ích tự đăng nhập xong mới lấy được tài khoản.';
@@ -758,22 +758,26 @@ function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
 function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
-function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
+function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = ''; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
 function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
-  var box = $('tpmAll'), a = (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; });
+  var box = $('tpmAll'), a = (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; }), md = box.parentNode;
   var hide = a.length ? 'none' : '';   // có danh sách thì ô Email đơn ở trên thừa (email vẫn nằm trong #tpmEmail để đăng nhập)
   $('tpmEmailLbl').style.display = hide; $('tpmEmail').style.display = hide;
-  if(!a.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  if(!a.length){ box.style.display = 'none'; box.innerHTML = ''; md.style.width = ''; return; }
+  md.style.width = 'min(760px,100%)';   // hộp rộng hơn khi có danh sách cho dễ nhìn
   var cl = String(cur || '').toLowerCase();
   a.sort(function(x, y){ return x.email.localeCompare(y.email); });
-  box.innerHTML = '<div class="fine" style="margin:0 0 6px"><b>Tài khoản còn token (' + a.length + ')</b> &middot; tích để chọn tài khoản dùng</div>'
-    + '<div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px">' + a.map(function(x, i){
+  box.innerHTML = '<div style="margin:0 0 10px;font-size:16px"><b>Chọn tài khoản để dùng</b> <span class="fine" style="margin:0;font-size:13px">(' + a.length + ' tài khoản còn token)</span></div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;max-height:52vh;overflow:auto;padding:2px">' + a.map(function(x){
       var me = x.email.toLowerCase() === cl;
-      return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;' + (i ? 'border-top:1px solid var(--line);' : '') + (me ? 'background:rgba(128,90,255,.12);' : '') + '">'
-        + '<span style="flex:1;word-break:break-all;font-size:13px">' + esc(x.email) + '</span>'
-        + '<span style="white-space:nowrap;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">' + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0;font-weight:400">&#9889; chưa có</span>' : '&#9889; ' + x.credit) + '</span>'
-        + '<input type="radio" name="tpPick" value="' + esc(x.id) + '"' + (me ? ' checked' : '') + ' style="width:18px;height:18px;flex:none;accent-color:#7c5cff"></label>';
+      var cr = x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0;font-size:14px;font-weight:400">&#9889; chưa có số</span>'
+        : '<span style="font-size:24px;font-weight:800;line-height:1;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:3px 0 0;font-size:12px">credit</div>';
+      return '<label style="display:flex;align-items:center;gap:16px;padding:16px 18px;cursor:pointer;border-radius:12px;border:2px solid ' + (me ? 'var(--acc,#7c5cff)' : 'var(--line)') + ';background:' + (me ? 'rgba(124,92,255,.16)' : 'rgba(255,255,255,.03)') + '">'
+        + '<div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600;word-break:break-all">' + esc(x.email) + '</div>'
+        + (me ? '<span class="chip ok" style="margin-top:6px;display:inline-block">Đang dùng</span>' : '<div class="fine" style="margin:4px 0 0;font-size:13px">Bấm để chọn</div>') + '</div>'
+        + '<div style="text-align:right;min-width:90px">' + cr + '</div>'
+        + '<input type="radio" name="tpPick" value="' + esc(x.id) + '"' + (me ? ' checked' : '') + ' style="width:26px;height:26px;flex:none;accent-color:#7c5cff;cursor:pointer"></label>';
     }).join('') + '</div>';
   box.style.display = '';
 }
