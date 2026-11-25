@@ -223,7 +223,7 @@
       </div>
       <div id="tpAdmin" style="display:none">
       <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
-      <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng (tháng này và 5 tháng trước)</h3><div id="tpChart"></div></div>
+      <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng</h3><div id="tpChart"></div></div>
       <div id="tpList"></div>
       <details class="help" style="margin-top:14px">
         <summary>Thêm tài khoản mới</summary>
@@ -682,19 +682,26 @@ function tpRender(){
   var cur = TP.stats && TP.stats.months[0] || { emptied: 0, claimed: 0 };
   function tile(v, l, c){ return '<div class="card" style="gap:0;padding:12px 14px"><div style="font-size:26px;font-weight:700;color:' + c + '">' + v + '</div><div class="fine" style="margin:0">' + l + '</div></div>'; }
   $('tpTiles').innerHTML = tile(n.ok, 'Còn dùng được', 'var(--ok)') + tile(n.using, 'Đang dùng', '#e3b341') + tile(n.empty, 'Đã hết token', '#ffb4ac')
-    + tile(cur.left == null ? '\u2014' : Number(cur.left).toLocaleString('vi-VN'), 'Tổng credit còn lại', 'var(--ok)') + tile(cur.used == null ? '\u2014' : Number(cur.used).toLocaleString('vi-VN'), 'Credit đã dùng tháng này', 'var(--acc)')
+    + tile(cur.left == null ? '\u2014' : Number(cur.left).toLocaleString('vi-VN'), 'Tổng credit còn lại', 'var(--ok)')
     + tile(cur.emptied, 'Hết token trong tháng này', '#ffb4ac') + tile(cur.claimed, 'Lượt lấy tháng này', 'var(--text)');
-  // Cột = credit đã dùng trong tháng (tổng phần giảm giữa các lần userscript đọc số credit). Dưới cột: credit còn lại cuối tháng (tháng này = hiện tại) và số tài khoản bị đánh dấu hết.
-  var ms = (TP.stats ? TP.stats.months : []).slice().reverse(), mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.used || 0; })));
-  var nf = function(v){ return v == null ? '\u2014' : Number(v).toLocaleString('vi-VN'); };
-  $('tpChart').innerHTML = '<div style="display:flex;gap:10px;align-items:flex-end;height:130px;margin-top:8px">' + ms.map(function(m){
-    var h = m.used ? Math.round(m.used / mx * 90) : 0;
-    return '<div style="flex:1;min-width:0;text-align:center"><div style="font-weight:700">' + nf(m.used) + '</div><div style="height:' + h + 'px;min-height:2px;background:var(--acc);border-radius:4px 4px 0 0"></div></div>';
-  }).join('') + '</div><div style="display:flex;gap:10px;margin-top:4px">' + ms.map(function(m, i){
-    return '<div style="flex:1;min-width:0;text-align:center"><div class="fine" style="margin:0">' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(2, 4)) + '</div>'
-      + '<div style="margin-top:4px;font-weight:600;color:' + (m.left == null ? 'var(--mut)' : 'var(--ok)') + '" title="' + (i === ms.length - 1 ? 'Tổng credit còn lại hiện tại' : 'Tổng credit còn lại cuối tháng') + '">' + (m.left == null ? '\u2014' : 'còn ' + nf(m.left)) + '</div>'
-      + '<div class="fine" style="margin:2px 0 0">' + m.emptied + ' TK hết</div></div>';
-  }).join('') + '</div><div class="fine" style="margin-top:10px">Số trên cột = credit đã dùng trong tháng. \u201ccòn\u201d = tổng credit các tài khoản còn lại cuối tháng (tháng này: hiện tại). \u201cTK hết\u201d = số tài khoản bị đánh dấu hết.<br>Cách biết: script tự đăng nhập đọc số credit cạnh nút Upgrade mỗi khi mở Tripo, trang ghi lại mỗi lần số đổi. Đã dùng = tổng phần giảm giữa hai lần đọc (credit tự hết hạn cũng bị tính vào); chỉ tính từ lúc bắt đầu ghi, và chỉ biết khi có người mở Tripo (dấu \u2014 = chưa có số liệu).</div>';
+  // Bảng theo tháng (mới nhất trên cùng), chỉ hiện tháng có số liệu + tháng này.
+  var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || m.emptied > 0; });
+  var mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.used || 0; })));
+  var nf = function(v){ return Number(v).toLocaleString('vi-VN'); };
+  var th = function(t){ return '<div class="fine" style="margin:0">' + t + '</div>'; };
+  var row = function(cells){ return '<div style="display:grid;grid-template-columns:70px 1fr 1fr 90px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
+  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:70px 1fr 1fr 90px;gap:12px;padding-bottom:6px">' + th('Tháng') + th('Đã dùng') + th('Còn lại cuối tháng') + th('Tài khoản hết') + '</div>'
+    + ms.map(function(m, i){
+      var used = m.used == null ? '<span class="fine" style="margin:0">chưa có số liệu</span>'
+        : '<b>' + nf(m.used) + '</b><div style="height:5px;margin-top:4px;width:' + Math.max(2, Math.round(m.used / mx * 100)) + '%;background:var(--acc);border-radius:3px"></div>';
+      var left = m.left == null ? '<span class="fine" style="margin:0">chưa có số liệu</span>' : '<b style="color:var(--ok)">' + nf(m.left) + '</b>' + (i === 0 ? ' <span class="fine" style="margin:0">(hiện tại)</span>' : '');
+      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + used + '</div>', '<div>' + left + '</div>', '<div>' + m.emptied + '</div>']);
+    }).join('')
+    + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
+    + '\u2022 <b>Còn lại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản).<br>'
+    + '\u2022 <b>Đã dùng</b> = mỗi lần credit của một tài khoản giảm thì cộng phần giảm vào tháng đó.<br>'
+    + '\u2022 Số credit do script tự đăng nhập đọc được khi có người mở Tripo, nên tháng nào chưa có ai mở thì ghi \u201cchưa có số liệu\u201d. Mới bắt đầu ghi từ 25/11/2026, các tháng trước sẽ không có.'
+    + '</div></details>';
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
     var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // danh sách tên đã gộp theo người   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước
