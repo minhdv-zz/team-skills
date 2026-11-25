@@ -132,16 +132,17 @@ async function stats(env, cm, ids) {
   const last = {}, cred = {};   // last[id] = credit lần đọc gần nhất; cred[tháng] = { used, left, n }
   for (let i = months.length - 1; i >= 0; i--) {
     let used = 0, n = 0;
-    for (const r of crLists[i] || []) { n++; if (Number.isInteger(r.p) && r.p > r.c) used += r.p - r.c; if (ids.has(r.id)) last[r.id] = r.c; }   // đã dùng giữ cả của tài khoản đã xóa; còn lại chỉ tính tài khoản còn trong danh sách
-    const vals = Object.values(last);
-    cred[months[i]] = { used: n || vals.length ? used : null, left: vals.length ? vals.reduce((x, y) => x + y, 0) : null, n };
+    const before = Object.values(last).reduce((x, y) => x + y, 0), hadBefore = Object.keys(last).length > 0, base = {};   // đầu tháng = số còn lại cuối tháng trước + số lần đọc đầu tiên của tài khoản mới xuất hiện trong tháng
+    for (const r of crLists[i] || []) { n++; if (Number.isInteger(r.p) && r.p > r.c) used += r.p - r.c; if (ids.has(r.id)) { if (!(r.id in last) && !(r.id in base)) base[r.id] = Number.isInteger(r.p) ? r.p : r.c; last[r.id] = r.c; } }   // đã dùng giữ cả của tài khoản đã xóa; còn lại chỉ tính tài khoản còn trong danh sách
+    const vals = Object.values(last), bv = Object.values(base);
+    cred[months[i]] = { used: n || vals.length ? used : null, left: vals.length ? vals.reduce((x, y) => x + y, 0) : null, start: hadBefore || bv.length ? before + bv.reduce((x, y) => x + y, 0) : null, n };
   }
   // Tháng này: số còn lại là số hiện có (lần đọc mới nhất của mọi tài khoản còn trong danh sách), không phải cuối tháng.
   const cur = Object.entries(cm).filter(([id]) => ids.has(id)).map(([, v]) => v.c);
   const out = months.map((m, i) => {
     const ev = lists[i] || [];
     return { month: m, emptied: new Set(ev.filter((e) => e.type === "empty").map((e) => e.email)).size, claimed: ev.filter((e) => e.type === "claim").length,
-      used: cred[m].used, left: i === 0 ? (cur.length ? cur.reduce((x, y) => x + y, 0) : cred[m].left) : cred[m].left, readings: cred[m].n };
+      used: cred[m].used, start: cred[m].start, left: i === 0 ? (cur.length ? cur.reduce((x, y) => x + y, 0) : cred[m].left) : cred[m].left, readings: cred[m].n };
   });
   // Mỗi tài khoản đã có những ai lấy, gộp theo người: nhật ký cũ ghi tên ngắn ("tet"), bản mới ghi email ("tet@horusvn.com") nên lấy phần trước @ và hạ chữ thường làm khóa.
   // claimBy[email tài khoản] = [{ n: tên, c: số lần lấy, t: lần lấy gần nhất }], người lấy gần đây nhất đứng đầu. Tính trên cả 6 tháng nhật ký.
