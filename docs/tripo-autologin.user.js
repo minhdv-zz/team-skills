@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.10.0
+// @version      2.11.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.10.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.11.0');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -65,6 +65,114 @@
 
   // ---------- Trên Tripo Studio ----------
   if (host !== 'studio.tripo3d.ai') return;
+
+  // ---- Tự dò nguồn credit trong các request của chính trang Tripo ----
+  // Chèn một đoạn nhỏ vào trang để xem các câu trả lời JSON (fetch/XHR) có trường số giống credit/balance rồi báo về đây. Khi số credit trên giao diện
+  // đã ổn định, tìm trường API có đúng số đó; phải khớp 2 lần cách nhau mới NHỚ nguồn đó, và tự gỡ nếu sau này lệch giao diện. Nếu giao diện đổi mà không
+  // đọc được chữ, nguồn đã nhớ làm dự phòng, chỉ cho lần đọc đầu, chỉ khi câu trả lời đến SAU lần đăng nhập/đăng xuất gần nhất và còn mới (30 giây),
+  // để không bao giờ gán credit của tài khoản trước cho tài khoản sau. Số trên giao diện vẫn là nguồn chính.
+  var SKEY = 'tripoSrc', ANY_KEY = 'credit|balance|remain|avail|left|quota|coin|point|token|amount|wallet|total|num|count', STRONG_KEY = /credit|balance/i, STATIC_KEY = /cost|used|consum|limit|total|max|price|need|requir|spent|quota|plan|bonus|free|month/i;   // tên giống credit nhưng là số tĩnh (hạn mức, tổng gói...): không học
+  var API_FRESH = 30000, apiSeen = {}, srcCache, apiEpoch = Date.now(), apiVotes = {}, apiMiss = 0, NONCE = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  (function injectSniffer() {
+    function hook(KRE, NONCE) {
+      if (window.__ttSniff) return; window.__ttSniff = 1;
+      var re = new RegExp(KRE, 'i');
+      function flat(o, p, out, d) {   // chỉ lấy trường số trong đối tượng (bỏ mảng: không biết phần tử nào là của mình)
+        if (o === null || typeof o !== 'object' || Array.isArray(o) || out.length > 40 || d > 5) return;
+        for (var k in o) {
+          var v = o[k], q = p ? p + '.' + k : k;
+          if (typeof v === 'number') { if (isFinite(v) && re.test(k)) out.push([q, v]); }
+          else flat(v, q, out, d + 1);
+        }
+      }
+      function report(u, t) {
+        try {
+          u = u ? String(u) : '';
+          if (!t || t.length > 200000 || t.charAt(0) !== '{') return;
+          var out = []; flat(JSON.parse(t), '', out, 0);
+          if (out.length && u) window.postMessage({ tt: 'tt-sniff', n: NONCE, u: u, f: out }, location.origin);
+        } catch (e) { /* bỏ qua */ }
+      }
+      var of = window.fetch;
+      if (of) window.fetch = function (a) {
+        var p = of.apply(this, arguments);
+        try {
+          var u = typeof a === 'string' ? a : (a && (a.url || a.href)) || '';
+          p.then(function (r) {
+            try {
+              var ct = r.headers.get('content-type') || '', cl = parseInt(r.headers.get('content-length') || '0', 10);
+              if (!r.ok || r.bodyUsed || ct.indexOf('json') < 0 || cl > 200000) return;   // chỉ JSON nhỏ: không đụng ảnh, mô hình 3D, luồng dài
+              r.clone().text().then(function (t) { report(u, t); }, function () {});
+            } catch (e) { /* bỏ qua */ }
+          }, function () {});
+        } catch (e) { /* bỏ qua */ }
+        return p;
+      };
+      var oo = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (m, u) {
+        this.__ttu = u;
+        if (!this.__ttl) {
+          this.__ttl = 1; var self = this;
+          this.addEventListener('load', function () { try { if ((self.responseType === '' || self.responseType === 'text') && /json/i.test(self.getResponseHeader('content-type') || '')) report(self.__ttu, self.responseText); } catch (e) { /* bỏ qua */ } });
+        }
+        return oo.apply(this, arguments);
+      };
+    }
+    var code = '(' + hook.toString() + ')(' + JSON.stringify(ANY_KEY) + ',' + JSON.stringify(NONCE) + ');', tries = 0;
+    function put() {
+      var host = document.head || document.documentElement; if (!host) return false;
+      try { var sc = document.createElement('script'); sc.textContent = code; host.appendChild(sc); sc.remove(); } catch (e) { /* trang chặn chèn mã: không có dự phòng API, vẫn đọc chữ như cũ */ }
+      return true;
+    }
+    if (!put()) { var iv = setInterval(function () { if (put() || ++tries > 300) clearInterval(iv); }, 10); }   // document-start: <html> có thể chưa có
+  })();
+  function normPath(u) {
+    try { var x = new URL(u, location.href); return x.hostname + x.pathname.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{16,}|\d+/gi, '*'); } catch (e) { return ''; }
+  }
+  window.addEventListener('message', function (ev) {
+    var d = ev.data; if (!d || d.tt !== 'tt-sniff' || d.n !== NONCE || !Array.isArray(d.f)) return;   // nonce: chỉ chống tin nhắn ngẫu nhiên khác, không chống mã độc của chính trang
+    var p = normPath(d.u); if (!p) return;
+    var keep = []; for (var i = 0; i < d.f.length; i++) { var f = d.f[i]; if (f && typeof f[0] === 'string' && typeof f[1] === 'number') keep.push([f[0], f[1]]); }
+    delete apiSeen[p]; apiSeen[p] = { f: keep, t: Date.now() };   // xóa rồi gán lại: thứ tự khóa = mới nhất ở cuối, đầy thì bỏ cái cũ nhất
+    var ks = Object.keys(apiSeen); if (ks.length > 80) delete apiSeen[ks[0]];
+  });
+  function srcGet() { if (srcCache === undefined) { try { srcCache = JSON.parse(GM_getValue(SKEY, '') || 'null'); } catch (e) { srcCache = null; } } return srcCache; }
+  function apiField(s, fresh) {   // giá trị hiện có của nguồn s trong các câu trả lời đã thấy (fresh: chỉ nhận câu trả lời mới và đến sau lần đăng nhập)
+    var e = s && apiSeen[s.p]; if (!e || (fresh && (Date.now() - e.t > API_FRESH || e.t < apiEpoch))) return null;
+    for (var i = 0; i < e.f.length; i++) if (e.f[i][0] === s.k && Number.isInteger(e.f[i][1]) && e.f[i][1] >= 0) return e.f[i][1];
+    return null;
+  }
+  // v = số credit trên giao diện ĐÃ ỔN ĐỊNH (gọi lúc gửi/báo lại). Khớp một trường "credit|balance" duy nhất, đủ lớn (>= 5), 2 lần mới nhớ.
+  function apiLearn(v) {
+    var cur = srcGet(), cv = cur ? apiField(cur, true) : null;
+    if (cur) {   // đã có nguồn nhớ: khớp giao diện thì giữ; lệch 3 lần liên tiếp thì gỡ (học sai hoặc Tripo đổi API); không thay bằng nguồn khác khi chưa gỡ
+      if (cv === null) return;
+      if (cv === v) { apiMiss = 0; return; }
+      if (++apiMiss >= 3) { delete apiVotes[cur.p + '|' + cur.k]; srcCache = null; apiMiss = 0; try { GM_deleteValue(SKEY); } catch (e) { /* bỏ qua */ } try { console.log('[Team Tools] nguồn credit trong API không còn khớp giao diện, đã bỏ.'); } catch (e) { /* bỏ qua */ } }
+      return;
+    }
+    if (!(v >= 5)) return;
+    var hits = {}, n = 0;
+    for (var p in apiSeen) {
+      if (apiSeen[p].t < apiEpoch) continue;
+      for (var i = 0; i < apiSeen[p].f.length; i++) {
+        var f = apiSeen[p].f[i], last = f[0].split('.').pop(); if (f[1] !== v || !STRONG_KEY.test(last) || STATIC_KEY.test(last)) continue;
+        var id = p + '|' + f[0]; if (!hits[id]) { hits[id] = { p: p, k: f[0] }; n++; }
+      }
+    }
+    if (n !== 1) return;
+    var h = hits[Object.keys(hits)[0]], id1 = h.p + '|' + h.k, now = Date.now(), et = apiSeen[h.p].t, vt = apiVotes[id1];
+    if (!vt) { apiVotes[id1] = { at: now, et: et }; return; }
+    if (et <= vt.et || now - vt.at < 60000) return;   // lần khớp thứ hai phải từ một câu trả lời API MỚI (không phải cùng câu cũ), cách lần đầu >= 1 phút
+    srcCache = h; try { GM_setValue(SKEY, JSON.stringify(h)); } catch (e) { /* bỏ qua */ }
+    try { console.log('[Team Tools] đã nhận ra nguồn credit trong API: ' + h.p + '  ' + h.k); } catch (e) { /* bỏ qua */ }
+  }
+  function apiRead() { return apiField(srcGet(), true); }   // số credit từ nguồn đã nhớ
+  function apiSummary() {   // dùng cho chẩn đoán: những trường giống credit mà trang đã tải
+    var out = [];
+    for (var p in apiSeen) for (var i = 0; i < apiSeen[p].f.length && out.length < 8; i++) out.push(p.replace(/^[^/]*/, '') + ' ' + apiSeen[p].f[i][0] + '=' + apiSeen[p].f[i][1]);
+    return out.join(' | ') || '(chưa thấy)';
+  }
 
   // ---- Tự tắt hộp quảng cáo "Upgrade your plan" (gói trả phí, Black Friday...) ----
   // Tìm tiêu đề "Upgrade your plan", bấm nút X ở góc phải trên của hộp. Không thấy nút X thì gửi phím Esc, vẫn không được thì ẩn hộp đi.
@@ -288,7 +396,7 @@
     }
     return n === 1 ? val : null;
   }
-  function readCredit() { var v = readCreditEn(); return v !== null ? v : readCreditLoose(); }
+  function readCredit() { var v = readCreditEn(); if (v === null) v = readCreditLoose(); return v; }
   // Sau khi đăng nhập: đọc credit rồi theo dõi liên tục (mỗi 1,5 giây khi đã có số) để số luôn đúng với tài khoản đang dùng (tạo ảnh bị trừ thì số đổi theo).
   // Dừng ngay khi không còn thấy số (đăng xuất hoặc đổi giao diện), để không ghi nhầm số của tài khoản khác vào email này.
   // Chẩn đoán: liệt kê các ô chữ ngắn ở thanh trên cùng (nơi có số credit) để biết vì sao không đọc được.
@@ -302,16 +410,17 @@
       if (!t || t.length > 24) continue;
       out.push(Math.round(r.left) + ':' + t);
     }
-    return 'KHÔNG đọc được credit. Cửa sổ rộng ' + window.innerWidth + 'px. Chữ thấy ở thanh trên (x:chữ): ' + (out.join(' | ') || '(không có)');
+    return 'KHÔNG đọc được credit. Cửa sổ rộng ' + window.innerWidth + 'px. Chữ thấy ở thanh trên (x:chữ): ' + (out.join(' | ') || '(không có)') + '. Trường giống credit trong API: ' + apiSummary();
   }
   function watchCredit(email) {
-    var t0 = Date.now(), cand = null, candAt = 0, sent = null, sentAt = 0, goneAt = 0, last = 0, diagShown = false;
+    var t0 = Date.now(), cand = null, candAt = 0, sent = null, sentAt = 0, goneAt = 0, last = 0, diagShown = false, viaApi = false;
     var iv = setInterval(function () {
       var now = Date.now();
       if (now - t0 < 3000) return;   // chờ giao diện đổi sang tài khoản mới (tránh số cũ hoặc số tạm lúc vừa đăng nhập)
       if (sent !== null && now - last < 1500) return;   // đã có số thì kiểm tra thưa hơn cho nhẹ trang
       last = now;
-      var v = readCredit();
+      var v = readCredit(); viaApi = false;
+      if (v === null && sent === null) { var av = apiRead(); if (av !== null) { v = av; viaApi = true; try { console.log('[Team Tools] không đọc được chữ, dùng credit từ API: ' + av); } catch (e) { /* bỏ qua */ } } }   // dự phòng, chỉ cho lần đọc đầu
       if (v === null) {
         if (sent === null && !diagShown && now - t0 > 8000) { diagShown = true; say(creditDiag(), 90000); }   // 8 giây mà vẫn không đọc được: hiện những gì script thấy ở thanh trên để sửa cho đúng
         if (sent === null) { if (now - t0 > 45000) clearInterval(iv); return; }   // chưa gửi lần nào: chờ tối đa 45 giây
@@ -322,12 +431,13 @@
       goneAt = 0;
       if (v === sent) {   // số không đổi: cứ 2 phút báo lại một lần để Team Tools biết số vẫn còn đúng (không bị coi là 'số cũ')
         cand = null;
-        if (now - sentAt > 120000) { try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sentAt = now; } catch (e) { /* bỏ qua */ } }
+        if (now - sentAt > 120000) { try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sentAt = now; } catch (e) { /* bỏ qua */ } if (!viaApi) apiLearn(v); }
         return;
       }
       if (v !== cand) { cand = v; candAt = now; return; }   // số mới: phải giữ nguyên thêm 0,7 giây (loại số tạm lúc đang tải)
       if (now - candAt < 1000) return;
       if (!passive) rememberName(email);   // số đã ổn định và chắc chắn là tài khoản này (vừa đăng nhập / đã xác nhận): nhớ tên trong lời chào
+      if (!viaApi) apiLearn(v);   // số đã ổn định và đến từ chữ trên giao diện: thời điểm an toàn để đối chiếu với API
       try { GM_setValue(CKEY, JSON.stringify({ e: email, c: v, t: now })); sent = v; sentAt = now; cand = null; say('credit còn ' + v + ', đã gửi cho Team Tools.', 4000); } catch (e) { /* bỏ qua */ }
     }, 400);
   }
@@ -402,7 +512,7 @@
     var b = null;
     for (var n = pw.parentElement, k = 0; n && k < 8 && !b; n = n.parentElement, k++) b = findText(/^continue$/, n);
     if (!b || disabled(b)) return false;
-    click(b); clicks3++; lastClickAt = Date.now();
+    click(b); clicks3++; lastClickAt = Date.now(); apiEpoch = lastClickAt + 500;   // câu trả lời API trước lúc bấm đăng nhập có thể là của tài khoản khác: không dùng
     if (clicks3 === 1) { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } }   // xóa khỏi bộ nhớ tiện ích ngay sau lần bấm đầu, bản trong trang giữ lại để bấm lại nếu cần
     say('đã bấm Continue (lần ' + clicks3 + ')…');
     return true;   // đã bấm; chưa kết thúc, còn theo dõi kết quả
@@ -445,7 +555,7 @@
     if (lo.on) {
       var rs = logoutStep();
       if (rs === 'fail') return finish('không tự đăng xuất được (script chưa tìm thấy nút đăng xuất của Tripo). Bạn đăng xuất Tripo bằng tay rồi bấm "Mở Tripo Studio" lại nhé.', 30000);
-      if (rs === 'gone') { lo.on = false; lo.gone = true; say('đã đăng xuất, đăng nhập tài khoản ' + acctEmail + '…'); }
+      if (rs === 'gone') { apiEpoch = Date.now() + 500; lo.on = false; lo.gone = true; say('đã đăng xuất, đăng nhập tài khoản ' + acctEmail + '…'); }
       else return false;
     }
     if (!lo.gone && Date.now() - lastGreet > 500) {
