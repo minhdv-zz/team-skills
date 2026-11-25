@@ -207,14 +207,14 @@
       <label>Mật khẩu<br><span style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="tpPassIn" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;min-width:0"><button type="button" id="tpPassEye" title="Hiện mật khẩu đang gõ" aria-label="Hiện mật khẩu" style="flex:none;padding:0 12px;height:40px">Hiện</button></span></label>
       <div id="tpErr" class="warnbox" style="display:none"></div>
       <div><button class="pri big" id="tpGo">Đăng nhập</button></div>
-      <details id="tpLockBox" style="margin-top:2px"><summary class="fine" style="cursor:pointer;margin:0">Quản trị: xem / gỡ khóa nhập sai mật khẩu</summary>
+    </div>
+      <details id="tpLockBox" class="card" style="margin-top:14px;max-width:520px"><summary class="fine" style="cursor:pointer;margin:0">Quản trị: xem / gỡ khóa nhập sai mật khẩu</summary>
         <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
           <div class="fine" style="margin:0">Dán mã quản trị (file <code>TRIPO_ADMIN</code> trong <code>~/.config/team-skills-stars/</code>). Mã không được lưu lại, chỉ gửi tới máy chủ để kiểm tra.</div>
           <input id="tpLockKey" type="password" autocomplete="off" spellcheck="false" placeholder="Mã quản trị" style="width:100%">
           <div style="display:flex;gap:8px"><button type="button" id="tpLockView">Xem khóa</button><button type="button" id="tpLockOpen" class="danger">Gỡ hết khóa</button></div>
           <div id="tpLockOut" class="fine" style="margin:0;white-space:pre-wrap"></div>
         </div></div></details>
-    </div>
     <div id="tpMain" style="display:none">
       <div class="hero" id="tpHero">
         <div class="hero-top">
@@ -652,12 +652,14 @@ function tpAgo(t){
   var h = Math.round(m / 60); if(h < 24) return h + ' giờ trước';
   return Math.round(h / 24) + ' ngày trước';
 }
+function tpLockVis(){ $('tpLockBox').style.display = ($('tpGate').style.display !== 'none' || tpIsAdmin()) ? '' : 'none'; }   // màn đăng nhập: ai cũng thấy (cần mã mới dùng được); đã đăng nhập: chỉ admin
 function tpShowGate(msg){
   TP.accs = []; TP.stats = null; $('tpList').innerHTML = ''; $('tpLog').innerHTML = ''; tpCloseCred();
   $('tpGate').style.display = ''; $('tpMain').style.display = 'none';
   if(!$('tpWhoIn').value) $('tpWhoIn').value = tpWho();
   $('tpErr').style.display = msg ? '' : 'none'; $('tpErr').textContent = msg || '';
-  if(msg && /khóa/i.test(msg)) $('tpLockBox').open = true;   // bị khóa thì mở sẵn mục quản trị để admin gỡ
+  if(msg && /khóa/i.test(msg)) $('tpLockBox').open = true;
+  tpLockVis();   // bị khóa thì mở sẵn mục quản trị để admin gỡ
 }
 function tripoInit(){
   if(!STAR_API){ tpShowGate('Chưa cấu hình server.'); return; }
@@ -721,7 +723,7 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) t
 function tpIsAdmin(){ return !!TP.admin; }   // do máy chủ báo; máy chủ mới là nơi chặn quyền thật
 function tpRender(){
   // Giao diện giống nhau cho admin và thành viên (chỉ khác nút "Lấy tài khoản" của thành viên). Quyền thật do máy chủ chặn: việc nào thành viên không được thì máy chủ trả lỗi và trang chỉ báo lại.
-  $('tpAdmin').style.display = '';
+  $('tpAdmin').style.display = ''; tpLockVis();
   $('tpHero').style.cssText = 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px';
   $('tpHeroNote').style.display = 'none';
   $('tpHeroCta').style.display = 'none';   // bỏ nút Lấy tài khoản: ai cũng dùng nút Xem/Đăng nhập trên từng dòng
