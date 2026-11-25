@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.24.0
+// @version      2.25.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.24.0';
+  var VER = '2.25.0';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -283,7 +283,7 @@
   }
   var acctEmail = cred.e, lastGreet = 0;
   if (cred.p) tabSave(cred);   // bản riêng của tab có ngay từ đầu (tab khác xóa bản dùng chung cũng không mất)
-  var liAt = 0, resumedAt = 0, started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
+  var liAt = 0, resumedAt = 0, started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0, logout: 0, logoutok: 0 }, lastClick = {};
   if (passive) setTimeout(function () {   // sau khi ô báo (say) đã dựng xong
     try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools. Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé. [chẩn đoán: bản chung ' + (GM_getValue(KEY, '') ? 'còn' : 'mất') + ', bản riêng ' + (tabMap()[tabId()] ? 'còn' : 'mất') + ', tab ' + tabId() + '. Nhật ký: ' + trailText() + ']', 120000); } } catch (e) { /* bỏ qua */ }
   }, 0);
@@ -520,7 +520,7 @@
   // Chưa có ảnh menu đăng xuất thật của Tripo nên dò theo cách chung: bấm lần lượt các ảnh đại diện ở góc phải trên, thấy mục có chữ
   // đăng xuất (nhiều ngôn ngữ) thì bấm, thấy hộp xác nhận thì bấm xác nhận. Mỗi bước đều báo ở ô góc trái để biết dừng ở đâu.
   var LOGOUT_RE = /^(log\s*out|sign\s*out|logout|đăng xuất|退出登录|退出|登出|注销)$/, CONFIRM_RE = /^(confirm|ok|yes|sure|log\s*out|sign\s*out|xác nhận|đồng ý|đăng xuất|确认|确定|是|退出登录|退出)$/;
-  var lo = { on: false, t0: 0, openAt: 0, clickedAt: 0, cands: null, startUrl: '', backAt: 0, hoverCand: null, hoverAt: 0, hoverClicked: false, diag: '', tried: [], gone: false, seekAt: 0 };
+  var lo = { on: false, t0: 0, openAt: 0, clickedAt: 0, cands: null, startUrl: '', backAt: 0, hoverCand: null, hoverAt: 0, hoverClicked: false, diag: '', tried: [], gone: false, seekAt: 0, learned: null, sel: undefined };
   // Nút xác nhận chỉ tìm TRONG hộp thoại (mục menu "Log out" cũng khớp chữ nên không được lấy nhầm); không có hộp thoại thì chỉ nhận các chữ xác nhận rõ ràng.
   function findConfirm() {
     var ds = document.querySelectorAll('[role=dialog],[role=alertdialog],[aria-modal=true],[class*="modal" i],[class*="dialog" i]');
@@ -558,6 +558,45 @@
       var d = b.getBoundingClientRect().left - a.getBoundingClientRect().left; return a._score % 3 < 2 && a._txt ? -d : d;
     });
     return out.slice(0, 8);
+  }
+  // ---- Học nút ảnh đại diện (như soi F12) ----
+  // Lần đăng xuất thành công: ghi lại "địa chỉ" chính xác của nút đã bấm (thẻ + class ổn định + aria-label/data-*/id, đi lên tối đa 5 cấp) vào bộ nhớ tiện ích.
+  // Lần sau thử đúng nút đó TRƯỚC, nhờ vậy không còn đoán theo kích thước/vị trí. Địa chỉ không còn khớp (Tripo đổi giao diện) thì quay về cách đoán.
+  var AKEY = 'tripoAvatarSel';
+  function stableClasses(el) {
+    var c = el.className && el.className.baseVal !== undefined ? el.className.baseVal : (el.className || '');
+    return String(c).trim().split(/\s+/).filter(function (x) { return /^[a-z][a-z-]{2,23}$/i.test(x); }).slice(0, 2);   // bỏ tên class có số/ký tự lạ (thường là mã băm, đổi mỗi lần Tripo cập nhật)
+  }
+  function cssEsc(v) { return String(v).replace(/(["\\])/g, '\\$1'); }
+  function oneSel(el) {
+    var t = el.tagName.toLowerCase(), sel = t;
+    if (el.id && /^[a-z][\w-]{2,30}$/i.test(el.id) && !/\d{3,}/.test(el.id)) return '#' + el.id;
+    stableClasses(el).forEach(function (c) { sel += '.' + c; });
+    ['aria-label', 'data-testid', 'data-test', 'data-id', 'role', 'alt'].forEach(function (a) { var v = el.getAttribute(a); if (v && v.length < 40) sel += '[' + a + '="' + cssEsc(v) + '"]'; });
+    return sel;
+  }
+  function learnSel(el) {
+    try {
+      var parts = [], cur = el;
+      for (var d = 0; d < 5 && cur && cur.nodeType === 1 && cur !== document.body; d++, cur = cur.parentElement) {
+        parts.unshift(oneSel(cur));
+        var sel = parts.join(' > ');
+        var hit = document.querySelectorAll(sel);
+        if (hit.length === 1 && hit[0] === el) return sel;
+      }
+      var all = document.querySelectorAll(parts.join(' > '));   // chưa duy nhất: lấy vị trí của nó trong số các phần tử khớp
+      for (var i = 0; i < all.length; i++) if (all[i] === el) return parts.join(' > ') + '|' + i;
+    } catch (e) { /* bỏ qua */ }
+    return '';
+  }
+  function learnedAvatar() {
+    try {
+      var raw = GM_getValue(AKEY, ''); if (!raw) return null;
+      var bar = raw.lastIndexOf('|'), idx = 0, sel = raw;
+      if (bar > 0 && /^\d+$/.test(raw.slice(bar + 1))) { idx = +raw.slice(bar + 1); sel = raw.slice(0, bar); }
+      var el = document.querySelectorAll(sel)[idx];
+      return el && visible(el) ? el : null;
+    } catch (e) { return null; }
   }
   var acAt = 0, acN = 0;
   function avatarCount() { var n = Date.now(); if (n - acAt > 250) { acN = avatarCandidates().length; acAt = n; } return acN; }   // đếm ảnh đại diện, nhớ 0,4 giây (quét nặng, không làm mỗi nhịp)
@@ -601,14 +640,19 @@
       if (cf && clickLimited('logoutok', cf)) { say('xác nhận đăng xuất…'); lo.clickedAt = now; return 'doing'; }
     }
     var item = findText(LOGOUT_RE);
-    if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; keepCred(); } return 'doing'; }
+    if (item) {
+      if (lo.hoverCand && lo.sel === undefined) lo.sel = learnSel(lo.hoverCand);   // tính TRƯỚC khi bấm (bấm xong Tripo dựng lại thanh đầu trang, nút cũ không còn trong trang)
+      if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; keepCred(); if (lo.sel) { try { GM_setValue(AKEY, lo.sel); trailPush('đã nhớ nút ảnh đại diện: ' + lo.sel.slice(0, 50)); } catch (e) { /* bỏ qua */ } } }
+      return 'doing';
+    }
     if (lo.clickedAt) return 'doing';   // đã bấm đăng xuất, chờ trang đổi
     if (lo.hoverCand && !lo.hoverClicked && now - lo.hoverAt > 150) {   // rê chuột chưa mở menu: bấm
       lo.hoverClicked = true; lo.openAt = now; say('bấm ảnh đại diện (' + describe(lo.hoverCand) + ')…');
       click(lo.hoverCand); return 'doing';
     }
     if (now - lo.openAt > 700) {   // chưa thấy mục đăng xuất: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần: rê chuột, 0,9 giây sau bấm; hết lượt thì dừng)
-      lo.cands = avatarCandidates().filter(function (e) { return lo.tried.indexOf(e) < 0; });   // tính lại mỗi lượt (thanh đầu trang có thể hiện muộn), bỏ ảnh đã thử
+      lo.cands = avatarCandidates().filter(function (e) { return lo.tried.indexOf(e) < 0; });
+      var le = learnedAvatar(); if (le) { le = le.closest('button,a,[role=button]') || le; if (lo.tried.indexOf(le) < 0) { lo.cands = lo.cands.filter(function (e) { return e !== le; }); lo.cands.unshift(le); lo.learned = le; } }   // nút đã học từ lần trước: thử đầu tiên   // tính lại mỗi lượt (thanh đầu trang có thể hiện muộn), bỏ ảnh đã thử
       if (!lo.cands.length) {
         lo.diag = (lo.tried.length ? 'đã thử ' + lo.tried.length + ' ảnh [' + lo.tried.map(describe).join('; ') + ']' : 'không thấy ảnh đại diện nào') + '; chữ thấy: ' + menuDump();
         if (lo.tried.length || now - lo.t0 > 10000) return 'fail';
