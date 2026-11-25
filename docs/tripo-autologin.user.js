@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.25.0
+// @version      2.25.1
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.25.0';
+  var VER = '2.25.1';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -598,6 +598,8 @@
       return el && visible(el) ? el : null;
     } catch (e) { return null; }
   }
+  // Ghi chú cho người dùng/ người sửa script: nút ảnh đại diện đã bấm là nút nào (địa chỉ + mã HTML rút gọn), hiện ở ô báo khi đăng nhập xong.
+  function avatarNote() { try { var a = GM_getValue(AKEY, ''), h = GM_getValue('tripoAvatarHtml', ''); return a ? ' [Nút ảnh đại diện: ' + a + ' ; HTML: ' + h + ']' : ''; } catch (e) { return ''; } }
   var acAt = 0, acN = 0;
   function avatarCount() { var n = Date.now(); if (n - acAt > 250) { acN = avatarCandidates().length; acAt = n; } return acN; }   // đếm ảnh đại diện, nhớ 0,4 giây (quét nặng, không làm mỗi nhịp)
   function describe(el) { var r = el.getBoundingClientRect(), c = el.className && el.className.baseVal !== undefined ? el.className.baseVal : (el.className || ''); return el.tagName.toLowerCase() + (c ? '.' + String(c).trim().split(/\s+/)[0].slice(0, 18) : '') + ' ' + Math.round(r.width) + 'x' + Math.round(r.height); }
@@ -641,7 +643,7 @@
     }
     var item = findText(LOGOUT_RE);
     if (item) {
-      if (lo.hoverCand && lo.sel === undefined) lo.sel = learnSel(lo.hoverCand);   // tính TRƯỚC khi bấm (bấm xong Tripo dựng lại thanh đầu trang, nút cũ không còn trong trang)
+      if (lo.hoverCand && lo.sel === undefined) { lo.sel = learnSel(lo.hoverCand); try { GM_setValue('tripoAvatarHtml', lo.hoverCand.outerHTML.replace(/\s(src|srcset|style|d|href)="[^"]*"/g, '').replace(/\s+/g, ' ').slice(0, 300)); } catch (e) { /* bỏ qua */ } }   // tính TRƯỚC khi bấm (bấm xong Tripo dựng lại thanh đầu trang, nút cũ không còn trong trang)
       if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; keepCred(); if (lo.sel) { try { GM_setValue(AKEY, lo.sel); trailPush('đã nhớ nút ảnh đại diện: ' + lo.sel.slice(0, 50)); } catch (e) { /* bỏ qua */ } } }
       return 'doing';
     }
@@ -705,7 +707,7 @@
     if (resumed) {   // vừa tải lại trang sau khi bấm Continue: nếu đã vào thì xong; chưa vào thì thử đăng nhập lại (tối đa 3 lần Continue)
       if (looksLoggedIn() && !findInput('password', /password/i)) {   // phải thấy 'đã đăng nhập' liên tục 1,5 giây (trang chưa kịp hiện nút Log in cũng có thể trông như đã đăng nhập)
         if (!liAt) liAt = Date.now();
-        if (Date.now() - liAt > 600 || readCredit() !== null) { watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).', 6000); }
+        if (Date.now() - liAt > 600 || readCredit() !== null) { watchCredit(acctEmail); return finish('đã đăng nhập (sau khi tải lại trang).' + avatarNote(), avatarNote() ? 25000 : 6000); }
         return false;
       }
       liAt = 0;
@@ -746,7 +748,7 @@
       if (!pressContinue(pw) && now - fillAt > FILL_WAIT) return finish('đã điền xong nhưng chưa bấm được Continue (có thể đang chờ ô xác minh). Bạn tự bấm Continue nhé.', 30000);   // để form đã điền, bạn tự bấm
       return false;
     }
-    if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).', 6000); }
+    if (clicks3 > 0) { watchCredit(acctEmail); return finish('đã đăng nhập (form đã đóng).' + avatarNote(), avatarNote() ? 25000 : 6000); }
     // Tripo đang đăng nhập sẵn:
     //  - đúng tài khoản cần (lời chào "Hi, <tên trước @>!" hoặc tên đã nhớ trỏ về email này): đọc credit, không đăng nhập lại;
     //  - tài khoản khác (hoặc không xác nhận được): ĐĂNG XUẤT rồi đăng nhập lại bằng tài khoản của nhóm. Đăng nhập lại luôn đúng ý muốn nên
