@@ -913,8 +913,10 @@ var TPOWNER = 'minhdv@horusvn.com';
 function tpMemRender(list, admins){
   TP.members = list.slice();
   if(admins) TP.admins = admins.slice(); else if(!TP.admins) TP.admins = [];
-  var rows = [TPOWNER].concat(TP.members).map(function(e, i){
-    var own = i === 0, adm = own || TP.admins.indexOf(e) >= 0;
+  var isAdm = function(e){ return TP.admins.indexOf(e) >= 0; };   // admin xếp lên đầu (chủ trước, rồi admin phụ, rồi thành viên), giữ nguyên thứ tự cũ trong từng nhóm
+  var ordered = [TPOWNER].concat(TP.members.filter(isAdm), TP.members.filter(function(e){ return !isAdm(e); }));
+  var rows = ordered.map(function(e, i){
+    var own = i === 0, adm = own || isAdm(e);
     return '<div class="mem"><div class="av">' + esc(e.charAt(0)) + '</div><div class="em" title="' + esc(e) + '">' + esc(e) + '</div>'
       + '<span class="role' + (adm ? ' own' : '') + '">' + (adm ? 'Admin' : 'Thành viên') + '</span>'
       + (own ? '<span style="width:36px"></span>' : '<button class="dots" data-mem="' + esc(e) + '" data-adm="' + (adm ? 1 : 0) + '" aria-label="Tùy chọn">&#8942;</button>') + '</div>';
