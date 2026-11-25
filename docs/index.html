@@ -388,6 +388,7 @@
         <div style="margin:10px 0 0;text-align:center"><button type="button" id="tpToggleRestart" style="font-size:12px">Lỡ xóa tiện ích / chưa cài? Cài lại từ bước 1</button></div>
       </div>
     <div class="warnbox" id="tpmWarn" style="display:none;margin:10px 0;line-height:1.6"><b>Cài tiện ích tự đăng nhập (làm 1 lần)</b>
+      <div id="tpmDiag" style="margin:6px 0 0;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.07);font-size:13px"></div>
       <div style="margin:10px 0 2px"><a class="btn pri" data-setup="store" id="tpmStoreLink" href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;padding:11px 14px">1. Cài <span id="tpBrExt">Tampermonkey</span> cho <span id="tpBrName">Chrome</span></a>
         <div class="fine" style="margin:4px 0 0">Tab mới mở ra: bấm <b id="tpBrBtn">Thêm vào Chrome</b>. Đã có sẵn thì bỏ qua nút này.</div></div>
       <div style="margin:10px 0 2px"><a class="btn pri" data-setup="script" id="tpmScriptLink" href="https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;padding:11px 14px">2. Cài script đăng nhập</a>
@@ -717,8 +718,20 @@ function tpAutoOn(){
   for(var i = 0; i < 3; i++){ var x = a[i] || 0; if(x !== TP_MIN_VER[i]) return x > TP_MIN_VER[i]; }
   return true;
 }
+function tpDiag(){   // báo thẳng trang có thấy script không, để người dùng biết vì sao bấm Đăng nhập chưa mở Tripo
+  var v = document.documentElement.getAttribute('data-tripo-autologin'), d = $('tpmDiag'); if(!d) return;
+  d.textContent = v === null ? 'Chưa thấy script tự đăng nhập trên trang này (tiện ích chưa cài, đang tắt, hoặc chưa chạy trên trang này).'
+    : 'Thấy script bản ' + (v === '1' ? 'cũ' : v) + ', cần bản ' + TP_MIN_VER.join('.') + ' trở lên. Bấm nút 2 để cài bản mới.';
+}
+function tpNeedSetup(){   // bấm Đăng nhập mà chưa có script: hiện rõ lý do, cuộn tới hướng dẫn và chớp khung để không bị tưởng là nút hỏng
+  tpSetupStart(); tpDiag();
+  var w = $('tpmWarn'); try{ w.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){}
+  w.style.transition = 'box-shadow .2s'; w.style.boxShadow = '0 0 0 3px #ffd166';
+  setTimeout(function(){ w.style.boxShadow = ''; }, 900);
+  toast('Chưa mở được Tripo: trang chưa thấy script tự đăng nhập. Làm theo khung đỏ bên dưới, hoặc bấm "Vẫn mở Tripo".', false);
+}
 function tpSetupStart(){   // chỉ hiện hướng dẫn: KHÔNG tự mở tab cửa hàng nữa, chỉ làm theo khi người dùng tự bấm link ở bước 1/2 (trước đây mỗi lần bấm là bật thêm tab nên rất phiền)
-  $('tpmWarn').style.display = ''; tpMarkBrowser(); var old = tpSetupGet(); if(!old) tpSetupSave({ s: 'idle', n: 0 });
+  $('tpmWarn').style.display = ''; tpMarkBrowser(); tpDiag(); var old = tpSetupGet(); if(!old) tpSetupSave({ s: 'idle', n: 0 });
 }
 function tpMarkBrowser(){   // chỉ hiện nút cài đúng trình duyệt đang dùng (trang tự nhận ra, người dùng không phải chọn)
   var ua = navigator.userAgent, b = /Firefox\//.test(ua) ? 'firefox' : /Edg\//.test(ua) ? 'edge' : 'chrome';
@@ -863,7 +876,7 @@ $('tpmEmpty').addEventListener('click', function(){
 });
 $('tpmStudio').addEventListener('click', function(e){
   if(!TP_PASS) return;
-  if(!tpAutoOn()){ e.preventDefault(); tpSetupStart(); return; }   // luôn bắt đầu lại từ bước 1; chỉ không mở lại cửa hàng nếu vừa mở dưới 20 giây   // chưa cài script (trang không thấy dấu hiệu data-tripo-autologin): không mở Tripo, mở sẵn trang cài tiện ích và chỉ chỗ cài
+  if(!tpAutoOn()){ e.preventDefault(); tpNeedSetup(); return; }   // luôn bắt đầu lại từ bước 1; chỉ không mở lại cửa hàng nếu vừa mở dưới 20 giây   // chưa cài script (trang không thấy dấu hiệu data-tripo-autologin): không mở Tripo, mở sẵn trang cài tiện ích và chỉ chỗ cài
   var root = document.documentElement;
   root.removeAttribute('data-tripo-ack');
   document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: $('tpmEmail').textContent, p: TP_PASS }) }));
@@ -977,7 +990,7 @@ $('tripo').addEventListener('click', function(e){
       document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: j.email, p: j.password }) }));
       if(root.hasAttribute('data-tripo-ack')){ toast('Đang mở Tripo, đăng nhập ' + j.email, true); return; }
     }
-    tpShowCred(j.email, j.password, acc.note); if(!tpAutoOn()) tpSetupStart();   // chưa cài script hoặc script không nhận: mở hộp (có hướng dẫn cài / tự dán)
+    tpShowCred(j.email, j.password, acc.note); if(!tpAutoOn()) tpNeedSetup();   // chưa cài script hoặc script không nhận: mở hộp (có hướng dẫn cài / tự dán)
   }); });
   else if(act === 'delete'){ if(!confirm('Xóa tài khoản ' + acc.email + ' khỏi danh sách chung? Không hoàn tác được.')) return;
     tpGuard(function(){ return tpCall('delete', { id: id }).then(tpLoad); }); }
