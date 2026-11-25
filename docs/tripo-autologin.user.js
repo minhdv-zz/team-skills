@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.28.3
+// @version      2.28.4
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.28.3';
+  var VER = '2.28.4';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -55,14 +55,14 @@
     };
     try { GM_addValueChangeListener(CKEY, function (n, o, nv, remote) { if (remote && nv) pushCredit(); }); } catch (e) { /* tiện ích cũ: bỏ qua */ }
     pushCredit();
-    var lastTab = null, lastTabAt = 0;
+    var lastTab = null, lastTabAt = 0, lastEmail = '';
     document.addEventListener(EV, function (ev) {
       var c; try { c = JSON.parse(String(ev.detail)); } catch (e) { return; }
       if (!c || typeof c.e !== 'string' || typeof c.p !== 'string' || !c.e || !c.p) return;
       GM_setValue(KEY, JSON.stringify({ e: c.e, p: c.p, t: Date.now() }));
-      if (!(lastTab && !lastTab.closed && Date.now() - lastTabAt < 20000)) {   // bấm liên tiếp / sự kiện bắn đôi: tab vừa mở còn đó thì không mở thêm tab nữa
+      if (!(lastTab && !lastTab.closed && lastEmail === c.e && Date.now() - lastTabAt < 4000)) {   // chỉ chặn sự kiện bắn đôi (cùng tài khoản, dưới 4 giây). Bấm tài khoản KHÁC thì luôn mở tab mới (bản 2.28.2 chặn 20 giây nên bấm tài khoản khác ngay sau đó không thấy gì)
         try { lastTab = GM_openInTab(STUDIO, { active: true }); } catch (e) { lastTab = null; }
-        lastTabAt = Date.now();
+        lastTabAt = Date.now(); lastEmail = c.e;
       }
       setTimeout(function () { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } }, TTL);   // không để lại quá 3 phút
       document.documentElement.setAttribute('data-tripo-ack', String(Date.now())); // báo trang là đã nhận
@@ -72,7 +72,7 @@
 
   // ---------- Trên Tripo Studio ----------
   if (!/(^|\.)tripo3d\.ai$/.test(host)) return;
-  if (window.opener) return;   // tab do chính trang Tripo mở ra (bấm nhầm liên kết): sessionStorage được chép từ tab gốc nên script sẽ tưởng là tab đang đăng nhập và lại bấm lung tung, đẻ thêm tab. Tab do tiện ích mở (GM_openInTab) không có opener, không ảnh hưởng.
+  if (window.opener && /tripo3d\.ai/.test(document.referrer || '')) return;   // tab do chính trang Tripo mở ra (bấm nhầm liên kết): sessionStorage được chép từ tab gốc nên script sẽ tưởng là tab đang đăng nhập và lại bấm lung tung, đẻ thêm tab. Tab do tiện ích mở (GM_openInTab) không có opener, không ảnh hưởng.
    // studio.tripo3d.ai và các tên miền con khác (đăng xuất có thể chuyển sang trang chủ)
 
   // ---- Tự dò nguồn credit trong các request của chính trang Tripo ----
