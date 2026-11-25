@@ -269,6 +269,7 @@ export class Guard extends DurableObject {
       fails: this.sql.exec("SELECT scope, COUNT(*) n FROM f WHERE kind = 'f' GROUP BY scope ORDER BY n DESC").toArray() };
   }
   unlock() { this.sql.exec("DELETE FROM lk"); this.sql.exec("DELETE FROM f"); return this.status(); }
+  unlockOne(scope) { this.sql.exec("DELETE FROM lk WHERE scope = ?", scope); this.sql.exec("DELETE FROM f WHERE scope = ?", scope); return this.status(); }   // gỡ riêng một IP (hoặc khóa toàn hệ thống "g")
 }
 
 // /admin/status và /admin/unlock: chỉ chủ Worker, cần header X-Admin = secret TRIPO_ADMIN (chuỗi ngẫu nhiên dài). Không đếm lần sai vì mã đủ dài để không đoán được.
@@ -296,7 +297,7 @@ async function tripo(req, env, url) {
   const P = isAdmin ? (a) => pub(a, cm) : (a) => { const live = a.status !== "empty"; return ({ id: a.id, email: live ? a.email : "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: live && cm[a.id] ? cm[a.id].c : null, creditAt: live && cm[a.id] ? cm[a.id].t : 0 }); };
   const adminOnly = ["add", "delete", "members", "members_set", "locks", "unlock"];
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
-  if (op === "locks" || op === "unlock") { const g = env.GUARD.get(env.GUARD.idFromName("tripo")); return json(op === "unlock" ? await g.unlock() : await g.status()); }   // admin đã đăng nhập (qua đủ Gmail + mật khẩu admin, vẫn bị đếm lần sai) xem / gỡ khóa thẳng trong trang, không cần mã TRIPO_ADMIN
+  if (op === "locks" || op === "unlock") { const g = env.GUARD.get(env.GUARD.idFromName("tripo")); if (op === "unlock" && typeof b.scope === "string" && /^(g|ip:[0-9a-fA-F:.]{1,45})$/.test(b.scope)) return json(await g.unlockOne(b.scope)); return json(op === "unlock" ? await g.unlock() : await g.status()); }   // admin đã đăng nhập (qua đủ Gmail + mật khẩu admin, vẫn bị đếm lần sai) xem / gỡ khóa thẳng trong trang, không cần mã TRIPO_ADMIN
 
   if (op === "list") {
     const accsP = getAccounts(env);
