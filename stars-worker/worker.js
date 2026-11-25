@@ -207,18 +207,19 @@ async function auth(req, env) {
     if (!success) return { bad: json({ error: "Thao tác quá nhanh, đợi một phút rồi thử lại" }, 429) };
   }
   const guard = env.GUARD.get(env.GUARD.idFromName("tripo"));
-  const r = await guard.reserve(ip);
-  if (!r.ok) return { bad: r.locked ? json({ error: LOCKED_MSG }, 423) : json({ error: "Thao tác quá nhanh, đợi một lúc rồi thử lại" }, 429) };
   const email = normEmail(req.headers.get("X-Email") || "");
+  const r = await guard.reserve(ip, EMAIL_RE.test(email) ? email : "");   // email đang bị khóa riêng (sai quá nhiều) cũng bị chặn ở đây
+  if (!r.ok) return { bad: r.locked ? json({ error: LOCKED_MSG }, 423) : json({ error: "Thao tác quá nhanh, đợi một lúc rồi thử lại" }, 429) };
   const owner = email === ADMIN_EMAIL;
-  let good = owner, admin = owner;
-  if (!good && EMAIL_RE.test(email)) { try { const [m, ad] = await Promise.all([getMembers(env), getAdmins(env)]); good = m.includes(email); admin = good && ad.includes(email); } catch { good = false; admin = false; } }
+  let good = owner, admin = owner, member = owner;
+  if (!good && EMAIL_RE.test(email)) { try { const [m, ad] = await Promise.all([getMembers(env), getAdmins(env)]); good = m.includes(email); member = good; admin = good && ad.includes(email); } catch { good = false; admin = false; } }
   // Hai mật khẩu: thành viên dùng TRIPO_PASS, admin (chủ + admin phụ) dùng TRIPO_ADMIN_PASS. Chưa đặt TRIPO_ADMIN_PASS thì admin tạm dùng mật khẩu nhóm.
   const sent = req.headers.get("X-Pass") || "";
   const passOk = await same(sent, admin && env.TRIPO_ADMIN_PASS ? env.TRIPO_ADMIN_PASS : env.TRIPO_PASS);
   good = good && passOk;   // cần đủ cả Gmail trong danh sách lẫn đúng mật khẩu của vai trò đó
-  try { await guard.settle(r.ids, good); }
-  catch { try { await guard.settle(r.ids, good); } catch { /* vẫn lỗi thì lượt giữ chỗ tự thành lần sai sau PENDING_STALE_S, an toàn hơn */ } }
+  const emScope = member && !owner ? "em:" + email : "";   // khóa theo Gmail chỉ cho Gmail có trong danh sách (không để người lạ tạo vô hạn mục) và không áp cho chủ (tránh bị cố ý làm khóa chủ)
+  try { await guard.settle(r.ids, good, emScope); }
+  catch { try { await guard.settle(r.ids, good, emScope); } catch { /* vẫn lỗi thì lượt giữ chỗ tự thành lần sai sau PENDING_STALE_S, an toàn hơn */ } }
   return good ? { email, admin } : { bad: json({ error: "Gmail hoặc mật khẩu không đúng" }, 401) };
 }
 
@@ -233,9 +234,9 @@ export class Guard extends DurableObject {
   }
   win() { return (this.env.DEV_ORIGIN_OK === "1" && this.env.GUARD_TEST_WINDOW_S ? Number(this.env.GUARD_TEST_WINDOW_S) || FAIL_WINDOW_S : FAIL_WINDOW_S) * 1000; } // biến thử chỉ có tác dụng khi chạy trên máy (cùng cờ DEV_ORIGIN_OK)
   one(q, ...a) { return this.sql.exec(q, ...a).one(); }
-  reserve(ip) {
+  reserve(ip, email) {
     const now = Date.now(), w = this.win();
-    if (this.one("SELECT COUNT(*) c FROM lk WHERE scope IN ('g', ?)", "ip:" + ip).c) return { ok: false, locked: true };
+    if (this.one("SELECT COUNT(*) c FROM lk WHERE scope IN ('g', ?, ?)", "ip:" + ip, email ? "em:" + email : "-").c) return { ok: false, locked: true };
     this.sql.exec("UPDATE f SET kind = 'f' WHERE kind = 'p' AND t < ?", now - PENDING_STALE_S * 1000);
     this.sql.exec("DELETE FROM f WHERE t < ?", now - w);
     const a = this.one("SELECT COUNT(*) c FROM f WHERE scope = ?", "ip:" + ip).c, g = this.one("SELECT COUNT(*) c FROM f WHERE scope = 'g'").c;
@@ -244,9 +245,13 @@ export class Guard extends DurableObject {
     const i2 = this.one("INSERT INTO f (scope, t, kind) VALUES ('g', ?, 'p') RETURNING id", now).id;
     return { ok: true, ids: [i1, i2] };
   }
-  settle(ids, good) {
+  settle(ids, good, emScope) {
     if (!Array.isArray(ids)) return;
     const now = Date.now();
+    if (typeof emScope === "string" && emScope.startsWith("em:")) {   // khóa riêng theo Gmail: đúng mật khẩu thì xóa số lần sai, sai thì cộng và khóa khi đủ IP_MAX
+      if (good) this.sql.exec("DELETE FROM f WHERE scope = ?", emScope);
+      else { this.sql.exec("INSERT INTO f (scope, t, kind) VALUES (?, ?, 'f')", emScope, now); if (this.one("SELECT COUNT(*) c FROM f WHERE scope = ? AND kind = 'f'", emScope).c >= IP_MAX) this.sql.exec("INSERT OR IGNORE INTO lk (scope, t) VALUES (?, ?)", emScope, now); }
+    }
     for (const id of ids.slice(0, 2)) {
       if (!Number.isInteger(id)) continue;
       if (good) {
@@ -297,7 +302,7 @@ async function tripo(req, env, url) {
   const P = isAdmin ? (a) => pub(a, cm) : (a) => { const live = a.status !== "empty"; return ({ id: a.id, email: live ? a.email : "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: live && cm[a.id] ? cm[a.id].c : null, creditAt: live && cm[a.id] ? cm[a.id].t : 0 }); };
   const adminOnly = ["add", "delete", "members", "members_set", "locks", "unlock"];
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
-  if (op === "locks" || op === "unlock") { const g = env.GUARD.get(env.GUARD.idFromName("tripo")); if (op === "unlock" && typeof b.scope === "string" && /^(g|ip:[0-9a-fA-F:.]{1,45})$/.test(b.scope)) return json(await g.unlockOne(b.scope)); return json(op === "unlock" ? await g.unlock() : await g.status()); }   // admin đã đăng nhập (qua đủ Gmail + mật khẩu admin, vẫn bị đếm lần sai) xem / gỡ khóa thẳng trong trang, không cần mã TRIPO_ADMIN
+  if (op === "locks" || op === "unlock") { const g = env.GUARD.get(env.GUARD.idFromName("tripo")); if (op === "unlock" && typeof b.scope === "string" && /^(g|ip:[0-9a-fA-F:.]{1,45}|em:[^\s]{3,120})$/.test(b.scope)) return json(await g.unlockOne(b.scope)); return json(op === "unlock" ? await g.unlock() : await g.status()); }   // admin đã đăng nhập (qua đủ Gmail + mật khẩu admin, vẫn bị đếm lần sai) xem / gỡ khóa thẳng trong trang, không cần mã TRIPO_ADMIN
 
   if (op === "list") {
     const accsP = getAccounts(env);

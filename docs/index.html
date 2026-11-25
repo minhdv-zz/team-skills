@@ -633,7 +633,7 @@ function tpCall(op, body){
       function(){ throw new Error('Không kết nối được server'); });
 }
 function tpLockFmt(j){
-  var L = j.locks || [], F = j.fails || [], nm = function(sc){ return sc === 'g' ? 'toàn hệ thống' : sc.replace(/^ip:/, 'IP '); };
+  var L = j.locks || [], F = j.fails || [], nm = function(sc){ return sc === 'g' ? 'toàn hệ thống' : sc.indexOf('em:') === 0 ? 'Gmail ' + sc.slice(3) : sc.replace(/^ip:/, 'IP '); };
   return (L.length ? 'Đang khóa:\n' + L.map(function(x){ return ' \u2022 ' + nm(x.scope) + ' (từ ' + new Date(x.t).toLocaleString('vi-VN') + ')'; }).join('\n') : 'Không có khóa nào.')
     + (F.length ? '\nSố lần sai trong 24 giờ:\n' + F.map(function(x){ return ' \u2022 ' + nm(x.scope) + ': ' + x.n; }).join('\n') : '');
 }
@@ -646,7 +646,7 @@ function tpLocksLoad(){   // admin đã đăng nhập: hiện thẳng danh sách
     $('tpLocksState').style.color = L.length ? '#ffb4ac' : '';
     $('tpLocksOpen').style.display = L.length || F.length ? '' : 'none';
     var sc = {}; L.forEach(function(x){ sc[x.scope] = { lock: x.t, n: 0 }; }); F.forEach(function(x){ (sc[x.scope] = sc[x.scope] || { n: 0 }).n = x.n; });
-    var ks = Object.keys(sc), nm = function(k){ return k === 'g' ? 'Toàn hệ thống' : k.replace(/^ip:/, 'IP '); };
+    var ks = Object.keys(sc), nm = function(k){ return k === 'g' ? 'Toàn hệ thống' : k.indexOf('em:') === 0 ? 'Gmail ' + k.slice(3) : k.replace(/^ip:/, 'IP '); };
     $('tpLocksList').innerHTML = (ks.length ? ks.map(function(k){ var v = sc[k];
       return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)"><span style="flex:1"><b>' + esc(nm(k)) + '</b> &middot; ' + (v.lock ? '<span style="color:#ffb4ac">đang khóa từ ' + esc(new Date(v.lock).toLocaleString('vi-VN')) + '</span>' : 'chưa khóa') + ' &middot; sai ' + v.n + ' lần/24 giờ</span><button type="button" data-scope="' + esc(k) + '">Gỡ</button></div>'; }).join('') : 'Không có IP nào bị đếm lần sai.')
       + '<div class="fine" style="margin:6px 0 0">Chỉ thấy IP và số lần sai; máy chủ không ghi Gmail đã gõ.</div>';
@@ -656,7 +656,7 @@ $('tpLocksRefresh').addEventListener('click', tpLocksLoad);
 $('tpLocksList').addEventListener('click', function(e){
   var b = e.target.closest && e.target.closest('button[data-scope]'); if(!b) return;
   var k = b.getAttribute('data-scope');
-  if(!confirm('Gỡ khóa và xóa số lần sai của ' + (k === 'g' ? 'toàn hệ thống' : k.replace(/^ip:/, 'IP ')) + '?')) return;
+  if(!confirm('Gỡ khóa và xóa số lần sai của ' + (k === 'g' ? 'toàn hệ thống' : k.indexOf('em:') === 0 ? 'Gmail ' + k.slice(3) : k.replace(/^ip:/, 'IP ')) + '?')) return;
   tpCall('unlock', { scope: k }).then(function(){ toast('Đã gỡ ' + (k === 'g' ? 'toàn hệ thống' : k.replace(/^ip:/, 'IP ')), true); tpLocksLoad(); }).catch(function(e){ toast(e.message, false); });
 });
 $('tpLocksOpen').addEventListener('click', function(){
