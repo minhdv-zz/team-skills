@@ -695,7 +695,10 @@ function tpRender(){
   if(!tpIsAdmin()) return;
   var a = TP.accs;
   // Bảng theo tháng (mới nhất trên cùng), chỉ hiện tháng có số liệu + tháng này.
-  var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || m.emptied > 0; });
+  // "Tài khoản hết" = số tài khoản THỰC SỰ đang ở trạng thái "Đã hết token" mà chuyển sang hết trong tháng đó (không đếm số lần bấm nút, bấm nhầm rồi trả lại thì không tính).
+  var emptyBy = {};
+  a.forEach(function(x){ if(x.status === 'empty' && x.emptyAt){ var mk = new Date(x.emptyAt + 7 * 3600e3).toISOString().slice(0, 7); emptyBy[mk] = (emptyBy[mk] || 0) + 1; } });
+  var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || emptyBy[m.month] > 0; });
   var mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.used || 0; })));
   var nf = function(v){ return Number(v).toLocaleString('vi-VN'); };
   var th = function(t){ return '<div class="fine" style="margin:0">' + t + '</div>'; };
@@ -705,11 +708,12 @@ function tpRender(){
       var used = m.used == null ? '<span class="fine" style="margin:0">chưa có số liệu</span>'
         : '<b>' + nf(m.used) + '</b><div style="height:5px;margin-top:4px;width:' + Math.max(2, Math.round(m.used / mx * 100)) + '%;background:var(--acc);border-radius:3px"></div>';
       var left = m.left == null ? '<span class="fine" style="margin:0">chưa có số liệu</span>' : '<b style="color:var(--ok)">' + nf(m.left) + '</b>' + (i === 0 ? ' <span class="fine" style="margin:0">(hiện tại)</span>' : '');
-      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + used + '</div>', '<div>' + left + '</div>', '<div>' + m.emptied + '</div>']);
+      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + used + '</div>', '<div>' + left + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
     }).join('')
     + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
     + '\u2022 <b>Còn lại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản).<br>'
     + '\u2022 <b>Đã dùng</b> = mỗi lần credit của một tài khoản giảm thì cộng phần giảm vào tháng đó.<br>'
+    + '\u2022 <b>Tài khoản hết</b> = số tài khoản đang ở trạng thái \u201cĐã hết token\u201d và chuyển sang hết trong tháng đó (không đếm số lần bấm nút).<br>'
     + '\u2022 Số credit do script tự đăng nhập đọc được khi có người mở Tripo, nên tháng nào chưa có ai mở thì ghi \u201cchưa có số liệu\u201d. Mới bắt đầu ghi từ 25/11/2026, các tháng trước sẽ không có.'
     + '</div></details>';
   var order = { using: 0, ok: 1, empty: 2 };
