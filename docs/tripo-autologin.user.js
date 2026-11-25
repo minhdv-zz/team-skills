@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.5
+// @version      2.9.6
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.5');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.9.6');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -295,10 +295,17 @@
     });
     return out;
   }
+  // Có đang đăng nhập không? Không dựa riêng vào số credit (nếu không đọc được số thì trước đây script tưởng chưa đăng nhập và đứng chờ ở "đang tìm nút đăng nhập").
+  var LOGIN_RE = /^(sign\s*up\s*\/?\s*)?log\s*in$/;
+  function looksLoggedIn() {
+    if (readCredit() !== null) return true;
+    if (readGreetName() !== null && !findText(LOGIN_RE)) return true;   // lời chào chỉ tính khi không có nút đăng nhập (trang chưa đăng nhập cũng có thể có tiêu đề kiểu "Welcome!")
+    return Date.now() - started > 1200 && !findText(LOGIN_RE) && avatarCandidates().length > 0;   // không có nút đăng nhập mà có ảnh đại diện ở góc phải trên
+  }
   function logoutStep() {   // trả về 'doing' | 'gone' (đã đăng xuất) | 'fail'
     var now = Date.now();
     if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
-    if (readCredit() === null && !findText(LOGOUT_RE)) { return 'gone'; }
+    if (!looksLoggedIn() && !findText(LOGOUT_RE)) { return 'gone'; }
     if (now - lo.t0 > 20000) return 'fail';
     if (pageUrl() !== lo.startUrl) {   // lỡ bấm trúng thứ chuyển sang trang khác (ví dụ trang Creator Growth): quay lại đúng 1 lần mỗi 2 giây, không bấm gì thêm
       if (now - lo.backAt > 2000) { lo.backAt = now; lo.openAt = now; say('lỡ vào trang khác, quay lại…'); try { history.back(); } catch (e) { /* bỏ qua */ } }
@@ -311,7 +318,7 @@
     var item = findText(LOGOUT_RE);
     if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; } return 'doing'; }
     if (lo.clickedAt) return 'doing';   // đã bấm đăng xuất, chờ trang đổi
-    if (now - lo.openAt > 1800) {   // chưa thấy mục đăng xuất sau 1,8 giây: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần, hết lượt thì dừng, không bấm đi bấm lại)
+    if (now - lo.openAt > 1000) {   // chưa thấy mục đăng xuất sau 1,8 giây: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần, hết lượt thì dừng, không bấm đi bấm lại)
       if (!lo.cands || !lo.cands.length) { lo.cands = avatarCandidates(); lo.idx = 0; }
       if (lo.cands.length && lo.idx >= lo.cands.length) return 'fail';
       var c = lo.cands[lo.idx++];
@@ -379,7 +386,7 @@
       lastGreet = Date.now();
       var low = (document.body && document.body.innerText || '').toLowerCase(), gname = readGreetName(), mapped = gname && nameMap()[gname];
       if (low.indexOf('hi, ' + acctEmail.split('@')[0].toLowerCase() + '!') >= 0 || (gname && gname === acctEmail.split('@')[0].toLowerCase()) || mapped === acctEmail) { watchCredit(acctEmail); return finish('đã đăng nhập sẵn tài khoản này.', 6000); }
-      if (readCredit() !== null) {
+      if (looksLoggedIn()) {
         var prev = null; try { prev = JSON.parse(GM_getValue(LKEY, '') || 'null'); } catch (e) { prev = null; }
         if (prev && prev.e === acctEmail && Date.now() - prev.t < 3 * 60 * 1000) return finish('đã đăng xuất một lần rồi mà Tripo vẫn báo đăng nhập sẵn, nên script dừng để khỏi lặp. Bạn kiểm tra lại tài khoản trên Tripo nhé.', 20000);
         try { GM_setValue(LKEY, JSON.stringify({ e: acctEmail, t: Date.now() })); } catch (e) { /* bỏ qua */ }
