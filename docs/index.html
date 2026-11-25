@@ -222,7 +222,6 @@
         <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết token</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
       <div id="tpAdmin" style="display:none">
-      <div class="grid" id="tpTiles" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng</h3><div id="tpChart"></div></div>
       <div id="tpList"></div>
       <details class="help" style="margin-top:14px">
@@ -694,13 +693,7 @@ function tpRender(){
   $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
   ['tpHeroCta', 'tpHeroSteps', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });   // chủ chỉ cần dòng "Bạn: ..." + Đăng xuất
   if(!tpIsAdmin()) return;
-  var a = TP.accs, n = { ok: 0, using: 0, empty: 0 };
-  a.forEach(function(x){ n[x.status] = (n[x.status] || 0) + 1; });
-  var cur = TP.stats && TP.stats.months[0] || { emptied: 0, claimed: 0 };
-  function tile(v, l, c){ return '<div class="card" style="gap:0;padding:12px 14px"><div style="font-size:26px;font-weight:700;color:' + c + '">' + v + '</div><div class="fine" style="margin:0">' + l + '</div></div>'; }
-  $('tpTiles').innerHTML = tile(n.ok, 'Còn dùng được', 'var(--ok)') + tile(n.using, 'Đang dùng', '#e3b341') + tile(n.empty, 'Đã hết token', '#ffb4ac')
-    + tile(cur.left == null ? '\u2014' : Number(cur.left).toLocaleString('vi-VN'), 'Tổng credit còn lại', 'var(--ok)')
-    + tile(cur.emptied, 'Hết token trong tháng này', '#ffb4ac') + tile(cur.claimed, 'Lượt lấy tháng này', 'var(--text)');
+  var a = TP.accs;
   // Bảng theo tháng (mới nhất trên cùng), chỉ hiện tháng có số liệu + tháng này.
   var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || m.emptied > 0; });
   var mx = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.used || 0; })));
