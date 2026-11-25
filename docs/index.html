@@ -728,7 +728,7 @@ function tpRenderChart(){
     + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
     + '\u2022 <b>Credit đầu tháng</b> = tổng credit các tài khoản trong danh sách lúc đầu tháng (số còn lại cuối tháng trước; tài khoản mới thêm giữa tháng thì tính từ lần đọc đầu tiên).<br>'
     + '\u2022 <b>Đã dùng</b> = Credit đầu tháng \u2212 Còn lại hiện tại.<br>'
-    + '\u2022 <b>Còn lại hiện tại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản). Các tháng cũ ghi số cuối tháng đó.<br>'
+    + '\u2022 <b>Còn lại hiện tại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản; tài khoản \u201cĐã hết credit\u201d tính là 0). Các tháng cũ ghi số cuối tháng đó.<br>'
     + '\u2022 <b>Tài khoản hết</b> = số tài khoản đang ở trạng thái \u201cĐã hết credit\u201d và chuyển sang hết trong tháng đó (không đếm số lần bấm nút).<br>'
     + '\u2022 Số credit do script tự đăng nhập đọc được khi có người mở Tripo, nên tháng nào chưa có ai mở thì ghi \u201cchưa có số liệu\u201d. Mới bắt đầu ghi từ 25/11/2026, các tháng trước sẽ không có.'
     + '</div></details>';

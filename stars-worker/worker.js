@@ -126,7 +126,8 @@ async function logCredit(env, id, c, p, t) {
     await env.STARS.put(k, JSON.stringify(list.slice(-MAX_CREDIT_LOG)));
   } catch { /* bỏ qua */ }
 }
-async function stats(env, cm, ids) {
+async function stats(env, cm, ids, emptyIds) {   // emptyIds: tài khoản đang "Đã hết credit" (giao diện hiện 0, nên tính còn lại = 0)
+  emptyIds = emptyIds || new Set();
   const now = Date.now(), months = [];
   for (let i = 0; i < 6; i++) { const d = new Date(now + 7 * 3600e3); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - i); months.push(d.toISOString().slice(0, 7)); }
   const [lists, crLists] = await Promise.all([Promise.all(months.map((m) => env.STARS.get(evKey(m), "json"))), Promise.all(months.map((m) => env.STARS.get(crKey(m), "json")))]);
@@ -151,11 +152,13 @@ async function stats(env, cm, ids) {
     cred[months[0]].start = (cred[months[0]].start || 0) + miss.reduce((x, id) => x + bs[id], 0);
   }
   // Tháng này: số còn lại là số hiện có (lần đọc mới nhất của mọi tài khoản còn trong danh sách), không phải cuối tháng.
-  const cur = Object.entries(cm).filter(([id]) => ids.has(id)).map(([, v]) => v.c);
+  // Tài khoản "Đã hết credit" tính là 0: phần credit còn ghi lại của nó coi như đã dùng hết (cộng vào "đã dùng"), nên đầu tháng − đã dùng = còn lại vẫn khớp.
+  const curAll = Object.entries(cm).filter(([id]) => ids.has(id)), cur = curAll.filter(([id]) => !emptyIds.has(id)).map(([, v]) => v.c);
+  const writeOff = curAll.filter(([id]) => emptyIds.has(id)).reduce((x, [, v]) => x + v.c, 0);
   const out = months.map((m, i) => {
     const ev = lists[i] || [];
     return { month: m, emptied: new Set(ev.filter((e) => e.type === "empty").map((e) => e.email)).size, claimed: ev.filter((e) => e.type === "claim").length,
-      used: cred[m].used, start: cred[m].start, left: i === 0 ? (cur.length ? cur.reduce((x, y) => x + y, 0) : cred[m].left) : cred[m].left, readings: cred[m].n };
+      used: i === 0 && writeOff > 0 ? (cred[m].used || 0) + writeOff : cred[m].used, start: cred[m].start, left: i === 0 ? (curAll.length ? cur.reduce((x, y) => x + y, 0) : cred[m].left) : cred[m].left, readings: cred[m].n };
   });
   // Mỗi tài khoản đã có những ai lấy, gộp theo người: nhật ký cũ ghi tên ngắn ("tet"), bản mới ghi email ("tet@horusvn.com") nên lấy phần trước @ và hạ chữ thường làm khóa.
   // claimBy[email tài khoản] = [{ n: tên, c: số lần lấy, t: lần lấy gần nhất }], người lấy gần đây nhất đứng đầu. Tính trên cả 6 tháng nhật ký.
@@ -296,7 +299,7 @@ async function tripo(req, env, url) {
 
   if (op === "list") {
     const accsP = getAccounts(env);
-    const [st, accs, members, admins] = await Promise.all([accsP.then((a) => stats(env, cm, new Set(a.map((x) => x.id)))), accsP, isAdmin ? getMembers(env) : null, isAdmin ? getAdmins(env) : null]);   // đọc song song, không nối đuôi nhau
+    const [st, accs, members, admins] = await Promise.all([accsP.then((a) => stats(env, cm, new Set(a.map((x) => x.id)), new Set(a.filter((x) => x.status === "empty").map((x) => x.id)))), accsP, isAdmin ? getMembers(env) : null, isAdmin ? getAdmins(env) : null]);   // đọc song song, không nối đuôi nhau
     // thành viên thường thấy bảng credit theo tháng (theo yêu cầu chủ) nhưng không thấy nhật ký gần đây và danh sách người đã lấy từng tài khoản
     return json({ admin: isAdmin, accounts: accs.map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: members || undefined, admins: admins || undefined });
   }
@@ -329,7 +332,7 @@ async function tripo(req, env, url) {
       accs.push(a); added.push(a);
     }
     if (added.length) { await putAccounts(env, accs); await logEvs(env, added.map((a) => ["add", a]), who); }
-    return json({ added: added.length, skipped, accounts: accs.map(P), stats: await stats(env, cm, new Set(accs.map((a) => a.id))) });
+    return json({ added: added.length, skipped, accounts: accs.map(P), stats: await stats(env, cm, new Set(accs.map((a) => a.id)), new Set(accs.filter((a) => a.status === "empty").map((a) => a.id))) });
   }
 
   if (op === "claim") {
