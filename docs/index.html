@@ -705,13 +705,13 @@ function tpRender(){
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
   var mxU = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.start != null && m.left != null ? Math.max(0, m.start - m.left) : 0; })));
-  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Token đầu tháng') + th('Còn lại hiện tại') + th('Tài khoản hết') + '</div>'
+  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Token đầu tháng') + th('Còn lại hiện tại') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Tài khoản hết') + '</div>'
     + ms.map(function(m, i){
       var has = m.start != null && m.left != null, u = has ? Math.max(0, m.start - m.left) : 0;
       var used = !has ? none : '<b>' + nf(u) + '</b><div style="height:5px;margin-top:4px;width:' + Math.max(2, Math.round(u / mxU * 100)) + '%;background:var(--acc);border-radius:3px"></div>';
       var start = m.start == null ? none : '<b>' + nf(m.start) + '</b>';
       var left = m.left == null ? none : '<b style="color:var(--ok)">' + nf(m.left) + '</b>' + (i === 0 ? '' : ' <span class="fine" style="margin:0">(cuối tháng)</span>');
-      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + used + '</div>', '<div>' + start + '</div>', '<div>' + left + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
+      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + start + '</div>', '<div>' + left + '</div>', '<div>' + used + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
     }).join('')
     + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
     + '\u2022 <b>Token đầu tháng</b> = tổng credit các tài khoản trong danh sách lúc đầu tháng (số còn lại cuối tháng trước; tài khoản mới thêm giữa tháng thì tính từ lần đọc đầu tiên).<br>'
