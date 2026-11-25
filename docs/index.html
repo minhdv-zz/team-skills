@@ -376,7 +376,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tpmT">
     <h2 id="tpmT">Tài khoản Tripo</h2>
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
-    <div id="tpmCred"><div class="fine" style="margin:0">Email</div><pre id="tpmEmail"></pre>
+    <div id="tpmCred"><div class="fine" id="tpmEmailLbl" style="margin:0">Email</div><pre id="tpmEmail"></pre>
     <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre></div>
     <div id="tpmAll" style="display:none;margin:0 0 10px"></div>
     <div class="warnbox" id="tpmToggle" style="display:none;margin:10px 0;line-height:1.8">
@@ -762,6 +762,8 @@ function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmWarn').style.d
 var TP_CLAIM_ID = '';
 function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
   var box = $('tpmAll'), a = (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; });
+  var hide = a.length ? 'none' : '';   // có danh sách thì ô Email đơn ở trên thừa (email vẫn nằm trong #tpmEmail để đăng nhập)
+  $('tpmEmailLbl').style.display = hide; $('tpmEmail').style.display = hide;
   if(!a.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
   var cl = String(cur || '').toLowerCase();
   a.sort(function(x, y){ return x.email.localeCompare(y.email); });
