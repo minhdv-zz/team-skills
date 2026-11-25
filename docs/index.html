@@ -775,7 +775,7 @@ function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email 
         : '<span style="font-size:24px;font-weight:800;line-height:1;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:3px 0 0;font-size:12px">credit</div>';
       return '<label style="display:flex;align-items:center;gap:16px;padding:16px 18px;cursor:pointer;border-radius:12px;border:2px solid ' + (me ? 'var(--acc,#7c5cff)' : 'var(--line)') + ';background:' + (me ? 'rgba(124,92,255,.16)' : 'rgba(255,255,255,.03)') + '">'
         + '<div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600;word-break:break-all">' + esc(x.email) + '</div>'
-        + (me ? '<span class="chip ok" style="margin-top:6px;display:inline-block">Đang dùng</span>' : '<div class="fine" style="margin:4px 0 0;font-size:13px">Bấm để chọn</div>') + '</div>'
+        + '</div>'
         + '<div style="text-align:right;min-width:90px">' + cr + '</div>'
         + '<input type="radio" name="tpPick" value="' + esc(x.id) + '"' + (me ? ' checked' : '') + ' style="width:26px;height:26px;flex:none;accent-color:#7c5cff;cursor:pointer"></label>';
     }).join('') + '</div>';
