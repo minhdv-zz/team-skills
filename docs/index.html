@@ -711,7 +711,7 @@ function tpRenderChart(){
   var cc = $('tpChartCard'); cc.style.margin = adm ? '0 0 14px' : '0'; cc.style.background = adm ? '' : 'rgba(0,0,0,.22)';
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
-  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Còn lại hiện tại') + th('Tài khoản hết') + '</div>'
+  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Đã dùng') + th('Còn lại hiện tại') + th('Tài khoản hết') + '</div>'
     + ms.map(function(m, i){
       var has = m.start != null && m.left != null, u = has ? Math.max(0, m.start - m.left) : 0;
       var used = !has ? none : '<b>' + nf(u) + '</b>';
