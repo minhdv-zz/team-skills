@@ -137,6 +137,16 @@ async function stats(env, cm, ids) {
     const vals = Object.values(last), bv = Object.values(base);
     cred[months[i]] = { used: n || vals.length ? used : null, left: vals.length ? vals.reduce((x, y) => x + y, 0) : null, start: hadBefore || bv.length ? before + bv.reduce((x, y) => x + y, 0) : null, n };
   }
+  // Tài khoản chưa có lần đọc nào được ghi (credit chỉ có số hiện tại): lấy số hiện tại làm mốc ĐẦU THÁNG và cất lại (khóa KV riêng theo tháng) để các lần sau không trôi theo số mới.
+  const miss = [...ids].filter((id) => cm[id] && !(id in last));
+  if (miss.length) {
+    const bk = "tripo:base:" + months[0].replace("-", "");
+    let bs = {}, dirty = false;
+    try { bs = (await env.STARS.get(bk, "json")) || {}; } catch { /* dùng số hiện tại */ }
+    for (const id of miss) if (!Number.isInteger(bs[id])) { bs[id] = cm[id].c; dirty = true; }
+    if (dirty) { try { await env.STARS.put(bk, JSON.stringify(bs), { expirationTtl: 400 * 86400 }); } catch { /* bỏ qua */ } }
+    cred[months[0]].start = (cred[months[0]].start || 0) + miss.reduce((x, id) => x + bs[id], 0);
+  }
   // Tháng này: số còn lại là số hiện có (lần đọc mới nhất của mọi tài khoản còn trong danh sách), không phải cuối tháng.
   const cur = Object.entries(cm).filter(([id]) => ids.has(id)).map(([, v]) => v.c);
   const out = months.map((m, i) => {
