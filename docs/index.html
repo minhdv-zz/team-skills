@@ -376,9 +376,9 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tpmT">
     <h2 id="tpmT">Tài khoản Tripo</h2>
     <div class="fine" id="tpmNote" style="margin:4px 0 10px"></div>
-    <div id="tpmCred"><div class="fine" id="tpmEmailLbl" style="margin:0">Email</div><pre id="tpmEmail"></pre>
-    <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span><button type="button" id="tpmEye" style="flex:none;padding:2px 10px;font-size:12px">Hiện</button></pre></div>
     <div id="tpmAll" style="display:none;margin:0 0 10px"></div>
+    <div id="tpmCred"><div class="fine" id="tpmEmailLbl" style="margin:0">Email</div><pre id="tpmEmail"></pre>
+    <div class="fine" id="tpmPassLbl" style="margin:0">Mật khẩu</div><pre id="tpmPass" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span id="tpmPassTxt"></span></pre></div>
     <div class="warnbox" id="tpmToggle" style="display:none;margin:10px 0;line-height:1.8">
         <b>Bật công tắc cho Tampermonkey (làm 1 lần)</b><br>
         <div style="margin:10px 0 2px"><button type="button" class="tpCopyExt pri" style="display:block;width:100%;padding:11px 14px">1. Copy đường dẫn</button>
@@ -788,7 +788,7 @@ function tpShowSetup(){   // chưa cài (hoặc script quá cũ): chỉ hiện h
 function tpSetStudio(){
   $('tpmStudio').href = TP_STUDIO;
 }
-function tpRenderPass(){ if(!tpIsAdmin()) TP_SHOW = false; var pv = tpIsAdmin() ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = tpIsAdmin() ? 'flex' : 'none'; $('tpmEye').style.display = tpIsAdmin() ? '' : 'none'; $('tpmPassTxt').textContent = TP_SHOW ? TP_PASS : '\u2022'.repeat(Math.min(TP_PASS.length, 16)); $('tpmEye').textContent = TP_SHOW ? 'Ẩn' : 'Hiện'; }
+function tpRenderPass(){ var ad = tpIsAdmin(), pv = ad ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = ad ? 'flex' : 'none'; $('tpmPassTxt').textContent = ad ? TP_PASS : ''; }   // admin: mật khẩu luôn hiện, không ẩn
 function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = ''; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
 var TP_NOTE = 'Cả nhóm dùng chung tài khoản đang chọn. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.';   // một câu cố định: chọn qua lại không làm chữ đổi
@@ -1034,7 +1034,6 @@ $('tpToggleRestart').addEventListener('click', function(){   // lỡ xóa tiện
 });
 $('tpmShowToggle').addEventListener('click', function(){ $('tpmToggle').style.display = ''; this.style.display = 'none'; try{ $('tpmToggle').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){} });
 $('tpmReload').addEventListener('click', function(){ tpSetupClear(); location.reload(); });
-$('tpmEye').addEventListener('click', function(){ TP_SHOW = !TP_SHOW; tpRenderPass(); });
 $('tpAddBtn').addEventListener('click', function(){
   var items = $('tpAdd').value.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){
     var p = l.split(/[|\t]/).length > 1 ? l.split(/\s*[|\t]\s*/) : l.split(/\s+/);
