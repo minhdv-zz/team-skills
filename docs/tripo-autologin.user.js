@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.25.1
+// @version      2.26.0
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.25.1';
+  var VER = '2.26.0';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -528,6 +528,20 @@
     return findText(/^(confirm|xác nhận|确认|确定)$/);
   }
   function pageUrl() { return location.href.split('#')[0]; }
+  // NÚT ẢNH ĐẠI DIỆN CHÍNH XÁC (soi F12 trên Tripo thật): <button id="reka-popover-trigger-v-0-2" type="button" aria-haspopup="dialog" aria-expanded="false" data-state="closed">
+  //   <span class="relative flex ... size-8.5 ..."><img class="aspect-square size-full rounded-full" role="img" src="https://staticassets.tripo3d.ai/community/avatar/4.webp"></span></button>
+  // id có số đổi theo lần tải nên không dựa vào id: lấy ảnh avatar của Tripo rồi đi lên nút có aria-haspopup (nút mở menu tài khoản). Ảnh avatar của người khác trong thư viện
+  // nằm trong thẻ khác (không phải nút aria-haspopup) nên không lẫn.
+  function exactAvatar() {
+    var imgs = document.querySelectorAll('img[src*="/community/avatar/"]');
+    for (var i = 0; i < imgs.length; i++) {
+      var b = imgs[i].closest('button[aria-haspopup]');
+      if (b && visible(b)) return b;
+    }
+    var bs = document.querySelectorAll('button[aria-haspopup]');   // ảnh avatar nguồn khác (tự tải lên): nút aria-haspopup chứa ảnh tròn
+    for (var j = 0; j < bs.length; j++) if (visible(bs[j]) && bs[j].querySelector('img.rounded-full,img[role=img]')) return bs[j];
+    return null;
+  }
   function avatarCandidates() {
     var out = [], els = document.querySelectorAll('img,div,span,button,a,svg'), upEl = findUpgrade();
     for (var i = 0; i < els.length; i++) {
@@ -557,6 +571,7 @@
       if (a._score % 3 < 2 && a._txt !== b._txt) return a._txt ? 1 : -1;   // hình tròn trơn (có thể là chữ cái đầu): không xét chữ, cái ngoài cùng bên phải trước
       var d = b.getBoundingClientRect().left - a.getBoundingClientRect().left; return a._score % 3 < 2 && a._txt ? -d : d;
     });
+    var ex = exactAvatar(); if (ex) { out = out.filter(function (e) { return e !== ex && !ex.contains(e) && !e.contains(ex); }); out.unshift(ex); }   // nút chính xác luôn đứng đầu
     return out.slice(0, 8);
   }
   // ---- Học nút ảnh đại diện (như soi F12) ----
@@ -622,6 +637,7 @@
   // Có đang đăng nhập không? Không dựa riêng vào số credit (nếu không đọc được số thì trước đây script tưởng chưa đăng nhập và đứng chờ ở "đang tìm nút đăng nhập").
   var LOGIN_RE = /^((sign\s*up|log\s*in)\s*\/?\s*)?(log|sign)\s*in$|^get\s*started$/;
   function looksLoggedIn() {
+    if (exactAvatar()) return true;   // nút ảnh đại diện của Tripo chỉ có khi đã đăng nhập
     if (readCredit() !== null) return true;
     if (readGreetName() !== null && !findText(LOGIN_RE)) return true;   // lời chào chỉ tính khi không có nút đăng nhập (trang chưa đăng nhập cũng có thể có tiêu đề kiểu "Welcome!")
     return Date.now() - started > 1200 && !findText(LOGIN_RE) && avatarCount() > 0;   // không có nút đăng nhập mà có ảnh đại diện ở góc phải trên
@@ -695,7 +711,7 @@
   function pageReady() {
     var now = Date.now();
     if (document.readyState === 'loading') { hdrKind = 0; hdrAt = 0; return now - started > 30000; }
-    var kind = (findInput('password', /password/i) || findUpgrade() || readCredit() !== null) ? 2 : (findText(LOGIN_RE) || avatarCount() > 0) ? 1 : 0;
+    var kind = (findInput('password', /password/i) || exactAvatar() || findUpgrade() || readCredit() !== null) ? 2 : (findText(LOGIN_RE) || avatarCount() > 0) ? 1 : 0;
     if (kind !== hdrKind) { hdrKind = kind; hdrAt = kind ? now : 0; }
     if (!kind) return now - started > 6000;   // không nhận ra dấu hiệu nào (cửa sổ hẹp làm khối credit/ảnh đổi dạng): không đứng chờ mãi, sau 6 giây cứ chạy
     return now - hdrAt > (kind === 2 || document.readyState === 'complete' ? 300 : 1500) || now - started > 30000;
