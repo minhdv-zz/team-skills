@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.6
+// @version      2.9.7
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.6');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.9.7');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -387,9 +387,12 @@
       var low = (document.body && document.body.innerText || '').toLowerCase(), gname = readGreetName(), mapped = gname && nameMap()[gname];
       if (low.indexOf('hi, ' + acctEmail.split('@')[0].toLowerCase() + '!') >= 0 || (gname && gname === acctEmail.split('@')[0].toLowerCase()) || mapped === acctEmail) { watchCredit(acctEmail); return finish('đã đăng nhập sẵn tài khoản này.', 6000); }
       if (looksLoggedIn()) {
-        var prev = null; try { prev = JSON.parse(GM_getValue(LKEY, '') || 'null'); } catch (e) { prev = null; }
-        if (prev && prev.e === acctEmail && Date.now() - prev.t < 3 * 60 * 1000) return finish('đã đăng xuất một lần rồi mà Tripo vẫn báo đăng nhập sẵn, nên script dừng để khỏi lặp. Bạn kiểm tra lại tài khoản trên Tripo nhé.', 20000);
-        try { GM_setValue(LKEY, JSON.stringify({ e: acctEmail, t: Date.now() })); } catch (e) { /* bỏ qua */ }
+        // Chống lặp vô hạn: tính theo TỪNG TAB Tripo (sessionStorage), không dùng bộ nhớ chung nữa. Bản cũ nhớ chung 3 phút nên lần bấm Đăng nhập
+        // thứ hai (dù lần đầu chưa đăng xuất được) bị chặn oan. Mỗi tab mới được thử đăng xuất tối đa 2 lần (reload sau đăng xuất vẫn báo đăng nhập sẵn thì dừng).
+        var prev = null; try { prev = JSON.parse(sessionStorage.getItem(LKEY) || 'null'); } catch (e) { prev = null; }
+        var cnt = prev && prev.e === acctEmail && Date.now() - prev.t < 3 * 60 * 1000 ? prev.n : 0;
+        if (cnt >= 2) return finish('đã thử đăng xuất 2 lần mà Tripo vẫn báo đăng nhập sẵn, nên script dừng để khỏi lặp. Bạn đăng xuất Tripo bằng tay (ảnh đại diện góc phải trên → Logout) rồi bấm Đăng nhập lại nhé.', 30000);
+        try { sessionStorage.setItem(LKEY, JSON.stringify({ e: acctEmail, t: Date.now(), n: cnt + 1 })); } catch (e) { /* bỏ qua */ }
         say('đang đăng nhập tài khoản khác' + (gname ? ' (' + gname + ')' : '') + ', đăng xuất để vào ' + acctEmail + '…');
         logoutStep();
         return false;
