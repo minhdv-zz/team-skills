@@ -1022,11 +1022,13 @@ function tpOpenScript(){   // mở tab cài script; trả false nếu trình duy
 }
 $('tpmWarn').addEventListener('click', function(e){
   var a = e.target.closest && e.target.closest('a[data-setup]'); if(!a) return;
-  var st = tpSetupGet() || { n: 0 }; st.s = a.getAttribute('data-setup'); tpSetupSave(st);
+  var st = tpSetupGet() || { n: 0 }; st.s = a.getAttribute('data-setup'); if(st.s === 'script') st.o = Date.now();   // bấm thẳng nút 2 (đã có tiện ích sẵn) cũng phải tính là đã mở trang cài script, không thì quay lại tab trang không tự tải lại
+  tpSetupSave(st);
 });
 setTimeout(function(){ if(tpSetupGet() && tpAutoOn()){ tpSetupClear(); toast('Đã nhận script tự đăng nhập. Bấm Lấy tài khoản rồi Đăng nhập Tripo là xong.', true); } }, 1200);   // sau khi trang tự tải lại
 var tpGo = null;
 function tpGoOff(){ if(tpGo){ document.removeEventListener('pointerdown', tpGo, true); document.removeEventListener('keydown', tpGo, true); tpGo = null; } }
+var TP_RELOADING = false;
 function tpSetupStep(){
   if(document.visibilityState !== 'visible') return;
   var st = tpSetupGet(); if(!st){ tpGoOff(); return; }
@@ -1044,7 +1046,8 @@ function tpSetupStep(){
     }
   } else if(st.s === 'script' && st.o){   // chỉ tải lại khi trang cài script đã được mở thật
     if(st.n >= 1){ tpSetupClear(); tpToggleSave({ n: 0, o: Date.now() }); tpToggleShow(true); return; }   // đã cài + tải lại mà vẫn không thấy script: gần như chắc công tắc Allow User Scripts đang tắt   // tự tải lại đúng 1 lần, không lặp
-    if(Date.now() - st.o < 8000) return;   // vừa mở trang cài script
+    var wait = 8000 - (Date.now() - st.o); if(wait > 0){ setTimeout(tpSetupStep, wait + 150); return; }   // vừa mở trang cài script: quay lại sớm thì đợi đủ rồi tự tải lại, không bỏ qua
+    if(TP_RELOADING) return; TP_RELOADING = true;   // visibilitychange + focus + hẹn giờ có thể gọi liền nhau: chỉ tải lại 1 lần
     st.n++; tpSetupSave(st); location.reload();
   }
 }
@@ -1061,9 +1064,11 @@ function tpToggleStep(){   // quay lại tab sau khi bật công tắc: tự t�
   tpToggleShow(false);
   if(tpSetupGet()) return;   // đang trong luồng cài script: tpSetupStep lo việc tải lại
   if(t.n >= 1 || Date.now() - t.o < 8000) return;   // tự tải lại tối đa 1 lần
+  if(TP_RELOADING) return; TP_RELOADING = true;
   t.n++; t.o = Date.now(); tpToggleSave(t); location.reload();
 }
 document.addEventListener('visibilitychange', function(){ tpSetupStep(); tpToggleStep(); });
+window.addEventListener('focus', function(){ tpSetupStep(); tpToggleStep(); });   // cài script ở cửa sổ khác (không đổi tab) thì quay lại cửa sổ này cũng tự tải lại
 (function(){   // sau khi trang tải xong (kể cả sau khi tự tải lại): có script thì báo, tải lại 1 lần rồi vẫn chưa có thì hiện hướng dẫn bật công tắc
   var tries = 0, iv = setInterval(function(){
     tries++;
