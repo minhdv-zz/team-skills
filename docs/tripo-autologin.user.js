@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.9
+// @version      2.9.10
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.9');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.9.10');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -68,7 +68,7 @@
 
   // ---- Tự tắt hộp quảng cáo "Upgrade your plan" (gói trả phí, Black Friday...) ----
   // Tìm tiêu đề "Upgrade your plan", bấm nút X ở góc phải trên của hộp. Không thấy nút X thì gửi phím Esc, vẫn không được thì ẩn hộp đi.
-  (function () {
+  var planGuard = (function () {
     var tries = 0, lastAt = 0, seenAt = 0, TITLE_RE = /^upgrade your plan$/i;
     function vis(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
     function fire(el) {
@@ -77,14 +77,14 @@
       });
     }
     function findTitle() {
-      var els = document.querySelectorAll('h1,h2,h3,h4,div,span,p');
+      var els = document.querySelectorAll('h1,h2,h3,h4,div,span,p'), hit = null;
       for (var i = 0; i < els.length; i++) {
         var el = els[i];
         if (el.children.length > 1) continue;
         if (!TITLE_RE.test((el.textContent || '').trim())) continue;
-        if (vis(el)) return el;
+        if (vis(el) && (!hit || hit.contains(el))) hit = el;   // lấy phần tử sâu nhất (chính tiêu đề, không phải khối bọc ngoài)
       }
-      return null;
+      return hit;
     }
     function findClose(title) {
       for (var a = title.parentElement, k = 0; a && k < 10; a = a.parentElement, k++) {
@@ -104,21 +104,24 @@
     function hideModal(title) {
       for (var a = title.parentElement; a && a !== document.body; a = a.parentElement) {
         var st = getComputedStyle(a), r = a.getBoundingClientRect();
-        if ((st.position === 'fixed' || st.position === 'absolute') && r.width > window.innerWidth * 0.5 && r.height > window.innerHeight * 0.5) { a.style.display = 'none'; try { document.body.style.overflow = ''; } catch (e) { /* bỏ qua */ } return true; }
+        if ((st.position === 'fixed' || st.position === 'absolute') && r.width > window.innerWidth * 0.5 && r.height > 200) { a.style.display = 'none'; try { document.body.style.overflow = ''; } catch (e) { /* bỏ qua */ } return true; }
       }
       return false;
     }
     function tick() {
       if (!document.body || document.body.textContent.indexOf('Upgrade your plan') < 0) { tries = 0; return; }   // kiểm tra rẻ trước, không đụng layout
-      var now = Date.now(); if (now - lastAt < 700) return; lastAt = now;
+      var now = Date.now(); if (now - lastAt < 400) return; lastAt = now;
       var t = findTitle(); if (!t) { tries = 0; return; }
       tries++;
       if (tries <= 2) { var x = findClose(t); if (x) { fire(x); return; } }
       if (tries <= 4) { ['keydown', 'keyup'].forEach(function (n) { try { document.dispatchEvent(new KeyboardEvent(n, { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true })); } catch (e) { /* bỏ qua */ } }); return; }
       if (hideModal(t)) tries = 0;
     }
-    setInterval(tick, 500);
+    setInterval(tick, 300);
+    return { tick: tick, open: function () { return !!document.body && document.body.textContent.indexOf('Upgrade your plan') >= 0 && !!findTitle(); } };
   })();
+  // Trước khi đăng nhập / đăng xuất: nếu hộp gói còn mở thì đóng nó trước và chờ, không bấm gì khác (hộp che mất menu tài khoản).
+  function blockerOpen() { if (planGuard.open()) { planGuard.tick(); return true; } return false; }
   function readCred() {
     var c = null;
     try { c = JSON.parse(GM_getValue(KEY, '') || 'null'); } catch (e) { c = null; }
@@ -331,18 +334,21 @@
   var lo = { on: false, t0: 0, openAt: 0, idx: 0, clickedAt: 0, cands: null, startUrl: '', backAt: 0 };
   function pageUrl() { return location.href.split('#')[0]; }
   function avatarCandidates() {
-    var out = [], els = document.querySelectorAll('img,div,span,button,a');
+    var out = [], els = document.querySelectorAll('img,div,span,button,a'), upEl = findUpgrade();
     for (var i = 0; i < els.length; i++) {
       var el = els[i], r = el.getBoundingClientRect();
       if (!(r.width >= 20 && r.width <= 64 && r.height >= 20 && r.height <= 64 && r.top >= 0 && r.top < 100 && r.left > window.innerWidth * 0.55)) continue;
       var isImg = el.tagName === 'IMG', bg = !isImg && /url\(/.test(getComputedStyle(el).backgroundImage || '');
       if (!isImg && !bg) continue;
+      if (upEl) { var ur = upEl.getBoundingClientRect(); if (Math.abs(r.top - ur.top) < 50 && r.left > ur.left - 150 && r.left < ur.right + 4) continue; }   // biểu tượng ngay trong khối credit / Upgrade: bấm vào sẽ mở hộp chọn gói, che mất menu tài khoản
       var wrap = el.closest('button,a,[role=button]') || el.parentElement;
       var hasText = !!((el.textContent || '').trim() || (wrap && (wrap.textContent || '').trim()));   // ảnh đi kèm chữ (huy hiệu "Lv.1") để xếp sau, thử cuối cùng
       var t = el.closest('button,a,[role=button]') || el;
       var ln = el.closest('a[href]'), nav = !!ln && !/^(#.*)?$/.test(ln.getAttribute('href') || '#');   // ảnh nằm trong liên kết sang trang khác (huy hiệu Lv...): bấm vào sẽ chuyển trang, xếp cuối
       if (out.indexOf(t) < 0) { t._txt = hasText || nav; out.push(t); }
     }
+    var rounds = out.filter(function (e) { var br = getComputedStyle(e.querySelector('img') || e).borderRadius || '', w = e.getBoundingClientRect().width; return /%/.test(br) ? parseFloat(br) >= 40 : parseFloat(br) >= w / 2 - 2; });
+    if (rounds.length) out = rounds;   // có ảnh tròn (ảnh đại diện) thì chỉ thử các ảnh tròn, khỏi bấm nhầm biểu tượng khác
     out.sort(function (a, b) {   // ảnh trơn trước (phải sang trái); ảnh có chữ đi kèm thì sau (trái sang phải, ảnh đại diện nằm trước huy hiệu)
       if (a._txt !== b._txt) return a._txt ? 1 : -1;
       var d = b.getBoundingClientRect().left - a.getBoundingClientRect().left; return a._txt ? -d : d;
@@ -358,6 +364,7 @@
   }
   function logoutStep() {   // trả về 'doing' | 'gone' (đã đăng xuất) | 'fail'
     var now = Date.now();
+    if (blockerOpen()) { lo.openAt = now; if (lo.on) lo.t0 += 0; return 'doing'; }   // hộp gói đang che: đóng xong mới tiếp tục (không tính vào 20 giây của đăng xuất)
     if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
     if (!looksLoggedIn() && !findText(LOGOUT_RE)) { return 'gone'; }
     if (now - lo.t0 > 20000) return 'fail';
@@ -372,7 +379,7 @@
     var item = findText(LOGOUT_RE);
     if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; } return 'doing'; }
     if (lo.clickedAt) return 'doing';   // đã bấm đăng xuất, chờ trang đổi
-    if (now - lo.openAt > 1000) {   // chưa thấy mục đăng xuất sau 1,8 giây: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần, hết lượt thì dừng, không bấm đi bấm lại)
+    if (now - lo.openAt > 1800) {   // chưa thấy mục đăng xuất sau 1,8 giây: thử ảnh đại diện kế tiếp (mỗi ảnh chỉ thử 1 lần, hết lượt thì dừng, không bấm đi bấm lại)
       if (!lo.cands || !lo.cands.length) { lo.cands = avatarCandidates(); lo.idx = 0; }
       if (lo.cands.length && lo.idx >= lo.cands.length) return 'fail';
       var c = lo.cands[lo.idx++];
@@ -399,6 +406,7 @@
 
   function step() {
     if (done) return true;
+    if (blockerOpen()) { say('đang đóng hộp quảng cáo gói trước…'); return false; }
     if (Date.now() - started > TOTAL) return finish('Không thấy form đăng nhập sau 2 phút. Bạn đăng nhập tay nhé.', 20000);
     var pw = findInput('password', /password/i), em = findInput('email', /e-?mail/i);
     if (pw && em && pw !== em) {
