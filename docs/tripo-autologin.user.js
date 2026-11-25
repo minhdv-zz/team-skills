@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.9.8
+// @version      2.9.9
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -28,7 +28,7 @@
   if (host === 'minhdv-zz.github.io') {
     var flag = function () { // ở document-start thẻ <html> có thể chưa tồn tại
       var r = document.documentElement;
-      if (r) r.setAttribute('data-tripo-autologin', '2.9.8');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
+      if (r) r.setAttribute('data-tripo-autologin', '2.9.9');   // trang Team Tools đọc số bản này để biết script có đủ mới không (bản cũ ghi '1')
       return !!r;
     };
     if (!flag()) { var iv = setInterval(function () { if (flag()) clearInterval(iv); }, 10); }
@@ -230,7 +230,7 @@
     for (var n = up && up.parentElement, k = 0; n && k < 5; n = n.parentElement, k++) {
       var t = txt(n);
       if (t.length > 40) break;
-      var m = /^[^\d\s]{0,3}\s*(\d[\d,]*)\s*upgrade$/.exec(t);
+      var m = /^[^\d\s]{0,3}\s*(\d[\d,]*)\s*[^\d]{0,30}?\s*upgrade$/.exec(t);   // cho phép nhãn khuyến mãi chen giữa (\"2840 Black Friday Upgrade\")
       if (m) return parseInt(m[1].replace(/,/g, ''), 10);
     }
     // Trên Tripo thật số credit và nút Upgrade là hai khối đứng cạnh nhau: lấy khối liền trước nút Upgrade, chỉ nhận khi chữ của nó là một số.
