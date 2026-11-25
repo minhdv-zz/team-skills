@@ -274,7 +274,7 @@ async function tripo(req, env, url) {
   const who = au.email, isAdmin = au.admin, op = url.pathname.slice(7);
   const cm = isAdmin || op === "credit" || op === "list" ? await getCredits(env) : {};   // chỉ đọc khi cần (thành viên thường không dùng số credit)
   // Người không phải chủ chỉ thấy id + trạng thái: không có email, ghi chú, người dùng, credit của tài khoản.
-  // Thành viên thấy email + số credit của các tài khoản CÒN token (theo yêu cầu chủ), không thấy ghi chú/người dùng/mật khẩu; tài khoản đã hết thì vẫn ẩn email.
+  // Thành viên thấy email + số credit của các tài khoản CÒN credit (theo yêu cầu chủ), không thấy ghi chú/người dùng/mật khẩu; tài khoản đã hết thì vẫn ẩn email.
   const P = isAdmin ? (a) => pub(a, cm) : (a) => { const live = a.status !== "empty"; return ({ id: a.id, email: live ? a.email : "", note: "", status: a.status, usedBy: "", usedAt: a.usedAt || 0, addedBy: "", addedAt: a.addedAt || 0, emptyAt: a.emptyAt || 0, credit: live && cm[a.id] ? cm[a.id].c : null, creditAt: live && cm[a.id] ? cm[a.id].t : 0 }); };
   const adminOnly = ["add", "delete", "members", "members_set"];
   if (adminOnly.includes(op) && !isAdmin) return json({ error: "Chỉ admin làm được việc này" }, 403);
@@ -336,7 +336,7 @@ async function tripo(req, env, url) {
   if (!a) return json({ error: "không thấy tài khoản" }, 404);
 
   if (op === "update") {
-    if (!isAdmin && (b.note !== undefined || b.status !== "empty")) return json({ error: "Chỉ admin đổi được mục này" }, 403); // thành viên thường chỉ được báo "đã hết token"
+    if (!isAdmin && (b.note !== undefined || b.status !== "empty")) return json({ error: "Chỉ admin đổi được mục này" }, 403); // thành viên thường chỉ được báo "đã hết credit"
     let ev = null;
     if (b.status !== undefined) {
       if (!["ok", "using", "empty"].includes(b.status)) return json({ error: "bad status" }, 400);
@@ -370,7 +370,7 @@ async function tripo(req, env, url) {
 
   // Chọn tài khoản cả nhóm sẽ dùng (tích trong hộp Lấy tài khoản): tài khoản này thành "đang dùng", cái đang dùng trước đó về "còn dùng được".
   if (op === "select") {
-    if (a.status === "empty") return json({ error: "Tài khoản này đã hết token" }, 409);
+    if (a.status === "empty") return json({ error: "Tài khoản này đã hết credit" }, 409);
     const password = await unseal(env, a.secret); // giải mã trước, lỗi thì chưa đổi trạng thái
     for (const x of accs) if (x.status === "using" && x.id !== a.id) { x.status = "ok"; x.usedBy = ""; }
     a.status = "using"; a.usedBy = who; a.usedAt = Date.now();

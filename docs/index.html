@@ -215,11 +215,11 @@
           <ol class="hsteps" id="tpHeroSteps">
             <li><b>Bấm &ldquo;Lấy tài khoản&rdquo;</b><span>Hiện tài khoản cả nhóm đang dùng.</span></li>
             <li><b>Bấm &ldquo;Đăng nhập Tripo&rdquo;</b><span>Có script tự đăng nhập thì Tripo mở sẵn đã đăng nhập (chưa cài thì trang sẽ chỉ cách cài). Mật khẩu được script tự điền, không hiện ra màn hình.</span></li>
-            <li><b>Hết token thì bấm &ldquo;Đã hết token&rdquo;</b><span>Nút nằm ngay trong hộp tài khoản. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
+            <li><b>Hết credit thì bấm &ldquo;Đã hết credit&rdquo;</b><span>Nút nằm ngay trong hộp tài khoản. Sau đó bấm &ldquo;Lấy tài khoản&rdquo; lại để sang tài khoản khác.</span></li>
           </ol>
           <span class="hero-me"><span class="fine" style="margin:0" id="tpMe"></span><button id="tpLock">Đăng xuất</button></span>
         </div>
-        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết token</b> thì mới chuyển sang tài khoản tiếp theo.</div>
+        <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết credit</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
       <div id="tpAdmin" style="display:none">
       <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng</h3><div id="tpChart"></div></div>
@@ -396,7 +396,7 @@
       <div class="row" style="margin-top:10px"><button type="button" id="tpmShowToggle" style="font-size:12px">Cài rồi mà vẫn hiện?</button><button type="button" id="tpmReload">Xong, tải lại</button></div>
       <div class="row" id="tpmFallback" style="margin-top:8px"><a class="btn" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Vẫn mở Tripo, tự dán email/mật khẩu</a></div></div>
     <div id="tpmWho" style="display:none;margin:10px 0"></div>
-    <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết token</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
+    <div class="row"><button onclick="tpCloseCred()">Đóng</button><button class="danger" id="tpmEmpty" style="display:none">Đã hết credit</button><a class="btn pri" id="tpmStudio" href="https://studio.tripo3d.ai/" target="_blank" rel="noopener noreferrer">Đăng nhập Tripo</a></div>
   </div>
 </div>
 <div class="overlay" id="ct">
@@ -695,7 +695,7 @@ function tpRender(){
   if(!tpIsAdmin()) return;
   var a = TP.accs;
   // Bảng theo tháng (mới nhất trên cùng), chỉ hiện tháng có số liệu + tháng này.
-  // "Tài khoản hết" = số tài khoản THỰC SỰ đang ở trạng thái "Đã hết token" mà chuyển sang hết trong tháng đó (không đếm số lần bấm nút, bấm nhầm rồi trả lại thì không tính).
+  // "Tài khoản hết" = số tài khoản THỰC SỰ đang ở trạng thái "Đã hết credit" mà chuyển sang hết trong tháng đó (không đếm số lần bấm nút, bấm nhầm rồi trả lại thì không tính).
   var emptyBy = {};
   a.forEach(function(x){ if(x.status === 'empty' && x.emptyAt){ var mk = new Date(x.emptyAt + 7 * 3600e3).toISOString().slice(0, 7); emptyBy[mk] = (emptyBy[mk] || 0) + 1; } });
   var ms = (TP.stats ? TP.stats.months : []).filter(function(m, i){ return i === 0 || m.used != null || m.left != null || emptyBy[m.month] > 0; });
@@ -705,7 +705,7 @@ function tpRender(){
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
   var mxU = Math.max.apply(null, [1].concat(ms.map(function(m){ return m.start != null && m.left != null ? Math.max(0, m.start - m.left) : 0; })));
-  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Token đầu tháng') + th('Còn lại hiện tại') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Tài khoản hết') + '</div>'
+  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Còn lại hiện tại') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Tài khoản hết') + '</div>'
     + ms.map(function(m, i){
       var has = m.start != null && m.left != null, u = has ? Math.max(0, m.start - m.left) : 0;
       var used = !has ? none : '<b>' + nf(u) + '</b><div style="height:5px;margin-top:4px;width:' + Math.max(2, Math.round(u / mxU * 100)) + '%;background:var(--acc);border-radius:3px"></div>';
@@ -714,16 +714,16 @@ function tpRender(){
       return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + start + '</div>', '<div>' + left + '</div>', '<div>' + used + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
     }).join('')
     + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
-    + '\u2022 <b>Token đầu tháng</b> = tổng credit các tài khoản trong danh sách lúc đầu tháng (số còn lại cuối tháng trước; tài khoản mới thêm giữa tháng thì tính từ lần đọc đầu tiên).<br>'
+    + '\u2022 <b>Credit đầu tháng</b> = tổng credit các tài khoản trong danh sách lúc đầu tháng (số còn lại cuối tháng trước; tài khoản mới thêm giữa tháng thì tính từ lần đọc đầu tiên).<br>'
     + '\u2022 <b>Còn lại hiện tại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản). Các tháng cũ ghi số cuối tháng đó.<br>'
-    + '\u2022 <b>Đã dùng</b> = Token đầu tháng \u2212 Còn lại hiện tại.<br>'
-    + '\u2022 <b>Tài khoản hết</b> = số tài khoản đang ở trạng thái \u201cĐã hết token\u201d và chuyển sang hết trong tháng đó (không đếm số lần bấm nút).<br>'
+    + '\u2022 <b>Đã dùng</b> = Credit đầu tháng \u2212 Còn lại hiện tại.<br>'
+    + '\u2022 <b>Tài khoản hết</b> = số tài khoản đang ở trạng thái \u201cĐã hết credit\u201d và chuyển sang hết trong tháng đó (không đếm số lần bấm nút).<br>'
     + '\u2022 Số credit do script tự đăng nhập đọc được khi có người mở Tripo, nên tháng nào chưa có ai mở thì ghi \u201cchưa có số liệu\u201d. Mới bắt đầu ghi từ 25/11/2026, các tháng trước sẽ không có.'
     + '</div></details>';
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
     var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // danh sách tên đã gộp theo người   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước
-    var stTxt = x.status === 'ok' ? 'Còn dùng được' : x.status === 'using' ? 'Đang dùng' + (x.usedBy ? ': ' + x.usedBy : '') + ' \u00b7 ' + tpAgo(x.usedAt) : 'Đã hết token' + (x.emptyAt ? ' \u00b7 ' + tpAgo(x.emptyAt) : '');
+    var stTxt = x.status === 'ok' ? 'Còn dùng được' : x.status === 'using' ? 'Đang dùng' + (x.usedBy ? ': ' + x.usedBy : '') + ' \u00b7 ' + tpAgo(x.usedAt) : 'Đã hết credit' + (x.emptyAt ? ' \u00b7 ' + tpAgo(x.emptyAt) : '');
     var cls2 = x.status === 'ok' ? 'ok' : x.status === 'using' ? 'wait' : 'bad';
     var chip = who ? '<span class="chip ' + cls2 + '" title="' + esc(stTxt + (who.length ? '\nĐã lấy: ' + who.join(', ') : '')) + '">' + who.length + ' người đã lấy</span>'
       : '<span class="chip ' + cls2 + '">' + esc(stTxt) + '</span>';
@@ -734,7 +734,7 @@ function tpRender(){
       + (x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0">&#9889; chưa có</span>' : (Date.now() - x.creditAt > 3 * 3600 * 1000 ? '<span style="font-size:20px;font-weight:700;color:var(--muted,#8b949e);opacity:.7">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0;color:#e3b341">số cũ &middot; ' + tpAgo(x.creditAt) + '</div>' : '<span style="font-size:20px;font-weight:700;color:' + (x.credit === 0 ? '#ffb4ac' : '#e3b341') + '">&#9889; ' + x.credit + '</span><div class="fine" style="margin:0">' + tpAgo(x.creditAt) + '</div>')) + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + btn('reveal', 'Xem', 'pri')
       + btn('login', 'Đăng nhập')
-      + (x.status !== 'empty' ? btn('empty', 'Đã hết token') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
+      + (x.status !== 'empty' ? btn('empty', 'Đã hết credit') : btn('ok', 'Còn lại')) + btn('delete', 'Xóa', 'danger') + '</div></div>';
   }).join('');
   $('tpList').innerHTML = rows || '<div class="card">Chưa có tài khoản nào. Mở mục &ldquo;Thêm tài khoản mới&rdquo; bên dưới.</div>';
   var names = { claim: 'lấy', empty: 'đánh dấu hết', add: 'thêm', del: 'xóa' };
@@ -792,8 +792,8 @@ function tpSetStudio(){
 function tpRenderPass(){ var ad = tpIsAdmin(), pv = ad ? '' : 'none'; $('tpmPassLbl').style.display = pv; $('tpmFallback').style.display = pv; $('tpmPass').style.display = ad ? 'flex' : 'none'; $('tpmPassTxt').textContent = ad ? TP_PASS : ''; }   // admin: mật khẩu luôn hiện, không ẩn
 function tpCloseCred(){ $('tpmAll').style.display = 'none'; $('tpmAll').parentNode.style.width = ''; $('tpmWarn').style.display = 'none'; $('tpmToggle').style.display = 'none'; $('tpm').classList.remove('on'); $('tpmEmail').textContent = ''; TP_PASS = ''; TP_SHOW = false; tpRenderPass(); tpSetStudio('', ''); $('tpmNote').textContent = ''; $('tpmWho').style.display = 'none'; }
 var TP_CLAIM_ID = '';
-var TP_NOTE = 'Cả nhóm dùng chung tài khoản đang chọn. Hết token thì bấm Đã hết token bên dưới để chuyển sang tài khoản tiếp theo.';   // một câu cố định: chọn qua lại không làm chữ đổi
-function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
+var TP_NOTE = 'Cả nhóm dùng chung tài khoản đang chọn. Hết credit thì bấm Đã hết credit bên dưới để chuyển sang tài khoản tiếp theo.';   // một câu cố định: chọn qua lại không làm chữ đổi
+function tpRenderAll(cur){   // danh sách mọi tài khoản còn credit (email + credit): tích chọn tài khoản cả nhóm sẽ dùng, rồi dùng các nút bên dưới
   var box = $('tpmAll'), a = (TP.accs || []).filter(function(x){ return x.status !== 'empty' && x.email; }), md = box.parentNode;
   var hide = a.length ? 'none' : '';   // có danh sách thì ô Email đơn ở trên thừa (email vẫn nằm trong #tpmEmail để đăng nhập)
   $('tpmEmailLbl').style.display = hide; $('tpmEmail').style.display = hide;
@@ -801,7 +801,7 @@ function tpRenderAll(cur){   // danh sách mọi tài khoản còn token (email 
   md.style.width = 'min(760px,100%)';   // hộp rộng hơn khi có danh sách cho dễ nhìn
   var cl = String(cur || '').toLowerCase();
   a.sort(function(x, y){ return x.email.localeCompare(y.email); });
-  box.innerHTML = '<div style="margin:0 0 10px;font-size:16px"><b>Chọn tài khoản để dùng</b> <span class="fine" style="margin:0;font-size:13px">(' + a.length + ' tài khoản còn token)</span></div>'
+  box.innerHTML = '<div style="margin:0 0 10px;font-size:16px"><b>Chọn tài khoản để dùng</b> <span class="fine" style="margin:0;font-size:13px">(' + a.length + ' tài khoản còn credit)</span></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;max-height:52vh;overflow:auto;padding:2px">' + a.map(function(x){
       var me = x.email.toLowerCase() === cl, old = x.creditAt && Date.now() - x.creditAt > 3 * 3600 * 1000;   // quá 3 giờ chưa cập nhật: làm mờ + ghi 'số cũ'
       var cr = x.credit === null || x.credit === undefined ? '<span class="fine" style="margin:0;font-size:14px;font-weight:400">&#9889; chưa có số</span>'
@@ -917,7 +917,7 @@ $('tpMemList').addEventListener('click', function(e){
 document.addEventListener('click', function(e){ if(!e.target.closest('.dots, .menu')){ var o = document.querySelector('#tpMemList .menu'); if(o) o.remove(); } });
 $('tpClaim').addEventListener('click', function(){
   if(!tpAutoOn()){ tpShowSetup(); return; }   // chưa cài (hoặc script cũ): bắt cài trước, chưa gọi máy chủ nên chưa lấy/đổi trạng thái tài khoản nào
-  // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết token": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
+  // Cả nhóm dùng chung một tài khoản cho tới khi nó bị đánh dấu "Đã hết credit": còn tài khoản "đang dùng" thì xem lại đúng tài khoản đó
   // (lấy cái dùng gần nhất), không thì mới lấy tài khoản mới. Làm ở trang để chạy được với cả Worker bản cũ.
   // Nhanh: dùng danh sách đã có sẵn trên trang (khỏi gọi list trước), hiện hộp ngay khi có mật khẩu, làm mới danh sách chạy nền sau đó.
   var note = TP_NOTE;
@@ -939,7 +939,7 @@ $('tpClaim').addEventListener('click', function(){
 });
 $('tpmEmpty').addEventListener('click', function(){
   var id = TP_CLAIM_ID; if(!id) return;
-  if(!confirm('Đánh dấu tài khoản này đã hết token?')) return;
+  if(!confirm('Đánh dấu tài khoản này đã hết credit?')) return;
   tpGuard(function(){ return tpCall('update', { id: id, status: 'empty' }).then(function(){ tpCloseCred(); toast('Đã đánh dấu hết. Bấm Lấy tài khoản để lấy tài khoản khác.', true); return tpLoad(); }); });
 });
 $('tpmStudio').addEventListener('click', function(e){
