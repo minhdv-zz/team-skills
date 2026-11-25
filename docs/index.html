@@ -221,8 +221,8 @@
         </div>
         <div class="fine" id="tpHeroNote" style="margin:10px 0 0">Cả nhóm dùng chung một tài khoản: ai bấm cũng nhận đúng tài khoản đó, cho tới khi có người bấm <b>Đã hết credit</b> thì mới chuyển sang tài khoản tiếp theo.</div>
       </div>
-      <div id="tpAdmin" style="display:none">
       <div class="card" style="margin-bottom:14px"><h3>Credit theo tháng</h3><div id="tpChart"></div></div>
+      <div id="tpAdmin" style="display:none">
       <div id="tpList"></div>
       <details class="help" style="margin-top:14px">
         <summary>Thêm tài khoản mới</summary>
@@ -692,8 +692,12 @@ function tpRender(){
   $('tpAdmin').style.display = tpIsAdmin() ? '' : 'none';
   $('tpHero').style.cssText = tpIsAdmin() ? 'border:0;background:none;box-shadow:none;padding:0;margin-bottom:12px' : '';
   ['tpHeroCta', 'tpHeroSteps', 'tpHeroNote'].forEach(function(id){ $(id).style.display = tpIsAdmin() ? 'none' : ''; });   // chủ chỉ cần dòng "Bạn: ..." + Đăng xuất
+  tpRenderChart();   // bảng credit theo tháng: mọi tài khoản đều thấy
   if(!tpIsAdmin()) return;
-  var a = TP.accs;
+  tpRenderList();
+}
+function tpRenderChart(){
+  var a = TP.accs || [];
   // Bảng theo tháng (mới nhất trên cùng), chỉ hiện tháng có số liệu + tháng này.
   // "Tài khoản hết" = số tài khoản THỰC SỰ đang ở trạng thái "Đã hết credit" mà chuyển sang hết trong tháng đó (không đếm số lần bấm nút, bấm nhầm rồi trả lại thì không tính).
   var emptyBy = {};
@@ -720,6 +724,9 @@ function tpRender(){
     + '\u2022 <b>Tài khoản hết</b> = số tài khoản đang ở trạng thái \u201cĐã hết credit\u201d và chuyển sang hết trong tháng đó (không đếm số lần bấm nút).<br>'
     + '\u2022 Số credit do script tự đăng nhập đọc được khi có người mở Tripo, nên tháng nào chưa có ai mở thì ghi \u201cchưa có số liệu\u201d. Mới bắt đầu ghi từ 25/11/2026, các tháng trước sẽ không có.'
     + '</div></details>';
+}
+function tpRenderList(){
+  var a = TP.accs;
   var order = { using: 0, ok: 1, empty: 2 };
   var rows = a.slice().sort(function(x, y){ return (order[x.status] - order[y.status]) || x.email.localeCompare(y.email); }).map(function(x){
     var who = TP.stats && TP.stats.claimers ? (TP.stats.claimers[x.email] || []) : null;   // danh sách tên đã gộp theo người   // máy chủ cũ chưa báo thì giữ chip trạng thái như trước

@@ -282,8 +282,8 @@ async function tripo(req, env, url) {
   if (op === "list") {
     const accsP = getAccounts(env);
     const [st, accs, members, admins] = await Promise.all([accsP.then((a) => stats(env, cm, new Set(a.map((x) => x.id)))), accsP, isAdmin ? getMembers(env) : null, isAdmin ? getAdmins(env) : null]);   // đọc song song, không nối đuôi nhau
-    // thành viên thường chỉ thấy số tài khoản hết/lượt lấy, không thấy credit đã dùng/còn lại
-    return json({ admin: isAdmin, accounts: accs.map(P), stats: isAdmin ? st : { months: st.months.map((m) => ({ month: m.month, emptied: m.emptied, claimed: m.claimed })), recent: [] }, members: members || undefined, admins: admins || undefined });
+    // thành viên thường thấy bảng credit theo tháng (theo yêu cầu chủ) nhưng không thấy nhật ký gần đây và danh sách người đã lấy từng tài khoản
+    return json({ admin: isAdmin, accounts: accs.map(P), stats: isAdmin ? st : { months: st.months, recent: [] }, members: members || undefined, admins: admins || undefined });
   }
 
   if (op === "members") return json({ members: await getMembers(env), admins: await getAdmins(env) });
