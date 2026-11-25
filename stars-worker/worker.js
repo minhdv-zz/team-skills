@@ -163,7 +163,7 @@ async function stats(env, cm, ids, emptyIds) {   // emptyIds: tài khoản đang
   // Mỗi tài khoản đã có những ai lấy, gộp theo người: nhật ký cũ ghi tên ngắn ("tet"), bản mới ghi email ("tet@horusvn.com") nên lấy phần trước @ và hạ chữ thường làm khóa.
   // claimBy[email tài khoản] = [{ n: tên, c: số lần lấy, t: lần lấy gần nhất }], người lấy gần đây nhất đứng đầu. Tính trên cả 6 tháng nhật ký.
   const claimBy = {}, claimers = {};
-  for (const ev of lists) for (const e of ev || []) if (e.type === "claim" && e.who) {
+  for (const ev of lists) for (const e of ev || []) if ((e.type === "claim" || e.type === "login") && e.who) {
     const n = String(e.who).split("@")[0].trim().toLowerCase(); if (!n) continue;
     const arr = (claimBy[e.email] = claimBy[e.email] || []); let r = arr.find((x) => x.n === n);
     if (!r) arr.push(r = { n, c: 0, t: 0 });
@@ -402,6 +402,8 @@ async function tripo(req, env, url) {
     return json({ account: P(a), email: a.email, password });
   }
   if (op === "reveal") return json({ email: a.email, password: await unseal(env, a.secret) });
+  // Trang báo "vừa bấm Đăng nhập Tripo tài khoản này": chỉ ghi nhật ký (đăng nhập dùng op reveal nên trước đây không để lại dấu vết gì)
+  if (op === "login") { await logEvs(env, [["login", a]], who); return json({ ok: true }); }
 
   if (op === "delete") {
     accs.splice(i, 1);

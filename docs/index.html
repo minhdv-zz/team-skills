@@ -781,7 +781,7 @@ function tpRenderList(){
       + (!adm ? '' : x.status !== 'empty' ? btn('empty', 'Đã hết credit') : btn('ok', 'Còn lại')) + (adm ? btn('delete', 'Xóa', 'danger') : '') + '</div></div>';
   }).join('');
   $('tpList').innerHTML = rows || '<div class="card">Chưa có tài khoản nào. Mở mục &ldquo;Thêm tài khoản mới&rdquo; bên dưới.</div>';
-  var names = { claim: 'lấy', empty: 'đánh dấu hết', add: 'thêm', del: 'xóa' };
+  var names = { claim: 'lấy', login: 'đăng nhập Tripo', empty: 'đánh dấu hết', add: 'thêm', del: 'xóa' };
   var rec = TP.stats ? TP.stats.recent : [];
   $('tpLog').innerHTML = rec.length ? rec.map(function(e){ return '<div>' + tpAgo(e.t) + ': <b>' + esc(e.who || '?') + '</b> ' + (names[e.type] || esc(e.type)) + ' ' + esc(e.email) + '</div>'; }).join('') : (tpIsAdmin() ? 'Chưa có.' : 'Chỉ admin xem được.');
 }
@@ -1028,6 +1028,7 @@ $('tpmStudio').addEventListener('click', function(e){
   var root = document.documentElement;
   root.removeAttribute('data-tripo-ack');
   document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: $('tpmEmail').textContent, p: TP_PASS }) }));
+  if(root.hasAttribute('data-tripo-ack')){ var em = $('tpmEmail').textContent, ac = TP.accs.filter(function(x){ return x.email === em; })[0]; if(ac) tpCall('login', { id: ac.id }).catch(function(){}); }   // ghi nhật ký đăng nhập
   if(root.hasAttribute('data-tripo-ack')) e.preventDefault();   // script đã nhận và tự mở tab Tripo; không nhận thì link vẫn mở như thường
 });
 // Cài tự động từng bước: mở cửa hàng tiện ích -> khi người dùng quay lại tab này thì mở trang cài script -> quay lại lần nữa thì tải lại trang để nhận script.
@@ -1140,7 +1141,7 @@ $('tripo').addEventListener('click', function(e){
     if(tpAutoOn()){
       root.removeAttribute('data-tripo-ack');
       document.dispatchEvent(new CustomEvent('team-tripo-login', { detail: JSON.stringify({ e: j.email, p: j.password }) }));
-      if(root.hasAttribute('data-tripo-ack')){ toast('Đang mở Tripo, đăng nhập ' + j.email, true); return; }
+      if(root.hasAttribute('data-tripo-ack')){ tpCall('login', { id: id }).catch(function(){}); toast('Đang mở Tripo, đăng nhập ' + j.email, true); return; }   // ghi nhật ký "đăng nhập Tripo" (reveal không ghi gì)
     }
     tpShowCred(j.email, j.password, acc.note, '', true); if(!tpAutoOn()) tpNeedSetup();   // chưa cài script hoặc script không nhận: mở hộp (có hướng dẫn cài / tự dán)
   }); });
