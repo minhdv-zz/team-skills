@@ -7,6 +7,8 @@
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
 // @author       Team Tools
 // @match        https://studio.tripo3d.ai/*
+// @match        https://*.tripo3d.ai/*
+// @match        https://tripo3d.ai/*
 // @match        https://minhdv-zz.github.io/team-skills/*
 // @run-at       document-start
 // @noframes
@@ -64,7 +66,7 @@
   }
 
   // ---------- Trên Tripo Studio ----------
-  if (host !== 'studio.tripo3d.ai') return;
+  if (!/(^|\.)tripo3d\.ai$/.test(host)) return;   // studio.tripo3d.ai và các tên miền con khác (đăng xuất có thể chuyển sang trang chủ)
 
   // ---- Tự dò nguồn credit trong các request của chính trang Tripo ----
   // Chèn một đoạn nhỏ vào trang để xem các câu trả lời JSON (fetch/XHR) có trường số giống credit/balance rồi báo về đây. Khi số credit trên giao diện
@@ -243,6 +245,8 @@
   })();
   // Trước khi đăng nhập / đăng xuất: nếu hộp gói còn mở thì đóng nó trước và chờ, không bấm gì khác (hộp che mất menu tài khoản).
   function blockerOpen() { if (planGuard.open()) { planGuard.tick(); return true; } return false; }
+  // Giữ thông tin đăng nhập sống thêm 3 phút (đăng xuất + tải lại trang có thể mất thời gian), và đánh dấu để tab sau tải lại biết mình đang giữa chừng.
+  function keepCred() { try { if (cred && cred.e && cred.p) GM_setValue(KEY, JSON.stringify({ e: cred.e, p: cred.p, t: Date.now() })); sessionStorage.setItem('tripoLoAt', String(Date.now())); } catch (e) { /* bỏ qua */ } }
   function readCred() {
     var c = null;
     try { c = JSON.parse(GM_getValue(KEY, '') || 'null'); } catch (e) { c = null; }
@@ -265,7 +269,10 @@
   // passive = true: không có thông tin đăng nhập (người dùng tự mở Tripo). Không đăng nhập gì cả, chỉ theo dõi credit nếu nhận ra tài khoản.
   function begin(passive) {
 
-  if (passive) cred = { e: '', p: '' };
+  if (passive) {
+    cred = { e: '', p: '' };
+    try { if (Date.now() - (+sessionStorage.getItem('tripoLoAt') || 0) < 180000) { sessionStorage.removeItem('tripoLoAt'); say('đã đăng xuất nhưng mất thông tin đăng nhập của Team Tools (hết hạn?). Bạn bấm "Lấy tài khoản" bên Team Tools lại nhé.', 30000); } } catch (e) { /* bỏ qua */ }
+  }
   var acctEmail = cred.e, lastGreet = 0;
   var started = Date.now(), fillAt = 0, settledAt = 0, clicks3 = 0, lastClickAt = 0, typed = { e: 0, p: 0 }, done = false, clicks = { use: 0, login: 0 }, lastClick = {};
 
@@ -551,7 +558,7 @@
     if (blockerOpen()) { lo.openAt = now; if (lo.on) lo.t0 += 0; return 'doing'; }   // hộp gói đang che: đóng xong mới tiếp tục (không tính vào 20 giây của đăng xuất)
     if (!lo.on) { lo.on = true; lo.t0 = now; lo.startUrl = pageUrl(); }
     if (!looksLoggedIn() && !findText(LOGOUT_RE)) { return 'gone'; }
-    if (lo.clickedAt && now - lo.clickedAt > 6000 && now - lo.t0 < 20000 && reloadOnce('logout')) { say('đã bấm đăng xuất, trang chưa cập nhật: tải lại trang…'); return 'doing'; }
+    if (lo.clickedAt && now - lo.clickedAt > 1500 && now - lo.t0 < 20000 && reloadOnce('logout')) { say('đã bấm đăng xuất, tải lại trang cho chắc…'); return 'doing'; }   // Tripo hay chưa cập nhật giao diện sau đăng xuất: tải lại 1 lần để có trạng thái thật, rồi đăng nhập tiếp
     if (now - lo.t0 > 20000) return 'fail';
     if (pageUrl() !== lo.startUrl) {   // lỡ bấm trúng thứ chuyển sang trang khác (ví dụ trang Creator Growth): quay lại đúng 1 lần mỗi 2 giây, không bấm gì thêm
       if (now - lo.backAt > 2000) { lo.backAt = now; lo.openAt = now; say('lỡ vào trang khác, quay lại…'); try { history.back(); } catch (e) { /* bỏ qua */ } }
@@ -562,7 +569,7 @@
       if (cf && clickLimited('logoutok', cf)) { say('xác nhận đăng xuất…'); lo.clickedAt = now; return 'doing'; }
     }
     var item = findText(LOGOUT_RE);
-    if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; } return 'doing'; }
+    if (item) { if (clickLimited('logout', item)) { say('bấm "đăng xuất"…'); lo.clickedAt = now; keepCred(); } return 'doing'; }
     if (lo.clickedAt) return 'doing';   // đã bấm đăng xuất, chờ trang đổi
     if (lo.hoverCand && !lo.hoverClicked && now - lo.hoverAt > 400) {   // rê chuột chưa mở menu: bấm
       lo.hoverClicked = true; say('bấm ảnh đại diện (' + describe(lo.hoverCand) + ')…');
