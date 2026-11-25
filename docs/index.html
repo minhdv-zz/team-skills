@@ -673,16 +673,19 @@ function tpCreditSync(){
 }
 document.addEventListener('team-tripo-credit', function(){ if($('tpMain').style.display !== 'none') tpCreditSync(); });
 // Credit do BẤT KỲ thành viên nào đang mở Tripo đẩy lên: trang tự hỏi lại server mỗi 30 giây (và khi quay lại tab) để số luôn mới,
-// chỉ cập nhật số credit, không đụng trạng thái/hộp đang mở của người đang xem.
-var tpPolling = false;
+// cập nhật cả trạng thái tài khoản và bảng Credit theo tháng, không đụng hộp đang mở của người đang xem.
+var tpPolling = false, tpPollSig = null;
 function tpPollCredit(){
   if(tpPolling || document.hidden || !TP.accs.length || $('tpMain').style.display === 'none') return;
   tpPolling = true;
   tpCall('list').then(function(j){
-    var by = {}; (j.accounts || []).forEach(function(a){ by[a.id] = a; });
-    var ch = false;
-    TP.accs.forEach(function(a){ var n = by[a.id]; if(n && (n.credit !== a.credit || n.creditAt !== a.creditAt)){ a.credit = n.credit; a.creditAt = n.creditAt; ch = true; } });
-    if(!ch) return;
+    if(!j.accounts) return;
+    // So cả danh sách tài khoản (trạng thái, credit...) lẫn bảng Credit theo tháng; khác thì thay hết và vẽ lại, nên đổi "Đã hết credit" hay số còn lại của người khác cũng hiện theo.
+    var sig = JSON.stringify([j.accounts, j.stats && j.stats.months]);
+    if(sig === tpPollSig) return;
+    var first = tpPollSig === null; tpPollSig = sig;
+    if(first && sig === JSON.stringify([TP.accs, TP.stats && TP.stats.months])) return;
+    TP.accs = j.accounts; if(j.stats) TP.stats = j.stats;
     tpRender();
     if($('tpm').classList.contains('on') && $('tpmAll').style.display !== 'none'){ var sb = $('tpmAll').children[1], st = sb ? sb.scrollTop : 0; tpRenderAll($('tpmEmail').textContent); if($('tpmAll').children[1]) $('tpmAll').children[1].scrollTop = st; }
   }).catch(function(){ /* lỗi mạng/quyền: bỏ qua, lần sau thử lại */ }).then(function(){ tpPolling = false; });
