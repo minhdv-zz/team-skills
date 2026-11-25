@@ -711,18 +711,18 @@ function tpRenderChart(){
   var cc = $('tpChartCard'); cc.style.margin = adm ? '0 0 14px' : '0'; cc.style.background = adm ? '' : 'rgba(0,0,0,.22)';
   var row = function(cells){ return '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">' + cells.join('') + '</div>'; };
   var none = '<span class="fine" style="margin:0">chưa có số liệu</span>';
-  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Còn lại hiện tại') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Tài khoản hết') + '</div>'
+  $('tpChart').innerHTML = '<div style="display:grid;grid-template-columns:' + cols + ';gap:12px;padding-bottom:6px">' + th('Tháng') + th('Credit đầu tháng') + th('Đã dùng (đầu tháng \u2212 hiện tại)') + th('Còn lại hiện tại') + th('Tài khoản hết') + '</div>'
     + ms.map(function(m, i){
       var has = m.start != null && m.left != null, u = has ? Math.max(0, m.start - m.left) : 0;
       var used = !has ? none : '<b>' + nf(u) + '</b>';
       var start = m.start == null ? none : '<b>' + nf(m.start) + '</b>';
       var left = m.left == null ? none : '<b style="color:var(--ok)">' + nf(m.left) + '</b>' + (i === 0 ? '' : ' <span class="fine" style="margin:0">(cuối tháng)</span>');
-      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + start + '</div>', '<div>' + left + '</div>', '<div>' + used + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
+      return row(['<b>' + esc(m.month.slice(5)) + '/' + esc(m.month.slice(0, 4)) + '</b>', '<div>' + start + '</div>', '<div>' + used + '</div>', '<div>' + left + '</div>', '<div>' + (emptyBy[m.month] || 0) + '</div>']);
     }).join('')
     + '<details style="margin-top:10px"><summary class="fine" style="cursor:pointer;margin:0">Số này được tính thế nào?</summary><div class="fine" style="margin:6px 0 0">'
     + '\u2022 <b>Credit đầu tháng</b> = tổng credit các tài khoản trong danh sách lúc đầu tháng (số còn lại cuối tháng trước; tài khoản mới thêm giữa tháng thì tính từ lần đọc đầu tiên).<br>'
-    + '\u2022 <b>Còn lại hiện tại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản). Các tháng cũ ghi số cuối tháng đó.<br>'
     + '\u2022 <b>Đã dùng</b> = Credit đầu tháng \u2212 Còn lại hiện tại.<br>'
+    + '\u2022 <b>Còn lại hiện tại</b> = cộng credit của tất cả tài khoản trong danh sách (lấy số mới nhất của từng tài khoản). Các tháng cũ ghi số cuối tháng đó.<br>'
     + '\u2022 <b>Tài khoản hết</b> = số tài khoản đang ở trạng thái \u201cĐã hết credit\u201d và chuyển sang hết trong tháng đó (không đếm số lần bấm nút).<br>'
     + '\u2022 Số credit do script tự đăng nhập đọc được khi có người mở Tripo, nên tháng nào chưa có ai mở thì ghi \u201cchưa có số liệu\u201d. Mới bắt đầu ghi từ 25/11/2026, các tháng trước sẽ không có.'
     + '</div></details>';
