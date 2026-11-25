@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Team Tools: tự đăng nhập Tripo
 // @namespace    https://minhdv-zz.github.io/team-skills/
-// @version      2.28.1
+// @version      2.28.2
 // @updateURL    https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @downloadURL  https://raw.githubusercontent.com/minhdv-zz/team-skills/main/docs/tripo-autologin.user.js
 // @description  Bấm "Mở Tripo Studio" trong tab Tài khoản Tripo của Team Tools thì mở Tripo và tự điền email, mật khẩu, bấm Continue.
@@ -23,7 +23,7 @@
 // lịch sử trình duyệt hay máy chủ. Có @updateURL: tiện ích tự kiểm tra bản mới trên GitHub của nhóm (bản cài từ 2.9.3 trở đi sẽ tự cập nhật).
 (function () {
   'use strict';
-  var VER = '2.28.1';
+  var VER = '2.28.2';
   var host = location.hostname, KEY = 'tripoCred', EV = 'team-tripo-login', CKEY = 'tripoCredit', NKEY = 'tripoNames', LKEY = 'tripoLogoutAt', CEV = 'team-tripo-credit';
   var STUDIO = 'https://studio.tripo3d.ai/', TTL = 5 * 60 * 1000, FILL_WAIT = 8000, TOTAL = 120000, SETTLE_MS = 120, MAX_CLICKS = 3, RETRY_MS = 700, POLL_MS = 100;
 
@@ -55,11 +55,15 @@
     };
     try { GM_addValueChangeListener(CKEY, function (n, o, nv, remote) { if (remote && nv) pushCredit(); }); } catch (e) { /* tiện ích cũ: bỏ qua */ }
     pushCredit();
+    var lastTab = null, lastTabAt = 0;
     document.addEventListener(EV, function (ev) {
       var c; try { c = JSON.parse(String(ev.detail)); } catch (e) { return; }
       if (!c || typeof c.e !== 'string' || typeof c.p !== 'string' || !c.e || !c.p) return;
       GM_setValue(KEY, JSON.stringify({ e: c.e, p: c.p, t: Date.now() }));
-      GM_openInTab(STUDIO, { active: true });
+      if (!(lastTab && !lastTab.closed && Date.now() - lastTabAt < 20000)) {   // bấm liên tiếp / sự kiện bắn đôi: tab vừa mở còn đó thì không mở thêm tab nữa
+        try { lastTab = GM_openInTab(STUDIO, { active: true }); } catch (e) { lastTab = null; }
+        lastTabAt = Date.now();
+      }
       setTimeout(function () { try { GM_deleteValue(KEY); } catch (e) { /* bỏ qua */ } }, TTL);   // không để lại quá 3 phút
       document.documentElement.setAttribute('data-tripo-ack', String(Date.now())); // báo trang là đã nhận
     }, true);
@@ -67,7 +71,9 @@
   }
 
   // ---------- Trên Tripo Studio ----------
-  if (!/(^|\.)tripo3d\.ai$/.test(host)) return;   // studio.tripo3d.ai và các tên miền con khác (đăng xuất có thể chuyển sang trang chủ)
+  if (!/(^|\.)tripo3d\.ai$/.test(host)) return;
+  if (window.opener) return;   // tab do chính trang Tripo mở ra (bấm nhầm liên kết): sessionStorage được chép từ tab gốc nên script sẽ tưởng là tab đang đăng nhập và lại bấm lung tung, đẻ thêm tab. Tab do tiện ích mở (GM_openInTab) không có opener, không ảnh hưởng.
+   // studio.tripo3d.ai và các tên miền con khác (đăng xuất có thể chuyển sang trang chủ)
 
   // ---- Tự dò nguồn credit trong các request của chính trang Tripo ----
   // Chèn một đoạn nhỏ vào trang để xem các câu trả lời JSON (fetch/XHR) có trường số giống credit/balance rồi báo về đây. Khi số credit trên giao diện
@@ -292,6 +298,7 @@
   function visible(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
   function click(el) { // một số giao diện nghe pointer/mouse chứ không nghe click: bắn đủ chuỗi rồi click
     var t = el.closest('button,a,[role=button]') || el;
+    if (t.tagName === 'A' && t.getAttribute('target') === '_blank') return;   // không bấm liên kết mở tab mới
     ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach(function (n) {
       try { t.dispatchEvent(new MouseEvent(n, { bubbles: true, cancelable: true, view: window })); } catch (e) { /* bỏ qua */ }
     });
@@ -591,7 +598,9 @@
       var ln = el.closest('a[href]'), nav = !!ln && !/^(#.*)?$/.test(ln.getAttribute('href') || '#');   // ảnh nằm trong liên kết sang trang khác (huy hiệu Lv...): bấm vào sẽ chuyển trang, xếp cuối
       var dup = false; for (var k = 0; k < out.length; k++) if (out[k] === t || out[k].contains(t) || t.contains(out[k])) { dup = true; break; }
       if (dup) continue;
-      var tr = t.getBoundingClientRect(), sq = Math.abs(tr.width - tr.height) <= 6;   // ảnh đại diện gần vuông; nút dài (huy hiệu Lv, credit) xếp sau để khỏi bấm nhầm
+      if (nav || (t.tagName === 'A' && t.getAttribute('target') === '_blank')) continue;   // liên kết sang trang khác: bấm nhầm là chuyển trang hoặc mở thêm tab, không bao giờ thử
+      var tr = t.getBoundingClientRect(), sq = Math.abs(tr.width - tr.height) <= 6;
+      if (!sq) continue;   // nút dài (Upgrade, Black Friday, DCC Bridge, huy hiệu Lv...) không phải ảnh đại diện: không thử   // ảnh đại diện gần vuông; nút dài (huy hiệu Lv, credit) xếp sau để khỏi bấm nhầm
       t._txt = hasText || nav; t._score = (hint ? 0 : (isImg || bg) ? 1 : 2) + (sq ? 0 : 3) + (main ? 0 : ham ? 12 : 6); out.push(t);
     }
     out.sort(function (a, b) {   // gợi ý "avatar" trước, rồi ảnh, rồi hình tròn trơn; cùng nhóm: ảnh trơn trước (phải sang trái), ảnh có chữ đi kèm thì sau (trái sang phải)
